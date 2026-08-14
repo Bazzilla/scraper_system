@@ -1,0 +1,16 @@
+# scraper-system dependencies
+# Generated from the working venv (Python 3.14, Arch). For Linux Mint
+# (Python 3.12), these pins still install — the code requires Python >= 3.10
+# (uses modern type syntax). Run inside a venv (PEP 668 on Debian/Ubuntu).
+#
+#   cd scraper-system
+#   python3 -m venv .venv
+#   .venv/bin/pip install -r requirements.txt
+
+beautifulsoup4==4.15.0
+numpy==2.5.2
+pandas==3.0.5
+PyYAML==6.0.3
+requests==2.34.2
+ta==0.11.0
+yfinance==1.5.2
