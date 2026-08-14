@@ -1,4 +1,4 @@
-<!-- Context: project-intelligence/navigation | Priority: critical | Version: 1.10 | Updated: 2026-08-14 -->
+<!-- Context: project-intelligence/navigation | Priority: critical | Version: 1.11 | Updated: 2026-08-14 -->
 
 # Project Intelligence
 
@@ -31,3 +31,4 @@
 - **2026-08-14**: indicator_registry (coverage/availability/usable_in_strategy_score) + manual_overrides (scraping>manual>missing, validazione, scadenza, source=manual) + fail-closed consolidator + audit fallback-fonti — technical-domain.md v1.10, navigation.md v1.8
 - **2026-08-14**: correzione semantica coverage (statico, dalle specifiche) + nuovo campo implementation_status (implemented/proxy/missing/manual_supported) + naaim manual_supported — technical-domain.md v1.11, navigation.md v1.9
 - **2026-08-14**: scheduler.py (loop/--once, sezione scheduler in config.yaml, validazione config_loader) — chiude Roadmap — technical-domain.md v1.12, navigation.md v1.10
+- **2026-08-14**: requirements.txt (dipendenze riproducibili) + deploy/systemd (service+timer daily su Linux Mint) + verifica Python 3.12 (220 test OK) + repo GitHub (Bazzilla/scraper_system) — technical-domain.md v1.13, navigation.md v1.11
