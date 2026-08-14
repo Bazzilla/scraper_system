@@ -1,0 +1,212 @@
+# scraper-system configuration
+# who: scrapers to run | when: schedule/frequency | where: output paths
+
+output:
+  # Paths are relative to the project root. Both are configurable.
+  json_path: output/output.json
+  db_path: output/scraper_audit.db
+
+scheduler:
+  # Esecuzione programmata dell'orchestratore (src/scheduler.py).
+  # interval: daily | weekly — quanto spesso eseguire l'intera orchestrazione.
+  # run_at: "HH:MM" (opzionale, default "00:00") — orario della prima esecuzione
+  #         (daily) o dell'esecuzione settimanale.
+  # weekday: 0-6 (opzionale, default 0=lunedì) — giorno per interval=weekly.
+  interval: daily
+  run_at: "08:00"
+  # weekday: 0
+
+strategy:
+  # Matrice indicatori: indicator_registry.yaml (stato implemented/proxy/missing
+  # per ogni indicatore della strategia). Un PROXY non entra nel punteggio
+  # strategia a meno che non sia elencato qui esplicitamente (fail-closed).
+  indicator_registry: indicator_registry.yaml
+  # proxy_accepted: []  # es. ["vix_spot"] — ATTENZIONE: accettare un proxy
+  #                       significa usare un dato NON equivalente all'indicatore
+  #                       originale nel punteggio. Default: nessun proxy accettato.
+  proxy_accepted: []
+  # Manual overrides: file YAML con valori inseriti manualmente per indicatori
+  # non scrapabili/temporaneamente indisponibili (priorità: scraping > manual >
+  # missing). Vedi manual_overrides.yaml per il formato.
+  manual_overrides: manual_overrides.yaml
+  # force_manual_overrides: []  # es. ["aaii"] — forza il manual override anche
+  #                               quando lo scraper funziona. DISABILITATO di
+  #                               default (fail-closed).
+  force_manual_overrides: []
+
+scrapers:
+  fgi:
+    module: scrapers.fgi_scraper
+    output_key: fgi
+    schedule: daily
+    config:
+      sources:
+        - name: cnn
+          url: "https://production.dataviz.cnn.io/index/fearandgreed/graphdata"
+        - name: feargreedmeter
+          url: "https://feargreedmeter.com/"
+        - name: feargreedindex
+          url: "https://feargreedindex.net/api/fear-greed"
+      timeout: 15
+      retries: 3
+      backoff: 2.0
+      headers:
+        User-Agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+        Accept: "application/json"
+        Referer: "https://www.cnn.com/"
+        Origin: "https://www.cnn.com"
+
+  aaii:
+    module: scrapers.aaii_scraper
+    output_key: aaii
+    schedule: weekly
+    config:
+      url: "https://www.aaii.com/sentimentsurvey"
+      timeout: 20
+      retries: 3
+      backoff: 2.0
+      headers:
+        User-Agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        Accept-Language: "en-US,en;q=0.9"
+
+  vix:
+    module: scrapers.vix_scraper
+    output_key: vix
+    schedule: daily
+    config:
+      url: "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv"
+      timeout: 20
+      retries: 3
+      backoff: 2.0
+      headers:
+        User-Agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+
+  pcr:
+    module: scrapers.pcr_scraper
+    output_key: pcr
+    schedule: daily
+    config:
+      url: "https://www.cboe.com/us/options/market_statistics/daily/"
+      timeout: 20
+      retries: 3
+      backoff: 2.0
+      headers:
+        User-Agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+      stale_after_hours: 24
+
+  ohlcv:
+    module: scrapers.ohlcv_fetcher
+    output_key: ohlcv
+    schedule: daily
+    config:
+      cache_path: output/ohlcv_cache.json
+      period: 1y
+      interval: 1d
+      timeout: 20
+      retries: 3
+      backoff: 2.0
+      request_delay: 1.0
+      stale_after_hours: 24
+
+  indicators:
+    module: scrapers.indicators
+    output_key: indicators
+    schedule: daily
+    config:
+      cache_path: output/ohlcv_cache.json
+      rsi_window: 14
+      mfi_window: 14
+      sma_fast: 50
+      sma_slow: 200
+      drawdown_window: 252
+      stale_after_hours: 24
+
+  pct_sma:
+    module: scrapers.pct_sma_scraper
+    output_key: pct_sma
+    schedule: daily
+    config:
+      cache_path: output/ohlcv_cache.json
+      sma_fast: 50
+      sma_slow: 200
+      stale_after_hours: 24
+
+  insider:
+    module: scrapers.insider_scraper
+    output_key: insider
+    schedule: daily
+    config:
+      url: "http://openinsider.com/latest-officer-purchases-25k"
+      timeout: 20
+      retries: 3
+      backoff: 2.0
+      headers:
+        User-Agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+      days_back: 30
+      min_value: 100000
+      stale_after_hours: 24
+
+tickers:
+  semiconductors:
+    - symbol: AMAT
+      name: Applied Materials
+    - symbol: LRCX
+      name: Lam Research
+    - symbol: KLAC
+      name: KLA
+    - symbol: AVGO
+      name: Broadcom
+    - symbol: ASML
+      name: ASML Holding
+    - symbol: TSM
+      name: Taiwan Semiconductor
+    - symbol: AMD
+      name: Advanced Micro Devices
+    - symbol: MU
+      name: Micron
+    - symbol: ADI
+      name: Analog Devices
+    - symbol: QCOM
+      name: Qualcomm
+    - symbol: MRVL
+      name: Marvell
+    - symbol: ENTG
+      name: Entegris
+    - symbol: NVDA
+      name: NVIDIA
+    - symbol: INTC
+      name: Intel
+    - symbol: TXN
+      name: Texas Instruments
+    - symbol: SWKS
+      name: Skyworks Solutions
+    - symbol: MPWR
+      name: Monolithic Power Systems
+    - symbol: "ON"
+      name: ON Semiconductor
+    - symbol: NXPI
+      name: NXP Semiconductors
+  defense:
+    - symbol: RTX
+      name: RTX
+    - symbol: LMT
+      name: Lockheed Martin
+    - symbol: NOC
+      name: Northrop Grumman
+    - symbol: GD
+      name: General Dynamics
+    - symbol: LHX
+      name: L3Harris
+    - symbol: AXON
+      name: Axon Enterprise
+    - symbol: HWM
+      name: Howmet Aerospace
+    - symbol: HEI
+      name: HEICO
+    - symbol: TDG
+      name: TransDigm Group
+    - symbol: TXT
+      name: Textron

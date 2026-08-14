@@ -1,0 +1,157 @@
+# Matrice indicatori strategia — stato di copertura per indicatore
+# (specifiche_strategia.md / strategia_trading.md)
+#
+# SEMANTICA (audit 2026-08-14, correzione coverage):
+#
+#   coverage               (STATICO, dalle specifiche strategiche)
+#     true  = l'indicatore APPARTIENE alla strategia (è citato nelle specifiche
+#             o nella matrice R/O). Non dipende dall'implementazione né dal
+#             runtime: resta true anche se non implementato, non scrapabile,
+#             rotto, disponibile solo manualmente, o non usabile nello scoring.
+#     false = l'indicatore NON fa parte della strategia (artefatto informativo
+#             aggiunto dal progetto, es. VIX spot).
+#
+#   implementation_status  (STATICO, stato implementativo nel progetto)
+#     implemented      = il progetto ha un modulo che produce il dato con
+#                        semantica equivalente alla strategia.
+#     proxy            = il progetto produce un dato DIVERSE (semantica non
+#                        equivalente) per approssimare l'indicatore, oppure un
+#                        artefatto informativo non strategico.
+#     missing          = nessuna implementazione (gap dichiarato).
+#     manual_supported = nessuno scraper, ma il progetto supporta l'inserimento
+#                        manuale via manual_overrides.yaml.
+#
+#   availability           (DINAMICO, da runtime) — il dato è davvero
+#     disponibile oggi (modulo fresh o manual override fresco).
+#
+#   usable_in_strategy_score (DERIVATO) — true solo se:
+#     coverage=true E availability=true E:
+#       implementation_status in (implemented, manual_supported)
+#       oppure (proxy E chiave in strategy.proxy_accepted)
+#     Fail-closed: missing mai; coverage=false mai; non disponibile mai.
+#
+#   source                 (DINAMICO, da runtime) — scraped | manual | missing
+
+indicators:
+  fgi:
+    name: "Fear & Greed Index"
+    strategy_ref: "F1 (Regola 0)"
+    coverage: true
+    implementation_status: implemented
+    primary_source: "CNN API (production.dataviz.cnn.io)"
+    fallbacks:
+      - "feargreedmeter.com (stock, title+marker Stock Market)"
+      - "feargreedindex.net (baseValue, stock)"
+    semantic_coherent: true
+    output_key: fgi
+    notes: "Indice composito CNN a 7 componenti equity USA. Fallback verificati 2026-08-14."
+
+  aaii:
+    name: "AAII Investor Sentiment Survey"
+    strategy_ref: "F3/#8"
+    coverage: true
+    implementation_status: implemented
+    primary_source: "aaii.com/sentimentsurvey (html_bars)"
+    fallbacks:
+      - "dataChart5 (legacy, rimosso da AAII 2026-08-14)"
+    semantic_coherent: true
+    output_key: aaii
+    notes: "Settimanale (giovedì). Bullish<25% + Bearish>50% = segnale. ⚠️ 2026-08-14: blocco Cloudflare temporaneo (challenge cf-chl), verificato di nuovo raggiungibile lo stesso giorno. Fail-closed a runtime se il blocco si ripresenta."
+
+  naaim:
+    name: "NAAIM Exposure Index"
+    strategy_ref: "F3/#9"
+    coverage: true
+    implementation_status: manual_supported
+    primary_source: null
+    fallbacks:
+      - "manual_overrides.yaml (naaim)"
+    semantic_coherent: true
+    output_key: naaim
+    notes: "Previsto dalla strategia (F3/#9). Escluso come scraper (a pagamento, dati pubblici ritardati di 3 mesi). Il progetto supporta l'inserimento manuale via manual_overrides.yaml: coverage resta true anche quando non alimentato."
+
+  vix_spot:
+    name: "VIX spot (livello)"
+    strategy_ref: "artefatto informativo (non strategico)"
+    coverage: false
+    implementation_status: proxy
+    primary_source: "CBOE CSV ufficiale (VIX_History.csv)"
+    fallbacks: []
+    semantic_coherent: false
+    output_key: vix
+    notes: "NON è un indicatore della strategia (coverage false): la strategia F3/#10 chiede VIX Term Structure. VIX spot è un artefatto informativo aggiunto dal progetto; non entra mai nello score strategico."
+
+  vix_term_structure:
+    name: "VIX Term Structure (M1/M2 backwardation)"
+    strategy_ref: "F3/#10"
+    coverage: true
+    implementation_status: missing
+    primary_source: null
+    fallbacks: []
+    semantic_coherent: false
+    notes: "GAP DICHIARATO. VIX Central/VolChart non scrapabile (gate Flask). Nessuna fonte gratuita soddisfacente trovata. VIX spot (artefatto separato) NON soddisfa questo requisito."
+
+  pcr:
+    name: "Equity Put/Call Ratio"
+    strategy_ref: "F3/#11"
+    coverage: true
+    implementation_status: implemented
+    primary_source: "CBOE daily market statistics"
+    fallbacks:
+      - "regex equity-only fallback (stessa pagina CBOE)"
+    semantic_coherent: true
+    output_key: pcr
+    notes: "Soglia >0.80 = fear. Lag 1 giorno (trade_date esplicita). Barchart scartato (WAF 404)."
+
+  nyse_nh_nl:
+    name: "NYSE New Highs/New Lows"
+    strategy_ref: "F3/#12"
+    coverage: true
+    implementation_status: missing
+    primary_source: null
+    fallbacks: []
+    semantic_coherent: false
+    notes: "GAP DICHIARATO. Barchart (WAF 404) e StockCharts (404) non scrapabili. Nessuna fonte gratuita soddisfacente trovata. Coverage true perché previsto dalla strategia."
+
+  pct_sma:
+    name: "% sopra SMA50/SMA200 (breadth settoriale)"
+    strategy_ref: "proxy per F3/#13-14"
+    coverage: true
+    implementation_status: proxy
+    primary_source: "calcolo locale da OHLCV (29 ticker dei 2 settori)"
+    fallbacks: []
+    semantic_coherent: false
+    output_key: pct_sma
+    notes: "PROXY dell'indicatore strategico % stocks above SMA del MERCATO USA (IndexIndicators, solo PNG). Calcola la breadth solo sui 29 ticker monitorati: soglie <20%/<30% non direttamente applicabili. Usabile solo se accettato via strategy.proxy_accepted."
+
+  indicators:
+    name: "RSI(14), OBV, MFI(14), SMA50/200, drawdown 52w"
+    strategy_ref: "D5/D6 + screening tecnico"
+    coverage: true
+    implementation_status: implemented
+    primary_source: "calcolo locale da OHLCV (yfinance + ta)"
+    fallbacks: []
+    semantic_coherent: true
+    output_key: indicators
+    notes: "OBV divergence e MFI<20 calcolati in locale come da strategia D5/D6. Volume Profile HVN (D7) NON implementato."
+
+  volume_profile:
+    name: "Volume Profile HVN (D7)"
+    strategy_ref: "D7 (Regola 2)"
+    coverage: true
+    implementation_status: missing
+    primary_source: null
+    fallbacks: []
+    semantic_coherent: false
+    notes: "GAP DICHIARATO. Richiede dati tick/intraday storici non disponibili dal fetch daily di yfinance. Non implementato."
+
+  insider:
+    name: "Insider Transactions bonus (H5)"
+    strategy_ref: "H5"
+    coverage: true
+    implementation_status: implemented
+    primary_source: "OpenInsider (HTTP, Form 4 SEC, lag 2gg)"
+    fallbacks: []
+    semantic_coherent: true
+    output_key: insider
+    notes: "Solo open market, >=2 acquisti dirigenti +0.5, CEO/CFO +1.0, max +1.5. Filtro $100K/30gg."

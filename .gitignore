@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -216,3 +217,21 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project-specific (scraper-system)
+# Output artifacts (JSON + SQLite)
+output/
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+# Temp / session files
+.tmp/
+# Agent development artifacts (local, not source code)
+.superpowers/
+.agents/
+skills-lock.json
+# Node modules (opencode tooling internals)
+node_modules/

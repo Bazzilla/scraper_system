@@ -1,0 +1,52 @@
+# Manual overrides — valori inseriti manualmente per indicatori non scrapabili
+# o temporaneamente indisponibili.
+#
+# PRIORITÀ (fail-closed): scraping > manual override > missing/error.
+# Un override manuale viene usato SOLO se:
+#   - lo scraper ha fallito o restituito dato non valido, E
+#   - l'override è ben formato (validato), E
+#   - l'override NON è scaduto (now - fetched_at <= stale_after_hours).
+#
+# Se entrambi scraping e override sono validi, vince lo scraping.
+# Per forzare il manual override su uno scraper funzionante, aggiungi la chiave
+# a `strategy.force_manual_overrides` in config.yaml (DISABILITATO di default).
+#
+# CAMPI COMUNI OBBLIGATORI:
+#   fetched_at       (ISO 8601, es. "2026-08-14T18:20:00+00:00")
+#   stale_after_hours (numero > 0)
+#   entered_by        (stringa, chi ha inserito il dato)
+#   source: manual    (fisso; se manca viene assunto "manual")
+# CAMPI OPZIONALI:
+#   note              (stringa, motivazione / provenienza del dato)
+#
+# CAMPI SPECIFICI PER INDICATORE:
+#   aaii  -> bullish (numero), neutral (numero), bearish (numero)
+#   fgi   -> score (numero), zone (stringa, opzionale)
+#   naaim -> exposure (numero)
+
+aaii:
+  bullish: 37.0
+  neutral: 25.0
+  bearish: 38.0
+  source: manual
+  fetched_at: "2026-08-14T18:20:00+00:00"
+  stale_after_hours: 168
+  entered_by: "user"
+  note: "Inserito manualmente dal sito AAII"
+
+fgi:
+  score: 62.66
+  zone: "greed"
+  source: manual
+  fetched_at: "2026-08-14T18:25:00+00:00"
+  stale_after_hours: 24
+  entered_by: "user"
+  note: "Inserito manualmente"
+
+# naaim:
+#   exposure: 48.0
+#   source: manual
+#   fetched_at: "2026-08-14T18:30:00+00:00"
+#   stale_after_hours: 168
+#   entered_by: "user"
+#   note: "Inserito manualmente da report NAAIM"

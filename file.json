@@ -1,0 +1,150 @@
+{
+  "generated_at": "2026-08-14T14:40:33",
+  "fgi": {
+    "score": 67.3,
+    "zone": "greed",
+    "fetched_at": "2026-08-14T14:38:59",
+    "frequency": "daily",
+    "stale_after_hours": 24,
+    "status": "fresh",
+    "source": "cnn"
+  },
+  "aaii": {
+    "bullish": 34.7,
+    "bearish": 37.9,
+    "neutral": 27.4,
+    "fetched_at": "2026-08-14T14:39:00",
+    "frequency": "weekly",
+    "stale_after_hours": 168,
+    "status": "fresh",
+    "next_expected": "2026-08-20",
+    "source": "html_bars"
+  },
+  "vix": {
+    "vix_close": 14.63,
+    "fetched_at": "2026-08-14T14:39:01",
+    "frequency": "daily",
+    "stale_after_hours": 24,
+    "status": "fresh"
+  },
+  "pcr": {
+    "equity_pcr": 0.59,
+    "total_pcr": 0.79,
+    "index_pcr": 0.93,
+    "trade_date": "2026-08-13",
+    "fetched_at": "2026-08-14T14:39:01",
+    "frequency": "daily",
+    "stale_after_hours": 24,
+    "status": "fresh"
+  },
+  "ohlcv": {
+    "semiconductors": {
+      "AMAT": {
+        "symbol": "AMAT",
+        "name": "Applied Materials",
+        "last_close": 511.23,
+        "last_date": "2026-08-14",
+        "fetched_at": "2026-08-14T14:39:39",
+        "frequency": "daily",
+        "stale_after_hours": 24,
+        "status": "fresh"
+      }
+    },
+    "defense": {
+      "RTX": {
+        "symbol": "RTX",
+        "name": "RTX",
+        "last_close": 221.27,
+        "last_date": "2026-08-14",
+        "fetched_at": "2026-08-14T14:39:39",
+        "frequency": "daily",
+        "stale_after_hours": 24,
+        "status": "fresh"
+      }
+    },
+    "status": "fresh"
+  },
+  "indicators": {
+    "semiconductors": {
+      "AMAT": {
+        "rsi_14": 45.57,
+        "obv": 354076335.0,
+        "mfi_14": 37.43,
+        "sma_50": 558.97,
+        "sma_200": 388.24,
+        "drawdown_52w": -29.29,
+        "symbol": "AMAT",
+        "name": "Applied Materials",
+        "fetched_at": "2026-08-14T14:39:40",
+        "frequency": "daily",
+        "stale_after_hours": 24,
+        "status": "fresh"
+      }
+    },
+    "defense": {
+      "RTX": {
+        "rsi_14": 68.35,
+        "obv": 163698933.0,
+        "mfi_14": 54.51,
+        "sma_50": 199.49,
+        "sma_200": 189.67,
+        "drawdown_52w": -1.27,
+        "symbol": "RTX",
+        "name": "RTX",
+        "fetched_at": "2026-08-14T14:39:40",
+        "frequency": "daily",
+        "stale_after_hours": 24,
+        "status": "fresh"
+      }
+    },
+    "status": "fresh"
+  },
+  "pct_sma": {
+    "semiconductors": {
+      "above_sma50": 7,
+      "total": 19,
+      "pct_sma50": 36.8,
+      "above_sma200": 17,
+      "pct_sma200": 89.5
+    },
+    "defense": {
+      "above_sma50": 7,
+      "total": 10,
+      "pct_sma50": 70.0,
+      "above_sma200": 6,
+      "pct_sma200": 60.0
+    },
+    "total": {
+      "above_sma50": 14,
+      "total": 29,
+      "pct_sma50": 48.3,
+      "above_sma200": 23,
+      "pct_sma200": 79.3
+    },
+    "fetched_at": "2026-08-14T14:39:40",
+    "frequency": "daily",
+    "stale_after_hours": 24,
+    "status": "fresh"
+  },
+  "insider": {
+    "semiconductors": {},
+    "defense": {},
+    "total": {
+      "tickers_with_bonus": 0,
+      "max_bonus": 0.0,
+      "max_ticker": null
+    },
+    "fetched_at": "2026-08-14T14:40:33",
+    "frequency": "daily",
+    "stale_after_hours": 24,
+    "status": "fresh"
+  },
+  "stale_summary": {
+    "total_sources": 8,
+    "fresh": 8,
+    "stale": 0,
+    "errors": 0,
+    "stale_details": [],
+    "signal_reliability": "high"
+  }
+}
