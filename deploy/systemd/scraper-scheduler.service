@@ -1,0 +1,34 @@
+# scraper-system scheduler — systemd service (user unit)
+#
+# Esegue UNA esecuzione dell'orchestrazione (scheduler.py --once).
+# L'orario è gestito dal timer (scraper-scheduler.timer), non qui.
+#
+# Installazione (come utente, senza root):
+#   mkdir -p ~/.config/systemd/user
+#   cp scraper-scheduler.service scraper-scheduler.timer ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now scraper-scheduler.timer
+#   loginctl enable-linger $USER     # per girare anche senza login
+#
+# Verifica:
+#   systemctl --user list-timers
+#   systemctl --user start scraper-scheduler.service   # run manuale ora
+#   journalctl --user -u scraper-scheduler.service     # log
+#
+# ADATTA i percorsi %h/... alla posizione reale del clone su Linux Mint.
+# %h = home dell'utente (es. /home/bazzilla).
+
+[Unit]
+Description=scraper-system scheduler (single run)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/scraper_system/src
+ExecStart=%h/scraper_system/.venv/bin/python scheduler.py --config ../config.yaml --once
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,19 @@
+# scraper-system scheduler — systemd timer (user unit)
+#
+# Scatta ogni giorno alle 08:00 e avvia scraper-scheduler.service.
+# Persistent=true: se il sistema era spento all'orario, l'esecuzione avviene
+# al primo avvio successivo (utile su un mini-PC che può restare spento).
+#
+# Se un run precedente è ancora in corso, systemd NON avvia un secondo
+# (il timer attende il completamento del service Type=oneshot).
+
+[Unit]
+Description=Run scraper-system daily at 08:00
+
+[Timer]
+OnCalendar=*-*-* 08:00:00
+Persistent=true
+Unit=scraper-scheduler.service
+
+[Install]
+WantedBy=timers.target
