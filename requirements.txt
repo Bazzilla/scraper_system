@@ -1,7 +1,6 @@
 # scraper-system dependencies
-# Generated from the working venv (Python 3.14, Arch). For Linux Mint
-# (Python 3.12), these pins still install — the code requires Python >= 3.10
-# (uses modern type syntax). Run inside a venv (PEP 668 on Debian/Ubuntu).
+# Generated from the working venv (Python 3.14). The code requires Python >= 3.10
+# (verified on 3.12 and 3.14). Run inside a venv (PEP 668 on Debian/Ubuntu).
 #
 #   cd scraper-system
 #   python3 -m venv .venv

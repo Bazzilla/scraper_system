@@ -52,7 +52,7 @@ scraper-system/
 ├── config.yaml                  # Configurazione principale (chi/quando/dove)
 ├── requirements.txt             # Dipendenze riproducibili (pip install -r)
 ├── deploy/
-│   └── systemd/                 # Unità systemd per esecuzione automatica (Mint)
+│   └── systemd/                 # Unità systemd per esecuzione automatica (deploy)
 │       ├── scraper-scheduler.service
 │       └── scraper-scheduler.timer
 ├── docs/
@@ -285,7 +285,7 @@ scrapers:
 ## Comandi dell'orchestratore
 
 > **⚠️ Ambiente**: le dipendenze (yfinance, pandas, ta) vivono nel **venv** del progetto
-> (`.venv/`, Python 3.14 — il sistema è Arch/PEP 668, non si installa a livello globale).
+> (`.venv/`, Python 3.14 — il sistema è PEP 668, non si installa a livello globale).
 > Usa sempre `.venv/bin/python` per eseguire l'orchestratore e i test.
 
 L'orchestratore è in **`src/orchestrator.py`**. Eseguilo dalla cartella `src/`:
@@ -328,19 +328,19 @@ cd src
 - Il loop esegue **tutti** gli scraper configurati a ogni run (il campo `schedule` per-scraper è informativo; l'orchestratore gestisce i fallimenti per-modulo).
 - Per l'integrazione con systemd/cron: usare `--once` con un timer, oppure il loop come servizio.
 
-### Deploy su Linux Mint (mini-PC sempre acceso)
+### Deploy (esecuzione automatica)
 
-Setup consigliato: **bare metal** (venv + systemd), non container — è un tool single-user a carico bassissimo, la persistenza (`output/`) è più semplice su filesystem e lo scheduler è un processo semplice gestito da systemd. Il codice richiede Python ≥ 3.10 (Mint ha 3.12).
+Setup consigliato: **bare metal** (venv + systemd), non container — è un tool single-user a carico bassissimo, la persistenza (`output/`) è più semplice su filesystem e lo scheduler è un processo semplice gestito da systemd. Il codice richiede Python ≥ 3.10 (verificato su 3.12 e 3.14).
 
 ```bash
 # 1. Una tantum — clone + ambiente
 cd ~
-git clone git@github.com:Bazzilla/scraper_system.git
+git clone git@github.com:<USER>/scraper_system.git
 cd scraper_system
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 
-# 2. Aggiornamenti (dopo un push dalla workstation)
+# 2. Aggiornamenti
 git pull
 .venv/bin/pip install -r requirements.txt
 
@@ -360,7 +360,7 @@ loginctl enable-linger $USER    # esegue anche senza login
 
 Verifica: `systemctl --user list-timers` · log: `journalctl --user -u scraper-scheduler.service`
 
-⚠️ Adatta i percorsi `%h/scraper_system/...` nella unità se il clone sta in un'altra posizione. Il timer usa `Persistent=true`: se il mini-PC era spento alle 08:00, l'esecuzione avviene al primo avvio successivo.
+⚠️ Adatta i percorsi `%h/scraper_system/...` nella unità se il clone sta in un'altra posizione. Il timer usa `Persistent=true`: se la macchina era spenta alle 08:00, l'esecuzione avviene al primo avvio successivo.
 
 ### Esempio con override espliciti
 

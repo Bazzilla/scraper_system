@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- **Venv obbligatorio**: Python di sistema è Arch/PEP 668 (externally-managed). Tutto il lavoro pip avviene in `.venv/` del progetto. I test si eseguono con `.venv/bin/python`.
+- **Venv obbligatorio**: Python di sistema è PEP 668 (externally-managed). Tutto il lavoro pip avviene in `.venv/` del progetto. I test si eseguono con `.venv/bin/python`.
 - **pandas-ta ESCLUSO**: numba non supporta Python 3.14. Usare `ta` 0.11.0.
 - Sezione `tickers` opzionale — i moduli funzionano anche senza (ritornano status senza ticker).
 - Contratto scraper: `run(config: dict) -> dict` con funzioni pure + DI per la rete.
@@ -35,7 +35,7 @@
 - [ ] **Step 1: Crea il venv e installa le dipendenze**
 
 ```bash
-cd /home/fibbione/Progetti/scraper-system
+cd scraper-system
 python -m venv .venv
 .venv/bin/pip install --upgrade pip
 .venv/bin/pip install yfinance==1.5.2 pandas==3.0.5 ta==0.11.0
@@ -59,7 +59,7 @@ Apri `.gitignore` e aggiungi:
 - [ ] **Step 4: Verifica che i test esistenti passano col venv**
 
 ```bash
-cd /home/fibbione/Progetti/scraper-system/src && ../.venv/bin/python -m unittest discover -s tests -v
+cd scraper-system/src && ../.venv/bin/python -m unittest discover -s tests -v
 ```
 Expected: PASS (43 test esistenti)
 

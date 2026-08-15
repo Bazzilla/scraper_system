@@ -12,7 +12,7 @@
 ## Primary Stack
 | Layer | Technology | Rationale |
 |-------|-----------|-----------|
-| Language | Python 3.14 (Arch) / 3.12 (Mint) — entrambi verificati | Ricco di librerie per scraping e indicatori |
+| Language | Python 3.10+ (verificato 3.12 e 3.14) | Ricco di librerie per scraping e indicatori |
 | Scraping | requests + BeautifulSoup | Pagine statiche, leggero |
 | Data (OHLCV) | yfinance 1.5.2 | Fetch dati finanziari da Yahoo Finance |
 | Indicators | ta 0.11.0 | RSI(14), OBV, MFI(14), SMA(50), SMA(200), drawdown 52w |
@@ -20,9 +20,9 @@
 | Storage | SQLite + JSON | Audit log per esecuzione + output consolidato |
 | Config | YAML | "Chi scrapare, quando, dove sta lo script" + registry indicatori + manual overrides |
 | Scheduling | Scheduler OS o schedule Python | Esecuzione giornaliera/settimanale |
-| Deploy | requirements.txt + systemd (deploy/systemd/) | Dipendenze riproducibili; timer daily `--once` su Linux Mint |
+| Deploy | requirements.txt + systemd (deploy/systemd/) | Dipendenze riproducibili; timer daily `--once` |
 
-> **⚠️ pandas-ta è ESCLUSO**: dipende da `numba` che non supporta Python 3.14. Sostituito da `ta` 0.11.0. L'ambiente è Arch/PEP 668 → dipendenze in **venv** (non a livello di sistema). Strategia di trading in `/home/fibbione/Temp/strategia_trading/` (fuori dal progetto). Su Linux Mint (Python 3.12) la suite (220 test) e l'orchestratore end-to-end sono stati verificati OK (2026-08-14).
+> **⚠️ pandas-ta è ESCLUSO**: dipende da `numba` che non supporta Python 3.14. Sostituito da `ta` 0.11.0. L'ambiente è PEP 668 → dipendenze in **venv** (non a livello di sistema). Strategia di trading in `../Temp/strategia_trading/` (fuori dal progetto). La suite (220 test) e l'orchestratore end-to-end sono stati verificati OK su Python 3.12 e 3.14 (2026-08-14).
 
 ## Architecture
 Orchestratore config-driven in `src/`. Flusso: `config_loader` legge `config.yaml` → `registry` risolve ogni modulo → `orchestrator.run()` esegue gli scraper in sequenza → `manual_overrides` applica eventuali valori manuali (priorità scraping > manual > missing) → `consolidator` costruisce il JSON → `audit` scrive su SQLite → `report_html.render()` genera la pagina. Un errore in un modulo **non blocca** gli altri, ma viene **registrato** nell'output (fail-closed). `scheduler.py` esegue l'intera orchestrazione secondo la sezione `scheduler:` di config.yaml (loop o `--once`).
@@ -34,7 +34,7 @@ config.yaml → config_loader → registry → orchestrator.run()
                                          → audit → output/scraper_audit.db
                                          → report_html → output/report.html
 scheduler.py (--once | loop) → orchestrator.run() [secondo scheduler: in config]
-deploy/systemd/scraper-scheduler.timer → service (--once) [daily su Linux Mint]
+deploy/systemd/scraper-scheduler.timer → service (--once) [daily]
 ```
 
 ## Pattern di riferimento (deep dive)
@@ -78,7 +78,7 @@ deploy/systemd/scraper-scheduler.timer → service (--once) [daily su Linux Mint
 - Funzioni pure per la logica di parse (testabili senza rete)
 - **Isolamento per-ticker**: un ticker che fallisce non blocca gli altri
 - **Iniezione `tickers`**: l'orchestratore passa `config["tickers"]` a ogni scraper
-- **Venv obbligatorio**: dipendenze in venv (PEP 668, Arch)
+- **Venv obbligatorio**: dipendenze in venv (PEP 668)
 - **Fail-closed (consolidator)**: un modulo fallito NON sparisce — compare con `status: "error"`; `signal_reliability: "low"` se ci sono errori o 0 sorgenti (mai "high" con sistema down)
 - **Separazione semantica**: coverage ≠ availability ≠ usable_in_strategy_score; un proxy non entra mai nello score senza `proxy_accepted` esplicito
 - **Priorità dati**: scraping (fresh) > manual override (valido+fresco) > missing/error
@@ -109,11 +109,11 @@ deploy/systemd/scraper-scheduler.timer → service (--once) [daily su Linux Mint
 **Report HTML**: `src/report_html.py` — pagina statica da output.json (dark+light, semafori, segnale con gate FGI, matrice indicatori con badge coverage/availability/usable/source, badge manual sugli override); aggiornare ad ogni nuovo scraper
 **Orchestratore**: `src/orchestrator.py` — `run(config_path, output_path, db_path)`, crea `output/` automaticamente, inietta tickers e risolve cache_path, applica manual overrides, arricchisce matrice con source runtime
 **Scheduler**: `src/scheduler.py` — `next_run`/`seconds_until` (funzioni pure, testabili senza rete), `run_once`, `run_loop`, CLI (`--once` o loop); legge `scheduler:` da config.yaml (interval/run_at/weekday)
-**Deploy**: `requirements.txt` (dipendenze riproducibili: `pip install -r`), `deploy/systemd/scraper-scheduler.service` + `.timer` (esecuzione automatica daily 08:00, `Persistent=true`, unità utente per Linux Mint)
+**Deploy**: `requirements.txt` (dipendenze riproducibili: `pip install -r`), `deploy/systemd/scraper-scheduler.service` + `.timer` (esecuzione automatica daily 08:00, `Persistent=true`, unità utente systemd)
 **Moduli**: `src/config_loader.py` (validazione incl. `_validate_tickers`), `src/registry.py`, `src/consolidator.py` (fail-closed), `src/audit.py`
 **Config**: `config.yaml` — chi/quando/dove + path output configurabili + sezione `tickers` + request_delay + `strategy` (indicator_registry, proxy_accepted, manual_overrides, force_manual_overrides)
 **Output**: `output/output.json` (JSON consolidato + strategy_indicators), `output/scraper_audit.db` (SQLite audit), `output/report.html` (pagina statica)
-**Strategia**: `/home/fibbione/Temp/strategia_trading/strategia_trading.md` + `specifiche_strategia.md` — regole buy-the-dip (Regola 0-4, matrice R/O) che guidano compute_signal
+**Strategia**: `../Temp/strategia_trading/strategia_trading.md` + `specifiche_strategia.md` (fuori dal progetto) — regole buy-the-dip (Regola 0-4, matrice R/O) che guidano compute_signal
 
 ## Related Files
 - navigation.md (indice del project intelligence)

@@ -15,8 +15,8 @@
 #   systemctl --user start scraper-scheduler.service   # run manuale ora
 #   journalctl --user -u scraper-scheduler.service     # log
 #
-# ADATTA i percorsi %h/... alla posizione reale del clone su Linux Mint.
-# %h = home dell'utente (es. /home/bazzilla).
+# ADATTA i percorsi %h/... alla posizione reale del clone.
+# %h = home dell'utente.
 
 [Unit]
 Description=scraper-system scheduler (single run)

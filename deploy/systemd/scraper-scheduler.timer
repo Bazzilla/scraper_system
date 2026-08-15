@@ -2,7 +2,7 @@
 #
 # Scatta ogni giorno alle 08:00 e avvia scraper-scheduler.service.
 # Persistent=true: se il sistema era spento all'orario, l'esecuzione avviene
-# al primo avvio successivo (utile su un mini-PC che può restare spento).
+# al primo avvio successivo (utile su una macchina che può restare spenta).
 #
 # Se un run precedente è ancora in corso, systemd NON avvia un secondo
 # (il timer attende il completamento del service Type=oneshot).

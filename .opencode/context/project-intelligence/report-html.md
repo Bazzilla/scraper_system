@@ -50,7 +50,7 @@ Ogni cella mostra **sempre il valore numerico** + badge colorato. Valori None â†
 **Test**: `src/tests/test_report_html.py` â€” 35 test (semafori, format, segnale, gate, legenda, render)
 **Output**: `output/report.html` (pagina generata), `output/output.json` (fonte)
 **Spec**: `docs/superpowers/specs/2026-08-12-report-html-design.md`
-**Strategia**: `/home/fibbione/Temp/strategia_trading/strategia_trading.md` + `specifiche_strategia.md`
+**Strategia**: `../Temp/strategia_trading/strategia_trading.md` + `specifiche_strategia.md`
 
 ## Related Files
 - technical-domain.md (spina dorsale: stack, standard, security)

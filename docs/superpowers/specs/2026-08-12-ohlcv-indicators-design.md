@@ -14,7 +14,7 @@ drawdown 52w) usando la libreria `ta`.
 
 ## Dipendenze e ambiente
 
-- **Python 3.14.6** (sistema Arch, PEP 668 externally-managed → serve **venv**).
+- **Python 3.14.6** (sistema PEP 668 externally-managed → serve **venv**).
 - Pacchetti da installare nel venv: `yfinance` (1.5.2), `pandas` (3.0.5), `ta` (0.11.0).
 - **`pandas-ta` è ESCLUSO**: dipende da `numba` che non supporta Python 3.14
   (`only versions >=3.10,<3.14 are supported`). Sostituito da `ta` 0.11.0.
