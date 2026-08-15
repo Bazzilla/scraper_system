@@ -56,6 +56,9 @@ scraper-system/
 │       ├── scraper-scheduler.service
 │       └── scraper-scheduler.timer
 ├── docs/
+│   ├── strategy/                # Strategia buy-the-dip (copia di riferimento nel progetto)
+│   │   ├── strategia_trading.md
+│   │   └── specifiche_strategia.md
 │   └── superpowers/
 │       ├── specs/2026-08-08-tickers-config-design.md
 │       └── plans/2026-08-08-tickers-config.md

@@ -154,7 +154,7 @@ Ogni cella mostra **sempre il valore numerico** + badge/bordo colorato. I valori
 ## Correzione 2026-08-12: classe WATCHLIST al posto di VENDI
 
 Analisi del caso QCOM contro `strategia_trading.md` / `specifiche_strategia.md`
-(in `../Temp/strategia_trading/`): il motore mappava la debolezza
+(in `docs/strategy/`): il motore mappava la debolezza
 tecnica (prezzo sotto SMA50/SMA200 + drawdown profondo) su "sell", ma la strategia
 **non prevede SELL come classe di output** (solo ENTRA/MONITORA/WATCHLIST/LASCIA) e
 la vendita è riservata ai trigger di uscita E1/E2/E3 (take-profit, deterioramento

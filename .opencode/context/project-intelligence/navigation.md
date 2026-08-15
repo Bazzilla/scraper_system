@@ -1,4 +1,4 @@
-<!-- Context: project-intelligence/navigation | Priority: critical | Version: 1.11 | Updated: 2026-08-14 -->
+<!-- Context: project-intelligence/navigation | Priority: critical | Version: 1.12 | Updated: 2026-08-14 -->
 
 # Project Intelligence
 
@@ -21,7 +21,7 @@
 - **2026-08-07**: Aggiornato technical-domain.md v1.2 — pattern VIX spot (CBOE, scope cambiato da term structure), pattern AAII (fallback HTML bars), codebase refs aggiornati
 - **2026-08-07**: Harvestato aaii-scraping-guide.md v1.0 (da .tmp/external-context); rimosso vixcentral obsoleto
 - **2026-08-12**: Aggiornato technical-domain.md v1.3 — pandas-ta → ta 0.11.0 (numba/Python 3.14), venv/PEP 668, pattern sezione `tickers`, standard (isolamento per-ticker, iniezione tickers), nota security yfinance, refs OHLCV/indicators
-- **2026-08-12**: Aggiornato technical-domain.md v1.4 — moduli OHLCV/indicators operativi, pattern report_html (segnale COMPRA/WATCHLIST/ATTENDI con gate FGI), request_delay (rate limiting), naming segnale, strategia buy-the-dip in /Temp/strategia_trading/, standard segnale conforme alla strategia
+- **2026-08-12**: Aggiornato technical-domain.md v1.4 — moduli OHLCV/indicators operativi, pattern report_html (segnale COMPRA/WATCHLIST/ATTENDI con gate FGI), request_delay (rate limiting), naming segnale, strategia buy-the-dip in `docs/strategy/`, standard segnale conforme alla strategia
 - **2026-08-12**: Splittato technical-domain.md v1.5 (MVI compliance <200 righe) — creati scraping-patterns.md v1.0 (pattern scraper) e report-html.md v1.0 (pattern report/segnale); technical-domain.md ridotto a spina dorsale (stack, architettura, naming, standard, security)
 - **2026-08-12**: scraping-patterns.md v1.1, technical-domain.md v1.6, navigation.md v1.4 — aggiunto pcr_scraper.py (Equity PCR da CBOE); spec/plan in docs/superpowers
 - **2026-08-12**: scraping-patterns.md v1.2 — corretto pattern PCR (regex allineata al codice reale, fallback documentato)
@@ -32,3 +32,4 @@
 - **2026-08-14**: correzione semantica coverage (statico, dalle specifiche) + nuovo campo implementation_status (implemented/proxy/missing/manual_supported) + naaim manual_supported — technical-domain.md v1.11, navigation.md v1.9
 - **2026-08-14**: scheduler.py (loop/--once, sezione scheduler in config.yaml, validazione config_loader) — chiude Roadmap — technical-domain.md v1.12, navigation.md v1.10
 - **2026-08-14**: requirements.txt (dipendenze riproducibili) + deploy/systemd (service+timer daily) + verifica Python 3.12 e 3.14 (220 test OK) + repo GitHub — technical-domain.md v1.13, navigation.md v1.11
+- **2026-08-15**: copia strategia in docs/strategy/ (autonomia del progetto, niente percorsi esterni) — technical-domain.md v1.14, navigation.md v1.12, report-html.md v1.1

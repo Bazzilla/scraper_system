@@ -1,4 +1,4 @@
-<!-- Context: project-intelligence/technical | Priority: critical | Version: 1.13 | Updated: 2026-08-14 -->
+<!-- Context: project-intelligence/technical | Priority: critical | Version: 1.14 | Updated: 2026-08-14 -->
 
 # Technical Domain
 
@@ -22,7 +22,7 @@
 | Scheduling | Scheduler OS o schedule Python | Esecuzione giornaliera/settimanale |
 | Deploy | requirements.txt + systemd (deploy/systemd/) | Dipendenze riproducibili; timer daily `--once` |
 
-> **⚠️ pandas-ta è ESCLUSO**: dipende da `numba` che non supporta Python 3.14. Sostituito da `ta` 0.11.0. L'ambiente è PEP 668 → dipendenze in **venv** (non a livello di sistema). Strategia di trading in `../Temp/strategia_trading/` (fuori dal progetto). La suite (220 test) e l'orchestratore end-to-end sono stati verificati OK su Python 3.12 e 3.14 (2026-08-14).
+> **⚠️ pandas-ta è ESCLUSO**: dipende da `numba` che non supporta Python 3.14. Sostituito da `ta` 0.11.0. L'ambiente è PEP 668 → dipendenze in **venv** (non a livello di sistema). Strategia di trading in `docs/strategy/` (copiata nel progetto). La suite (220 test) e l'orchestratore end-to-end sono stati verificati OK su Python 3.12 e 3.14 (2026-08-14).
 
 ## Architecture
 Orchestratore config-driven in `src/`. Flusso: `config_loader` legge `config.yaml` → `registry` risolve ogni modulo → `orchestrator.run()` esegue gli scraper in sequenza → `manual_overrides` applica eventuali valori manuali (priorità scraping > manual > missing) → `consolidator` costruisce il JSON → `audit` scrive su SQLite → `report_html.render()` genera la pagina. Un errore in un modulo **non blocca** gli altri, ma viene **registrato** nell'output (fail-closed). `scheduler.py` esegue l'intera orchestrazione secondo la sezione `scheduler:` di config.yaml (loop o `--once`).
@@ -113,10 +113,11 @@ deploy/systemd/scraper-scheduler.timer → service (--once) [daily]
 **Moduli**: `src/config_loader.py` (validazione incl. `_validate_tickers`), `src/registry.py`, `src/consolidator.py` (fail-closed), `src/audit.py`
 **Config**: `config.yaml` — chi/quando/dove + path output configurabili + sezione `tickers` + request_delay + `strategy` (indicator_registry, proxy_accepted, manual_overrides, force_manual_overrides)
 **Output**: `output/output.json` (JSON consolidato + strategy_indicators), `output/scraper_audit.db` (SQLite audit), `output/report.html` (pagina statica)
-**Strategia**: `../Temp/strategia_trading/strategia_trading.md` + `specifiche_strategia.md` (fuori dal progetto) — regole buy-the-dip (Regola 0-4, matrice R/O) che guidano compute_signal
+**Strategia**: `docs/strategy/strategia_trading.md` + `specifiche_strategia.md` (nel progetto) — regole buy-the-dip (Regola 0-4, matrice R/O) che guidano compute_signal
 
 ## Related Files
 - navigation.md (indice del project intelligence)
 - scraping-patterns.md (pattern scraper per modulo)
 - report-html.md (pattern report HTML + segnale)
 - aaii-scraping-guide.md (guida dettagliata pattern AAII)
+- docs/strategy/ (strategia buy-the-dip: strategia_trading.md + specifiche_strategia.md — copiata nel progetto)

@@ -1,4 +1,4 @@
-<!-- Context: project-intelligence/report-html | Priority: high | Version: 1.0 | Updated: 2026-08-12 -->
+<!-- Context: project-intelligence/report-html | Priority: high | Version: 1.1 | Updated: 2026-08-14 -->
 
 # Report HTML (Market Dashboard)
 
@@ -27,7 +27,7 @@ def compute_signal(entry, regime="neutral"):
 Badge: 🟢 COMPRA / 🟠 WATCHLIST / ⚪ ATTENDI.
 
 ## Regole chiave del segnale (allineate alla strategia buy-the-dip)
-- **Mai sell dai dati tecnici**: vendere richiede trigger di uscita (take-profit +15/20%, deterioramento fondamentale, time-stop 18 mesi) non calcolabili dal dashboard — vedi Regola 4 in `strategia_trading.md`.
+- **Mai sell dai dati tecnici**: vendere richiede trigger di uscita (take-profit +15/20%, deterioramento fondamentale, time-stop 18 mesi) non calcolabili dal dashboard — vedi Regola 4 in `docs/strategy/strategia_trading.md`.
 - **Debolezza tecnica = WATCHLIST**: prezzo sotto SMA50/200 + drawdown profondo è il profilo buy-the-dip (calo ≥10%), NON un segnale di vendita — vedi Regola 2.
 - **Gate FGI**: in greed (FGI ≥ 55) nessun COMPRA (Regola 0: "i cali potrebbero essere trappole"); il clima deve puntare nella stessa direzione del titolo.
 
@@ -50,7 +50,7 @@ Ogni cella mostra **sempre il valore numerico** + badge colorato. Valori None �
 **Test**: `src/tests/test_report_html.py` — 35 test (semafori, format, segnale, gate, legenda, render)
 **Output**: `output/report.html` (pagina generata), `output/output.json` (fonte)
 **Spec**: `docs/superpowers/specs/2026-08-12-report-html-design.md`
-**Strategia**: `../Temp/strategia_trading/strategia_trading.md` + `specifiche_strategia.md`
+**Strategia**: `docs/strategy/strategia_trading.md` + `specifiche_strategia.md`
 
 ## Related Files
 - technical-domain.md (spina dorsale: stack, standard, security)
