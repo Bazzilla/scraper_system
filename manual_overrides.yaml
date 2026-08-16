@@ -43,10 +43,10 @@ fgi:
   entered_by: "user"
   note: "Inserito manualmente"
 
-# naaim:
-#   exposure: 48.0
-#   source: manual
-#   fetched_at: "2026-08-14T18:30:00+00:00"
-#   stale_after_hours: 168
-#   entered_by: "user"
-#   note: "Inserito manualmente da report NAAIM"
+naaim:
+  exposure: 48.0
+  source: manual
+  fetched_at: "2026-08-16T12:00:00+00:00"
+  stale_after_hours: 168
+  entered_by: "user"
+  note: "Inserito manualmente da report NAAIM"

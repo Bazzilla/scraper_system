@@ -1,12 +1,12 @@
-"""Run the full pipeline in one shot: orchestration + HTML report.
+"""Run scraper-system in one shot.
 
-Usage (from the project root):
+Modes:
 
-    ./.venv/bin/python run.py [config.yaml]
-
-Equivalent to running:
-    1. orchestrator.run(config)   → output/output.json + output/scraper_audit.db
-    2. report_html.render(config) → output/report.html
+    ./.venv/bin/python run.py                # full: orchestration + HTML report
+    ./.venv/bin/python run.py --report-only  # HTML report from existing output.json only
+    ./.venv/bin/python run.py --override-only  # apply manual overrides to output.json,
+                                               # rebuild the indicator matrix and render HTML
+                                               # (no scraping)
 
 The script works from any directory: it resolves paths relative to the
 project root (the directory containing this file). The config path is
@@ -16,8 +16,10 @@ optional and defaults to ``config.yaml``.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
+from typing import Any
 
 # Make src/ importable regardless of the current working directory.
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -25,24 +27,27 @@ SRC_DIR = PROJECT_ROOT / "src"
 sys.path.insert(0, str(SRC_DIR))
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Run scraper-system: orchestration + HTML report"
-    )
-    parser.add_argument(
-        "config",
-        nargs="?",
-        default="config.yaml",
-        help="Path to config.yaml (default: config.yaml relative to project root)",
-    )
-    args = parser.parse_args()
+def _load_config(config_path: str) -> dict[str, Any]:
+    from config_loader import load_config
 
-    config_path = str(PROJECT_ROOT / args.config)
-    if not Path(config_path).exists():
-        print(f"Config not found: {config_path}", file=sys.stderr)
-        return 1
+    return load_config(config_path)
 
-    # 1. Orchestration (scrapers → output.json + audit db)
+
+def _resolve(config: dict[str, Any], base_dir: Path, key: str, default: str) -> Path:
+    value = config.get("output", {}).get(key, default)
+    return base_dir / value
+
+
+def _render_report(config_path: str) -> str:
+    from report_html import render
+
+    print("[report] Rendering HTML report ...")
+    path = render(config_path)
+    print(f"         report: {path}")
+    return path
+
+
+def mode_full(config_path: str) -> int:
     from orchestrator import run as run_orchestrator
 
     print(f"[1/2] Orchestration with {config_path} ...")
@@ -52,15 +57,104 @@ def main() -> int:
         f"      sources: {summary.get('fresh', 0)}/{summary.get('total_sources', 0)} "
         f"fresh · reliability: {summary.get('signal_reliability', '?')}"
     )
-
-    # 2. HTML report (output.json → report.html)
-    from report_html import render as render_report
-
-    print("[2/2] Rendering HTML report ...")
-    report_path = render_report(config_path)
-    print(f"      report: {report_path}")
-
+    _render_report(config_path)
     return 0
+
+
+def mode_report_only(config_path: str) -> int:
+    """Render the HTML report from the existing output.json (no scraping)."""
+    _render_report(config_path)
+    return 0
+
+
+def mode_override_only(config_path: str) -> int:
+    """Apply valid manual overrides to the existing output.json and re-render.
+
+    No scraping: loads output.json, applies manual overrides with the same
+    priority as the orchestrator (scraping > manual > missing), rebuilds the
+    indicator matrix from the updated results and renders the HTML report.
+    """
+    base_dir = Path(config_path).resolve().parent
+    config = _load_config(config_path)
+    output_path = _resolve(config, base_dir, "json_path", "output/output.json")
+    db_path = _resolve(config, base_dir, "db_path", "output/scraper_audit.db")
+
+    if not output_path.exists():
+        print(f"Output JSON not found: {output_path}. Run 'run.py' first.", file=sys.stderr)
+        return 1
+
+    with output_path.open("r", encoding="utf-8") as fh:
+        existing = json.load(fh)
+
+    # Rebuild results from the persisted output (drop meta keys).
+    results: dict[str, Any] = {}
+    for key, value in existing.items():
+        if isinstance(value, dict) and "status" in value:
+            results[key] = value
+
+    # Apply manual overrides (same priority as orchestrator).
+    from manual_overrides import apply_overrides, load_validated_overrides
+
+    strategy_cfg = config.get("strategy", {})
+    overrides_path = base_dir / strategy_cfg.get("manual_overrides", "manual_overrides.yaml")
+    force_keys = strategy_cfg.get("force_manual_overrides", []) or []
+    overrides, errors = load_validated_overrides(str(overrides_path))
+    for error in errors:
+        print(f"  [warn] {error}")
+    print("[1/2] Applying manual overrides ...")
+    results = apply_overrides(results, overrides, force_keys=force_keys)
+    for key in overrides:
+        status = results.get(key, {}).get("status", "?")
+        origin = results.get(key, {}).get("origin", "?")
+        print(f"      {key}: status={status} origin={origin}")
+
+    # Rebuild the consolidated output (stale_summary) and indicator matrix.
+    from consolidator import consolidate
+    from orchestrator import _build_strategy_indicators
+
+    print("[2/2] Rebuilding output + report ...")
+    output = consolidate(results)
+    output["strategy_indicators"] = _build_strategy_indicators(config, base_dir, results)
+
+    output_path.write_text(json.dumps(output, indent=2), encoding="utf-8")
+    print(f"      output: {output_path}")
+
+    _render_report(config_path)
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Run scraper-system (full, report-only, or override-only)"
+    )
+    parser.add_argument(
+        "config",
+        nargs="?",
+        default="config.yaml",
+        help="Path to config.yaml (default: config.yaml relative to project root)",
+    )
+    parser.add_argument(
+        "--report-only",
+        action="store_true",
+        help="Only render the HTML report from the existing output.json",
+    )
+    parser.add_argument(
+        "--override-only",
+        action="store_true",
+        help="Apply manual overrides to the existing output.json and re-render (no scraping)",
+    )
+    args = parser.parse_args()
+
+    config_path = str(PROJECT_ROOT / args.config)
+    if not Path(config_path).exists():
+        print(f"Config not found: {config_path}", file=sys.stderr)
+        return 1
+
+    if args.report_only:
+        return mode_report_only(config_path)
+    if args.override_only:
+        return mode_override_only(config_path)
+    return mode_full(config_path)
 
 
 if __name__ == "__main__":

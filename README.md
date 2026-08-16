@@ -383,13 +383,45 @@ Dalla radice del progetto, `run.py` esegue l'intera pipeline in un colpo solo
 ./.venv/bin/python run.py path/to/config   # config esplicita
 ```
 
-Alias comodo (fish):
+Modalità senza scraping:
+
+```bash
+./.venv/bin/python run.py --report-only      # SOLO report HTML dall'output esistente
+./.venv/bin/python run.py --override-only    # applica manual overrides all'output esistente
+                                             # (senza scraping) e rigenera report
+```
+
+Alias comodi (fish):
 
 ```fish
 function scraper-run
     /percorso/del/progetto/.venv/bin/python /percorso/del/progetto/run.py $argv
 end
+
+function scraper-report
+    /percorso/del/progetto/.venv/bin/python /percorso/del/progetto/run.py --report-only $argv
+end
 ```
+
+### Immessione manuale di un valore (es. NAAIM)
+
+Per indicare un valore a mano (quando lo scraping non è possibile o il dato
+corrente non è disponibile):
+
+1. **Apri `manual_overrides.yaml`** alla radice e aggiungi/scommenta la voce
+   dell'indicatore (campi comuni: `fetched_at`, `stale_after_hours`,
+   `entered_by`, `note`; campi specifici: `naaim` → `exposure`, `fgi` →
+   `score`/`zone`, `aaii` → `bullish`/`neutral`/`bearish`).
+2. **Imposta `fetched_at` a ORA** (il dato scade dopo `stale_after_hours`).
+3. Applica senza rilanciare gli scraper:
+
+```bash
+./.venv/bin/python run.py --override-only    # oppure: scraper-run --override-only
+```
+
+Il valore manuale compare nell'output come `source: manual`, `origin: manual`;
+l'indicatore risulta `availability: true` e (se previsto dalla strategia)
+`usable_in_strategy_score: true`.
 
 ---
 
