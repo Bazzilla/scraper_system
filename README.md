@@ -64,6 +64,7 @@ scraper-system/
 │       └── plans/2026-08-08-tickers-config.md
 ├── file.json                    # Formato di riferimento dell'output consolidato
 ├── README.md                    # Questo file
+├── run.py                       # Un comando per tutto (orchestrazione + report)
 ├── .gitignore
 ├── output/                      # Cartella di output (creata automaticamente)
 │   ├── output.json              #   JSON consolidato (formato file.json)
@@ -370,6 +371,24 @@ Verifica: `systemctl --user list-timers` · log: `journalctl --user -u scraper-s
 ```bash
 cd src
 ../.venv/bin/python -c "from orchestrator import run; run('../config.yaml', '/tmp/out.json', '/tmp/audit.db')"
+```
+
+### Un comando per tutto (`run.py`)
+
+Dalla radice del progetto, `run.py` esegue l'intera pipeline in un colpo solo
+(orchestrazione → `output/output.json` + report HTML → `output/report.html`):
+
+```bash
+./.venv/bin/python run.py                  # usa config.yaml
+./.venv/bin/python run.py path/to/config   # config esplicita
+```
+
+Alias comodo (fish):
+
+```fish
+function scraper-run
+    /percorso/del/progetto/.venv/bin/python /percorso/del/progetto/run.py $argv
+end
 ```
 
 ---
