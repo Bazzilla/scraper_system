@@ -1,4 +1,4 @@
-<!-- Context: project-intelligence/technical | Priority: critical | Version: 1.15 | Updated: 2026-08-16 -->
+<!-- Context: project-intelligence/technical | Priority: critical | Version: 1.16 | Updated: 2026-08-16 -->
 
 # Technical Domain
 
@@ -55,6 +55,8 @@ deploy/systemd/scraper-scheduler.timer → service (--once) [daily]
   - tracciato: `source: "manual"`, `origin: "manual"`, `entered_by`, `note` — mai confuso con uno scrapato
   - `strategy.force_manual_overrides` forza il manuale su scraper fresh — **disabilitato di default**
   - un override **non altera `coverage`** (statico) — es. NAAIM e VIX Term Structure restano `coverage: true, implementation_status: manual_supported` anche quando non alimentati; la VIX term structure (M1/M2) è leggibile manualmente da https://vixcentral.com/
+  - **"scraping wins" vale SOLO per origin=scraped**: un override manuale persistito nell'output (origin=manual, es. da un run `--override-only` precedente) NON blocca un override più recente dal file YAML
+- **`run.py`** (radice) — 3 modalità in un comando: full (orchestrazione + report), `--report-only` (solo HTML dall'output esistente, nessuno scraping), `--override-only` (rilegge `manual_overrides.yaml`, riapplica al JSON esistente, ricostruisce matrice e report — nessuno scraping). Alias fish: `scraper-run` (full/override-only), `scraper-report` (report-only), scoped al progetto.
 
 ## Naming Conventions
 | Type | Convention | Example |
@@ -82,6 +84,7 @@ deploy/systemd/scraper-scheduler.timer → service (--once) [daily]
 - **Fail-closed (consolidator)**: un modulo fallito NON sparisce — compare con `status: "error"`; `signal_reliability: "low"` se ci sono errori o 0 sorgenti (mai "high" con sistema down)
 - **Separazione semantica**: coverage ≠ availability ≠ usable_in_strategy_score; un proxy non entra mai nello score senza `proxy_accepted` esplicito
 - **Priorità dati**: scraping (fresh) > manual override (valido+fresco) > missing/error
+- **Persisted manual non blocca override nuovo**: in `apply_overrides`, lo scraping "vince" solo se `origin == "scraped"` — un manual persistito deve poter essere aggiornato dal YAML
 - **Segnale conforme alla strategia buy-the-dip**: la debolezza tecnica (sotto SMA, drawdown profondo) è profilo WATCHLIST, MAI sell — vendere richiede trigger di uscita (take-profit, deterioramento fondamentale, time-stop) non calcolabili dai dati tecnici
 - **Gate FGI nella sintesi**: in greed (FGI≥56, per bande strategia F1) nessun COMPRA (non inseguire mercato caldo)
 
@@ -109,6 +112,7 @@ deploy/systemd/scraper-scheduler.timer → service (--once) [daily]
 **Report HTML**: `src/report_html.py` — pagina statica da output.json (dark+light, semafori, segnale con gate FGI, matrice indicatori con badge coverage/availability/usable/source, badge manual sugli override); aggiornare ad ogni nuovo scraper
 **Orchestratore**: `src/orchestrator.py` — `run(config_path, output_path, db_path)`, crea `output/` automaticamente, inietta tickers e risolve cache_path, applica manual overrides, arricchisce matrice con source runtime
 **Scheduler**: `src/scheduler.py` — `next_run`/`seconds_until` (funzioni pure, testabili senza rete), `run_once`, `run_loop`, CLI (`--once` o loop); legge `scheduler:` da config.yaml (interval/run_at/weekday)
+**Entry point unico**: `run.py` (radice) — full / `--report-only` / `--override-only`; risolve i path dalla propria posizione (funziona da qualsiasi directory)
 **Deploy**: `requirements.txt` (dipendenze riproducibili: `pip install -r`), `deploy/systemd/scraper-scheduler.service` + `.timer` (esecuzione automatica daily 08:00, `Persistent=true`, unità utente systemd)
 **Moduli**: `src/config_loader.py` (validazione incl. `_validate_tickers`), `src/registry.py`, `src/consolidator.py` (fail-closed), `src/audit.py`
 **Config**: `config.yaml` — chi/quando/dove + path output configurabili + sezione `tickers` + request_delay + `strategy` (indicator_registry, proxy_accepted, manual_overrides, force_manual_overrides)

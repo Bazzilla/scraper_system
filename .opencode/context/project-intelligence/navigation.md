@@ -1,4 +1,4 @@
-<!-- Context: project-intelligence/navigation | Priority: critical | Version: 1.13 | Updated: 2026-08-16 -->
+<!-- Context: project-intelligence/navigation | Priority: critical | Version: 1.14 | Updated: 2026-08-16 -->
 
 # Project Intelligence
 
@@ -34,3 +34,4 @@
 - **2026-08-14**: requirements.txt (dipendenze riproducibili) + deploy/systemd (service+timer daily) + verifica Python 3.12 e 3.14 (220 test OK) + repo GitHub — technical-domain.md v1.13, navigation.md v1.11
 - **2026-08-15**: copia strategia in docs/strategy/ (autonomia del progetto, niente percorsi esterni) — technical-domain.md v1.14, navigation.md v1.12, report-html.md v1.1
 - **2026-08-16**: VIX term structure → manual_supported (M1/M2 via manual_overrides, fonte vixcentral.com) — technical-domain.md v1.15, navigation.md v1.13
+- **2026-08-16**: run.py 3 modalità (full/--report-only/--override-only), fix persisted manual non blocca override, aliases fish scraper-run/scraper-report — technical-domain.md v1.16, navigation.md v1.14
