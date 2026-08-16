@@ -1,4 +1,4 @@
-<!-- Context: project-intelligence/technical | Priority: critical | Version: 1.14 | Updated: 2026-08-14 -->
+<!-- Context: project-intelligence/technical | Priority: critical | Version: 1.15 | Updated: 2026-08-16 -->
 
 # Technical Domain
 
@@ -49,12 +49,12 @@ deploy/systemd/scraper-scheduler.timer → service (--once) [daily]
   - `availability` (**dinamico**): il modulo ha prodotto `status: "fresh"` oppure esiste un manual override valido e fresco
   - `usable_in_strategy_score` (**derivato**): true solo se `coverage=true` E `availability=true` E implementation_status in (implemented, manual_supported), oppure proxy esplicitamente in `strategy.proxy_accepted` E disponibile (fail-closed: coverage=false mai, missing mai, non disponibile mai)
   - `source` (**dinamico**): `scraped` | `manual` | `missing`
-- **`manual_overrides.py` + `manual_overrides.yaml`** — valori inseriti manualmente per indicatori fragili (aaii, fgi, naaim). Priorità **scraping > manual > missing**. Regole:
+- **`manual_overrides.py` + `manual_overrides.yaml`** — valori inseriti manualmente per indicatori fragili (aaii, fgi, naaim, vix_term_structure). Priorità **scraping > manual > missing**. Regole:
   - override **validato** prima dell'uso; malformato → log + ignorato (non rompe il pipeline)
   - scadenza da `stale_after_hours` dopo `fetched_at`; scaduto → `status: stale`, mai usable
   - tracciato: `source: "manual"`, `origin: "manual"`, `entered_by`, `note` — mai confuso con uno scrapato
   - `strategy.force_manual_overrides` forza il manuale su scraper fresh — **disabilitato di default**
-  - un override **non altera `coverage`** (statico) — es. NAAIM resta `coverage: true, implementation_status: manual_supported` anche quando non alimentato
+  - un override **non altera `coverage`** (statico) — es. NAAIM e VIX Term Structure restano `coverage: true, implementation_status: manual_supported` anche quando non alimentati; la VIX term structure (M1/M2) è leggibile manualmente da https://vixcentral.com/
 
 ## Naming Conventions
 | Type | Convention | Example |

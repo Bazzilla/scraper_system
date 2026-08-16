@@ -85,11 +85,13 @@ indicators:
     name: "VIX Term Structure (M1/M2 backwardation)"
     strategy_ref: "F3/#10"
     coverage: true
-    implementation_status: missing
+    implementation_status: manual_supported
     primary_source: null
-    fallbacks: []
-    semantic_coherent: false
-    notes: "GAP DICHIARATO. VIX Central/VolChart non scrapabile (gate Flask). Nessuna fonte gratuita soddisfacente trovata. VIX spot (artefatto separato) NON soddisfa questo requisito."
+    fallbacks:
+      - "manual_overrides.yaml (vix_term_structure)"
+    semantic_coherent: true
+    output_key: vix_term_structure
+    notes: "Previsto dalla strategia (F3/#10). VIX Central/VolChart non scrapabile (gate Flask). Supporta l'inserimento manuale di M1/M2 via manual_overrides.yaml (valori leggibili da https://vixcentral.com/); coverage resta true anche quando non alimentato. Usabile nello score solo se disponibile (override valido e fresco)."
 
   pcr:
     name: "Equity Put/Call Ratio"

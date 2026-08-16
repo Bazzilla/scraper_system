@@ -378,12 +378,21 @@ def render_market_cards(data: dict[str, Any]) -> str:
     if vix.get("status") == "error":
         parts.append(_error_card("VIX Spot", vix))
     else:
+        vix_ts = data.get("vix_term_structure", {})
+        if vix_ts.get("status") == "fresh":
+            ts_note = (
+                f' · M1 {fmt(vix_ts.get("m1"))} · M2 {fmt(vix_ts.get("m2"))}'
+                f' · {html_mod.escape(str(vix_ts.get("structure", "")))}'
+                f' ({fmt(vix_ts.get("contango_pct_1_2"))}%)'
+            )
+        else:
+            ts_note = " · term structure non disponibile"
         parts.append(
             '<div class="card"><div class="label">VIX Spot '
             '<span class="sema warning">proxy</span></div>'
             f'<div class="value">{fmt(vix.get("vix_close"))}</div>'
-            f'<div class="meta">Aggiornato: {format_iso_dt(vix.get("fetched_at"))} · '
-            'proxy term structure non disponibile</div></div>'
+            f'<div class="meta">Aggiornato: {format_iso_dt(vix.get("fetched_at"))}{ts_note}</div>'
+            f'{_origin_html(vix_ts)}</div>'
         )
 
     pcr = data.get("pcr", {})
@@ -653,8 +662,10 @@ _LEGEND_MARKET = [
             "<strong>Nota (audit 2026-08-14)</strong>: la strategia F3/10 richiede la "
             "<em>VIX term structure</em> (backwardation M1&gt;M2 = panico a breve); questa "
             "card mostra il <em>VIX spot</em> (livello), che è un indicatore diverso. "
-            "La term structure non è disponibile da fonti gratuite scrapabili "
-            "(VIX Central/VolChart bloccato). Il dato spot è un proxy parziale."
+            "La term structure non è scrapabile da fonti gratuite (VIX Central/VolChart "
+            "bloccato), ma può essere inserita manualmente (M1/M2) via "
+            "<code>manual_overrides.yaml</code> — valori leggibili da "
+            "https://vixcentral.com/. Il dato spot resta un proxy parziale."
         ),
     },
     {

@@ -167,7 +167,7 @@ Regole:
 - **Validità temporale**: scade dopo `stale_after_hours` da `fetched_at`. Un override scaduto diventa `status: "stale"` e non è mai usabile nello scoring.
 - **Fail-closed**: override malformato → log + ignorato (non rompe il pipeline); senza scraping valido E senza override valido → `missing/error`.
 - **Default**: se sia scraping che override sono validi, vince lo scraping. `strategy.force_manual_overrides` (es. `["aaii"]`) forza il manuale — **disabilitato di default**.
-- **Semantica**: un override valido dà `availability: true` ma la `usable_in_strategy_score` resta vincolata a coerenza strategica (implemented) — un indicatore `missing` (es. NAAIM) con override resta non usabile finché il registry non viene aggiornato.
+- **Semantica**: un override valido dà `availability: true` e, se l'indicatore è previsto dalla strategia (`coverage: true`) con `implementation_status: manual_supported`, anche `usable_in_strategy_score: true` (es. NAAIM, VIX Term Structure). Gli indicatori `missing` (senza supporto manuale) restano non usabili finché il registry non viene aggiornato.
 
 Formato (vedi `manual_overrides.yaml`): campi comuni `fetched_at`, `stale_after_hours`, `entered_by`, `note`; campi specifici `aaii`→bullish/neutral/bearish, `fgi`→score/zone, `naaim`→exposure.
 
@@ -411,7 +411,9 @@ corrente non è disponibile):
 1. **Apri `manual_overrides.yaml`** alla radice e aggiungi/scommenta la voce
    dell'indicatore (campi comuni: `fetched_at`, `stale_after_hours`,
    `entered_by`, `note`; campi specifici: `naaim` → `exposure`, `fgi` →
-   `score`/`zone`, `aaii` → `bullish`/`neutral`/`bearish`).
+   `score`/`zone`, `aaii` → `bullish`/`neutral`/`bearish`,
+   `vix_term_structure` → `m1`/`m2` — structure/pct/difference derivati
+   automaticamente).
 2. **Imposta `fetched_at` a ORA** (il dato scade dopo `stale_after_hours`).
 3. Applica senza rilanciare gli scraper:
 
@@ -420,8 +422,12 @@ corrente non è disponibile):
 ```
 
 Il valore manuale compare nell'output come `source: manual`, `origin: manual`;
-l'indicatore risulta `availability: true` e (se previsto dalla strategia)
-`usable_in_strategy_score: true`.
+l'indicatore risulta `availability: true` e (se previsto dalla strategia con
+supporto manuale, es. NAAIM, VIX Term Structure) `usable_in_strategy_score: true`.
+
+Per la **VIX Term Structure**: i valori M1/M2 possono essere letti manualmente
+da https://vixcentral.com/ (es. M1 = futures VIX 1 mese, M2 = futures VIX 2
+mesi).
 
 ---
 
@@ -577,8 +583,8 @@ con scraper mock (deterministici, senza chiamate di rete). I test di `ohlcv_fetc
 | `pcr_scraper.py` | ✅ Funzionante | Equity PCR da CBOE (Barchart sostituito: WAF 404). Soglia >0.80 fear. |
 | `pct_sma_scraper.py` | ✅ Funzionante | Breadth **settoriale** da OHLCV locale (IndexIndicators: solo PNG, non scrapabile) — **proxy, non l'indicatore di mercato F3/13-14**. |
 | `insider_scraper.py` | ✅ Funzionante | Bonus H5 da OpenInsider (HTTPS non risponde → HTTP) |
-| NAAIM | ⚠️ Manual override | A pagamento, dati pubblici ritardati di 3 mesi. `coverage: true` (previsto F3/#9) ma `implementation_status: manual_supported` — alimentabile via `manual_overrides.yaml`; senza override valido → `availability: false`, non usable. |
-| VIX term structure | ❌ Escluso | VIX Central non scrapabile (gateway di sessione). Sostituito da VIX spot (proxy). |
+| NAAIM | ⚠️ Manual override | A pagamento, dati pubblici ritardati di 3 mesi. `coverage: true` (previsto F3/#9), `implementation_status: manual_supported` — alimentabile via `manual_overrides.yaml`; senza override valido → `availability: false`, non usable. |
+| VIX term structure | ⚠️ Manual override | VIX Central non scrapabile (gateway di sessione). `coverage: true` (F3/#10), `implementation_status: manual_supported` — M1/M2 inseribili via `manual_overrides.yaml` (leggibili da https://vixcentral.com/); senza override valido → `availability: false`, non usable. VIX spot resta un proxy informativo separato. |
 | NYSE NH-NL | ❌ Non implementato | Barchart (WAF 404) e StockCharts (404) non scrapabili; nessuna fonte gratuita equivalente trovata. |
 
 ---

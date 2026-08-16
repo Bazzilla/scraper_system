@@ -40,6 +40,7 @@ _FREQUENCY: dict[str, str] = {
     "aaii": "weekly",
     "fgi": "daily",
     "naaim": "weekly",
+    "vix_term_structure": "daily",
 }
 
 # Required value fields per supported indicator key.
@@ -47,6 +48,7 @@ _REQUIRED_FIELDS: dict[str, list[str]] = {
     "aaii": ["bullish", "neutral", "bearish"],
     "fgi": ["score"],
     "naaim": ["exposure"],
+    "vix_term_structure": ["m1", "m2"],
 }
 
 # Common required metadata for every override.
@@ -201,6 +203,16 @@ def build_manual_result(
         result["zone"] = override.get("zone") or "unknown"
     elif key == "naaim":
         result["exposure"] = override["exposure"]
+    elif key == "vix_term_structure":
+        # M1/M2 (futures VIX a 1 e 2 mesi). Derived fields are computed from
+        # the two contract months so they stay internally consistent.
+        m1 = override["m1"]
+        m2 = override["m2"]
+        result["m1"] = m1
+        result["m2"] = m2
+        result["difference_1_2"] = round(m2 - m1, 2)
+        result["contango_pct_1_2"] = round((m2 - m1) / m1 * 100, 2) if m1 else 0.0
+        result["structure"] = "backwardation" if m1 > m2 else "contango"
     if override.get("note"):
         result["note"] = override["note"]
     result["checked_at"] = now.isoformat()

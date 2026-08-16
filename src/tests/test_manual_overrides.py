@@ -36,6 +36,16 @@ VALID_FGI = {
     "note": "Inserito manualmente",
 }
 
+VALID_VIX_TS = {
+    "m1": 15.60,
+    "m2": 17.90,
+    "source": "manual",
+    "fetched_at": "2026-08-16T17:00:00+00:00",
+    "stale_after_hours": 24,
+    "entered_by": "user",
+    "note": "Letti manualmente da vixcentral.com",
+}
+
 
 class TestValidateEntry(unittest.TestCase):
     def test_valid_aaii(self):
@@ -50,6 +60,16 @@ class TestValidateEntry(unittest.TestCase):
         cleaned = validate_entry("fgi", VALID_FGI)
         self.assertEqual(cleaned["score"], 62.66)
         self.assertEqual(cleaned["zone"], "greed")
+
+    def test_valid_vix_term_structure(self):
+        cleaned = validate_entry("vix_term_structure", VALID_VIX_TS)
+        self.assertEqual(cleaned["m1"], 15.6)
+        self.assertEqual(cleaned["m2"], 17.9)
+
+    def test_vix_ts_missing_m2_rejected(self):
+        broken = {k: v for k, v in VALID_VIX_TS.items() if k != "m2"}
+        with self.assertRaises(ValueError):
+            validate_entry("vix_term_structure", broken)
 
     def test_missing_common_field_rejected(self):
         broken = {k: v for k, v in VALID_AAII.items() if k != "fetched_at"}
@@ -113,6 +133,18 @@ class TestBuildResult(unittest.TestCase):
         result = build_stale_manual_result("aaii", cleaned, NOW)
         self.assertEqual(result["status"], "stale")
         self.assertEqual(result["origin"], "manual")
+
+    def test_vix_ts_build_derives_structure(self):
+        cleaned = validate_entry("vix_term_structure", VALID_VIX_TS)
+        result = build_manual_result("vix_term_structure", cleaned, NOW)
+        self.assertEqual(result["m1"], 15.6)
+        self.assertEqual(result["m2"], 17.9)
+        self.assertEqual(result["structure"], "contango")
+        self.assertEqual(result["difference_1_2"], 2.3)
+        self.assertAlmostEqual(result["contango_pct_1_2"], 14.74, places=2)
+        self.assertEqual(result["source"], "manual")
+        self.assertEqual(result["origin"], "manual")
+        self.assertEqual(result["status"], "fresh")
 
 
 class TestApplyOverrides(unittest.TestCase):

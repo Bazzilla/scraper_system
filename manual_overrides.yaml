@@ -23,6 +23,11 @@
 #   aaii  -> bullish (numero), neutral (numero), bearish (numero)
 #   fgi   -> score (numero), zone (stringa, opzionale)
 #   naaim -> exposure (numero)
+#   vix_term_structure -> m1 (numero), m2 (numero); structure/contango_pct/
+#                         difference derivati da m1/m2 (coerenti)
+#
+# I valori VIX term structure (M1/M2) possono essere letti manualmente da:
+#   https://vixcentral.com/
 
 aaii:
   bullish: 37.0
@@ -50,3 +55,12 @@ naaim:
   stale_after_hours: 168
   entered_by: "user"
   note: "Inserito manualmente da report NAAIM"
+
+vix_term_structure:
+  m1: 15.60
+  m2: 17.90
+  source: manual
+  fetched_at: "2026-08-16T17:00:00+00:00"
+  stale_after_hours: 24
+  entered_by: "user"
+  note: "Letti manualmente da https://vixcentral.com/ (contango M2 > M1)"

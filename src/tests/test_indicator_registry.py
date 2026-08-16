@@ -190,12 +190,13 @@ class TestSummarize(unittest.TestCase):
             self.assertEqual(summary[key]["implementation_status"], STATUS_IMPLEMENTED)
         self.assertEqual(summary["vix_spot"]["implementation_status"], STATUS_PROXY)
         self.assertEqual(summary["pct_sma"]["implementation_status"], STATUS_PROXY)
-        for key in ("vix_term_structure", "nyse_nh_nl", "volume_profile"):
+        for key in ("nyse_nh_nl", "volume_profile"):
             self.assertEqual(summary[key]["implementation_status"], STATUS_MISSING)
-        self.assertEqual(summary["naaim"]["implementation_status"], STATUS_MANUAL_SUPPORTED)
+        for key in ("naaim", "vix_term_structure"):
+            self.assertEqual(summary[key]["implementation_status"], STATUS_MANUAL_SUPPORTED)
 
         # usable: missing mai; proxy non accettati no; vix_spot mai (coverage false)
-        for key in ("vix_term_structure", "nyse_nh_nl", "volume_profile"):
+        for key in ("nyse_nh_nl", "volume_profile"):
             self.assertFalse(summary[key]["usable_in_strategy_score"])
         self.assertFalse(summary["vix_spot"]["usable_in_strategy_score"])
         self.assertFalse(summary["pct_sma"]["usable_in_strategy_score"])
