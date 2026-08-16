@@ -244,8 +244,13 @@ def apply_overrides(
 
     for key, override in overrides.items():
         scraped = results.get(key)
+        # "Scraping wins" vale SOLO per dati realmente scrapati (origin=scraped).
+        # Un risultato manuale persistito (origin=manual, es. da un run
+        # --override-only precedente) NON deve bloccare un override più recente.
         scraped_ok = (
-            isinstance(scraped, dict) and scraped.get("status") == "fresh"
+            isinstance(scraped, dict)
+            and scraped.get("status") == "fresh"
+            and scraped.get("origin") == "scraped"
         )
         if scraped_ok and key not in force:
             continue  # scraping wins (default)

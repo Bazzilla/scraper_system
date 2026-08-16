@@ -148,6 +148,32 @@ class TestApplyOverrides(unittest.TestCase):
         self.assertEqual(merged["aaii"]["origin"], "scraped")
         self.assertEqual(merged["aaii"]["bullish"], 10.0)
 
+    def test_persisted_manual_does_not_block_newer_override(self):
+        # Regressione: un override manuale persistito nell'output (origin=manual,
+        # es. da un run --override-only precedente) con status fresh NON deve
+        # bloccare un override più recente dal file YAML.
+        old_manual = {
+            "status": "fresh",
+            "origin": "manual",
+            "exposure": 48.0,
+            "fetched_at": "2026-08-16T12:00:00+00:00",
+        }
+        newer = {
+            "exposure": 79.7,
+            "source": "manual",
+            "origin": "manual",
+            "fetched_at": "2026-08-16T16:27:00+00:00",
+            "stale_after_hours": 168,
+            "entered_by": "user",
+            "note": "Inserito manualmente da report NAAIM",
+        }
+        merged = apply_overrides({"naaim": old_manual}, {"naaim": newer}, now=NOW)
+        self.assertEqual(merged["naaim"]["origin"], "manual")
+        self.assertEqual(merged["naaim"]["exposure"], 79.7)
+        self.assertEqual(
+            merged["naaim"]["fetched_at"], "2026-08-16T16:27:00+00:00"
+        )
+
     def test_force_manual_overrides_scraping(self):
         results = {"aaii": {"status": "fresh", "origin": "scraped", "bullish": 10.0}}
         merged = apply_overrides(

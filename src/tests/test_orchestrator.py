@@ -335,6 +335,11 @@ class TestOrchestrator(unittest.TestCase):
 
         module.run = fail_run
         sys.modules["tests.mock_failing_override_scraper"] = module
+        from datetime import datetime, timedelta, timezone
+
+        fresh_ts = (
+            datetime.now(timezone.utc) - timedelta(hours=1)
+        ).isoformat()
         with tempfile.TemporaryDirectory() as tmp:
             config_path = f"{tmp}/config.yaml"
             output_path = f"{tmp}/output.json"
@@ -346,7 +351,7 @@ class TestOrchestrator(unittest.TestCase):
                     "  score: 62.66\n"
                     "  zone: \"greed\"\n"
                     "  source: manual\n"
-                    '  fetched_at: "2026-08-14T18:25:00+00:00"\n'
+                    f'  fetched_at: "{fresh_ts}"\n'
                     "  stale_after_hours: 24\n"
                     "  entered_by: \"user\"\n"
                     '  note: "Inserito manualmente"\n'
