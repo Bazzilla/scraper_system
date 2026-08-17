@@ -235,3 +235,5 @@ venv/
 skills-lock.json
 # Node modules (opencode tooling internals)
 node_modules/
+# opencode config locale (MCP server specifici del PC, non condivisibili)
+.opencode/opencode.json
