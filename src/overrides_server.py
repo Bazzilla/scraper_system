@@ -189,7 +189,7 @@ def _field_specs(key: str) -> dict[str, Any]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Manual overrides entry server")
-    parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("-p", "--port", type=int, default=8000)
     parser.add_argument("--host", default="127.0.0.1")
     args = parser.parse_args()
     server = ThreadingHTTPServer((args.host, args.port), OverridesHandler)

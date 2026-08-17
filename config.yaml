@@ -32,7 +32,9 @@ strategy:
   # force_manual_overrides: []  # es. ["aaii"] — forza il manual override anche
   #                               quando lo scraper funziona. DISABILITATO di
   #                               default (fail-closed).
-  force_manual_overrides: []
+  # Attivi: aaii e fgi — l'immissione manuale dalla pagina ha la precedenza
+  # sullo scraping (priorità: manual > scraping per questi indicatori).
+  force_manual_overrides: ["aaii", "fgi"]
 
 scrapers:
   fgi:
