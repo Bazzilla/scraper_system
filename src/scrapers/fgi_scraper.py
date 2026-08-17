@@ -81,6 +81,45 @@ def parse_score(payload: dict[str, Any]) -> dict[str, Any]:
     return {"score": score, "zone": zone}
 
 
+# Chiavi API CNN → chiavi progetto (snake_case). Ordinate come nel payload CNN.
+COMPONENT_KEYS: tuple[tuple[str, str], ...] = (
+    ("market_momentum_sp500", "market_momentum"),
+    ("stock_price_strength", "stock_price_strength"),
+    ("stock_price_breadth", "stock_price_breadth"),
+    ("put_call_options", "put_call_options"),
+    ("market_volatility_vix", "market_volatility"),
+    ("junk_bond_demand", "junk_bond_demand"),
+    ("safe_haven_demand", "safe_haven_demand"),
+)
+
+
+def parse_components(payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Extract the 7 FGI sub-indicators from the CNN API payload.
+
+    Each component is mapped to a snake_case project key and carries
+    ``score`` (0-100) and ``rating`` (label). Fail-soft per component: a
+    missing or malformed key is skipped, the others remain.
+
+    Returns:
+        dict mapping project key → {"score": float, "rating": str}. Empty
+        dict when no component is valid.
+    """
+    result: dict[str, dict[str, Any]] = {}
+    for api_key, project_key in COMPONENT_KEYS:
+        raw = payload.get(api_key)
+        if not isinstance(raw, dict):
+            continue
+        try:
+            score = float(raw["score"])
+            rating = str(raw["rating"]).strip().lower()
+        except (KeyError, TypeError, ValueError):
+            continue
+        if not rating:
+            continue
+        result[project_key] = {"score": score, "rating": rating}
+    return result
+
+
 def parse_cnn(payload: str) -> dict[str, Any]:
     """Parse the CNN API JSON payload (primary source)."""
     return parse_score(json.loads(payload))

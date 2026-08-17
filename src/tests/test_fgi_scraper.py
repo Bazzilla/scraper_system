@@ -8,6 +8,7 @@ from unittest import mock
 from scrapers.fgi_scraper import (
     build_result,
     parse_cnn,
+    parse_components,
     parse_feargreedindex,
     parse_feargreedmeter,
     parse_html,
@@ -66,6 +67,46 @@ class TestParseScore(unittest.TestCase):
     def test_raises_when_score_missing(self):
         with self.assertRaises(KeyError):
             parse_score({"fear_and_greed": {}})
+
+
+class TestParseComponents(unittest.TestCase):
+    _PAYLOAD = {
+        "market_momentum_sp500": {"score": 74.6, "rating": "greed"},
+        "stock_price_strength": {"score": 28.6, "rating": "fear"},
+        "stock_price_breadth": {"score": 57.8, "rating": "greed"},
+        "put_call_options": {"score": 66.4, "rating": "greed"},
+        "market_volatility_vix": {"score": 50.0, "rating": "neutral"},
+        "junk_bond_demand": {"score": 98.6, "rating": "extreme greed"},
+        "safe_haven_demand": {"score": 78.8, "rating": "extreme greed"},
+    }
+
+    def test_parses_all_seven_components(self):
+        result = parse_components(self._PAYLOAD)
+        self.assertEqual(len(result), 7)
+        self.assertEqual(result["market_momentum"], {"score": 74.6, "rating": "greed"})
+        self.assertEqual(result["stock_price_strength"], {"score": 28.6, "rating": "fear"})
+        self.assertEqual(result["stock_price_breadth"], {"score": 57.8, "rating": "greed"})
+        self.assertEqual(result["put_call_options"], {"score": 66.4, "rating": "greed"})
+        self.assertEqual(result["market_volatility"], {"score": 50.0, "rating": "neutral"})
+        self.assertEqual(result["junk_bond_demand"], {"score": 98.6, "rating": "extreme greed"})
+        self.assertEqual(result["safe_haven_demand"], {"score": 78.8, "rating": "extreme greed"})
+
+    def test_skips_missing_component(self):
+        payload = dict(self._PAYLOAD)
+        del payload["market_volatility_vix"]
+        result = parse_components(payload)
+        self.assertEqual(len(result), 6)
+        self.assertNotIn("market_volatility", result)
+
+    def test_skips_malformed_component(self):
+        payload = dict(self._PAYLOAD)
+        payload["junk_bond_demand"] = {"score": "not-a-number"}  # score non float
+        result = parse_components(payload)
+        self.assertNotIn("junk_bond_demand", result)
+        self.assertIn("market_momentum", result)
+
+    def test_returns_empty_when_no_valid_components(self):
+        self.assertEqual(parse_components({}), {})
 
 
 class TestParseCnn(unittest.TestCase):
