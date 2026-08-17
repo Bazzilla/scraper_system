@@ -163,6 +163,7 @@ _SCRIPT = """\
     if (isNaN(fetched)) continue;
     var staleHours = parseFloat(el.getAttribute("data-stale-hours")) || 0;
     var ageMs = Date.now() - fetched;
+    if (ageMs < 0) ageMs = 0;
     var staleMs = staleHours * 3600000;
     var isStale = ageMs > staleMs;
     var status = isStale ? "stale" : "fresh";
@@ -184,7 +185,8 @@ _SCRIPT = """\
     var age = document.createElement("span");
     age.className = "age";
     age.textContent = text;
-    var meta = el.querySelector(".meta");
+    var metas = el.querySelectorAll(".meta");
+    var meta = metas.length ? metas[metas.length - 1] : null;
     if (meta) {
       meta.appendChild(age);
     } else {
