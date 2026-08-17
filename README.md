@@ -84,7 +84,6 @@ scraper-system/
     │   ├── pcr_scraper.py       #   Equity Put/Call Ratio (CBOE)
     │   ├── ohlcv_fetcher.py     #   OHLCV Yahoo (yfinance)
     │   ├── indicators.py        #   Indicatori tecnici (ta)
-    │   ├── pct_sma_scraper.py   #   % sopra SMA50/SMA200 da OHLCV locale
     │   └── insider_scraper.py   #   Bonus insider (acquisti dirigenti/CEO/CFO)
     └── tests/                   # Test unitari
         ├── test_fgi_scraper.py
@@ -116,17 +115,17 @@ contratto: una funzione `run(config: dict) -> dict` che ritorna un dict struttur
 | `ohlcv_fetcher.py` | Yahoo (yfinance) | OHLCV per ticker (cache) | giornaliera |
 | `indicators.py` | — | RSI, OBV, MFI, SMA50/200, drawdown | giornaliera |
 | `pcr_scraper.py` | CBOE | Equity Put/Call Ratio | giornaliera (lag 1gg) |
-| `pct_sma_scraper.py` | — (calcolo locale OHLCV) | % sopra SMA50/SMA200 per settore | giornaliera |
 | `insider_scraper.py` | OpenInsider (HTTP) | Bonus insider (acquisti dirigenti/CEO/CFO) | giornaliera |
 
 **Esclusi** (non gratuiti/aggiornati):
-- `naaim_scraper.py` — NAAIM Exposure Index ora è a pagamento; i dati pubblici hanno 3 mesi di ritardo.
-- `vix_term_scraper.py` — VIX term structure (M1/M2) da VIX Central/VolChart: non scrapabile (gate di sessione Flask non riproducibile con `requests`). **Scope cambiato** a VIX spot via CBOE.
+- `naaim_scraper.py` — NAAIM Exposure Index ora è a pagamento; i dati pubblici hanno 3 mesi di ritardo. Alimentabile manualmente via `manual_overrides.yaml`.
+- `vix_term_scraper.py` — VIX term structure (M1/M2) da VIX Central/VolChart: non scrapabile (gate di sessione Flask non riproducibile con `requests`). **Scope cambiato** a VIX spot via CBOE. Alimentabile manualmente via `manual_overrides.yaml`.
+- `pct_sma_scraper.py` — % stocks above SMA50/SMA200 del **mercato USA** (F3/#13-14): IndexIndicators espone solo PNG (non scrapabile). Il proxy locale sui 29 ticker è stato **rimosso (2026-08-17)**: l'indicatore si alimenta manualmente via `manual_overrides.yaml` con i valori del mercato USA.
 - `nh_nl_scraper.py` — NYSE New Highs/New Lows (indicatore #12 della strategia): **non implementato**. Barchart (WAF 404) e StockCharts (404) non sono scrapabili con `requests`; nessuna altra fonte gratuita equivalente trovata. Il segnale NH-NL resta da valutare manualmente.
 
 **⚠️ Gap semantici dichiarati** (rispetto a `specifiche_strategia.md`, verificati in audit 2026-08-14):
 - **VIX spot ≠ VIX Term Structure (F3/10)**: la strategia chiede la *backwardation* M1>M2 (panico a breve); il modulo fornisce il *livello* VIX spot. Sono indicatori diversi: il report etichetta la card "VIX Spot" per non confonderli.
-- **Breadth settoriale ≠ % Stocks above SMA del mercato USA (F3/13-14)**: le soglie della strategia (<20% SMA50, <30% SMA200) si riferiscono a *tutto il mercato*; il modulo calcola la breadth **solo sui 29 ticker dei 2 settori**. Il dato è un proxy settoriale, non l'indicatore di mercato originale (IndexIndicators espone solo PNG, non scrapabile).
+- **Breadth di mercato (F3/13-14)**: le soglie della strategia (<20% SMA50, <30% SMA200) si riferiscono a *tutto il mercato USA*. IndexIndicators espone solo PNG (non scrapabile); il proxy locale sui 29 ticker è stato **rimosso (2026-08-17)** e l'indicatore si alimenta **manualmente** via `manual_overrides.yaml` (pct_sma50/pct_sma200) con i valori del mercato USA.
 - **AAII**: fonte unica ufficiale (nessuna alternativa gratuita equivalente); `dataChart5` è stato rimosso da AAII (2026-08-14) → il parser attivo è `html_bars` (in versione precedente la fonte primaria dichiarata era `data_chart`, ora fallback legacy).
 
 **⚠️ Fail-closed**: un modulo che fallisce **non sparisce** dall'output: viene registrato con `status: "error"`, compare nel report con badge errore e abbassa `signal_reliability` a `low`. Un sistema con 0 sorgenti valide ha affidabilità `low`, mai `high`.
@@ -581,10 +580,10 @@ con scraper mock (deterministici, senza chiamate di rete). I test di `ohlcv_fetc
 | Config `tickers` | ✅ Funzionante | 29 ticker in 2 categorie (semiconductors, defense), validato da `config_loader` |
 | Moduli OHLCV/indicators | ✅ Smoke test OK | Orchestrazione end-to-end con rete reale: 5/5 fresh, 17/17 ticker con dati e indicatori. |
 | `pcr_scraper.py` | ✅ Funzionante | Equity PCR da CBOE (Barchart sostituito: WAF 404). Soglia >0.80 fear. |
-| `pct_sma_scraper.py` | ✅ Funzionante | Breadth **settoriale** da OHLCV locale (IndexIndicators: solo PNG, non scrapabile) — **proxy, non l'indicatore di mercato F3/13-14**. |
 | `insider_scraper.py` | ✅ Funzionante | Bonus H5 da OpenInsider (HTTPS non risponde → HTTP) |
 | NAAIM | ⚠️ Manual override | A pagamento, dati pubblici ritardati di 3 mesi. `coverage: true` (previsto F3/#9), `implementation_status: manual_supported` — alimentabile via `manual_overrides.yaml`; senza override valido → `availability: false`, non usable. |
 | VIX term structure | ⚠️ Manual override | VIX Central non scrapabile (gateway di sessione). `coverage: true` (F3/#10), `implementation_status: manual_supported` — M1/M2 inseribili via `manual_overrides.yaml` (leggibili da https://vixcentral.com/); senza override valido → `availability: false`, non usable. VIX spot resta un proxy informativo separato. |
+| % sopra SMA 50/200 (mercato USA) | ⚠️ Manual override | IndexIndicators espone solo PNG (non scrapabile). `coverage: true` (F3/#13-14), `implementation_status: manual_supported` — pct_sma50/pct_sma200 inseribili via `manual_overrides.yaml` con i valori del mercato USA; il proxy locale sui 29 ticker è stato **rimosso (2026-08-17)**. |
 | NYSE NH-NL | ❌ Non implementato | Barchart (WAF 404) e StockCharts (404) non scrapabili; nessuna fonte gratuita equivalente trovata. |
 
 ---
@@ -592,8 +591,7 @@ con scraper mock (deterministici, senza chiamate di rete). I test di `ohlcv_fetc
 ## Roadmap
 
 - [x] Creare `pcr_scraper.py` (Equity PCR da CBOE)
-- [x] Creare `pct_sma_scraper.py` (breadth settoriale da OHLCV locale)
-- [x] Creare `insider_scraper.py` (bonus H5 da OpenInsider, HTTP)
 - [x] Creare `ohlcv_fetcher.py` (yfinance) e `indicators.py` (ta)
 - [x] Integrare uno scheduler (`src/scheduler.py` — loop/`--once`, sezione `scheduler:` in config)
 - [x] Aggiungere fallback per fonti instabili (FGI: catena 3 sorgenti, AAII: try_parsers, `fetch_utils.py`)
+- [x] Rimuovere il proxy `pct_sma` (breadth settoriale su 29 ticker) → `% sopra SMA50/200` del mercato USA alimentabile manualmente via `manual_overrides.yaml` (2026-08-17)

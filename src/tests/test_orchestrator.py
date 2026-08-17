@@ -304,7 +304,8 @@ class TestOrchestrator(unittest.TestCase):
             output = run(config_path, output_path, db_path)
         self.assertIn("strategy_indicators", output)
         matrix = output["strategy_indicators"]
-        # Default fail-closed: i proxy NON sono usabili nello score
+        # Default fail-closed: i proxy NON sono usabili nello score; i
+        # manual_supported senza override valido nel run → non usabili
         self.assertFalse(matrix["vix_spot"]["usable_in_strategy_score"])
         self.assertFalse(matrix["pct_sma"]["usable_in_strategy_score"])
         # Coverage (STATICO, dalle specifiche): true per TUTTI gli indicatori

@@ -1,4 +1,4 @@
-<!-- Context: project-intelligence/navigation | Priority: critical | Version: 1.14 | Updated: 2026-08-16 -->
+<!-- Context: project-intelligence/navigation | Priority: critical | Version: 1.15 | Updated: 2026-08-17 -->
 
 # Project Intelligence
 
@@ -35,3 +35,4 @@
 - **2026-08-15**: copia strategia in docs/strategy/ (autonomia del progetto, niente percorsi esterni) — technical-domain.md v1.14, navigation.md v1.12, report-html.md v1.1
 - **2026-08-16**: VIX term structure → manual_supported (M1/M2 via manual_overrides, fonte vixcentral.com) — technical-domain.md v1.15, navigation.md v1.13
 - **2026-08-16**: run.py 3 modalità (full/--report-only/--override-only), fix persisted manual non blocca override, aliases fish scraper-run/scraper-report — technical-domain.md v1.16, navigation.md v1.14
+- **2026-08-17**: rimosso proxy pct_sma (breadth settoriale 29 ticker) → `% sopra SMA50/200` mercato USA manual_supported via manual_overrides.yaml — technical-domain.md v1.17, navigation.md v1.15, scraping-patterns.md v1.6

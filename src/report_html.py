@@ -509,11 +509,13 @@ def render_market_cards(data: dict[str, Any]) -> str:
 
     pct_sma = data.get("pct_sma", {})
     if pct_sma.get("status") == "error":
-        parts.append(_error_card("Breadth settoriale", pct_sma))
-    else:
-        total_stats = pct_sma.get("total", {})
-        p50 = total_stats.get("pct_sma50")
-        p200 = total_stats.get("pct_sma200")
+        parts.append(_error_card("Breadth di mercato", pct_sma))
+    elif pct_sma.get("pct_sma50") is not None or pct_sma.get("pct_sma200") is not None:
+        # Valori manuali del MERCATO USA (F3/#13-14): pct_sma50/pct_sma200
+        # sono al top level (formato manual override), non più nested in
+        # "total" (il proxy locale sui 29 ticker è stato rimosso).
+        p50 = pct_sma.get("pct_sma50")
+        p200 = pct_sma.get("pct_sma200")
 
         def _breadth_sema(pct: float | None, threshold_low: float, threshold_mid: float) -> str:
             if pct is None:
@@ -523,11 +525,12 @@ def render_market_cards(data: dict[str, Any]) -> str:
             return f'<span class="sema {cls}">{cls}</span>'
 
         parts.append(
-            f'<div class="card"{_age_attrs(pct_sma.get("fetched_at"), pct_sma.get("stale_after_hours"))}><div class="label">Breadth settoriale '
-            '<span class="sema warning">proxy</span></div>'
+            f'<div class="card"{_age_attrs(pct_sma.get("fetched_at"), pct_sma.get("stale_after_hours"))}><div class="label">Breadth di mercato '
+            '<span class="sema warning">manual</span></div>'
             f'<div class="value">SMA50 {fmt(p50)}% {_breadth_sema(p50, 20, 50)}</div>'
             f'<div class="meta">SMA200 {fmt(p200)}% {_breadth_sema(p200, 30, 60)}</div>'
-            f'<div class="meta">Aggiornato: {format_iso_dt(pct_sma.get("fetched_at"))}</div></div>'
+            f'<div class="meta">Aggiornato: {format_iso_dt(pct_sma.get("fetched_at"))}</div>'
+            f'{_origin_html(pct_sma)}</div>'
         )
 
     insider = data.get("insider", {})
@@ -789,19 +792,17 @@ _LEGEND_MARKET = [
         ),
     },
     {
-        "name": "Breadth settoriale (% sopra SMA)",
+        "name": "Breadth di mercato (% sopra SMA)",
         "range": "%",
-        "short": "Quota di ticker dei settori sopra SMA50/SMA200.",
+        "short": "Quota di titoli del MERCATO USA sopra SMA50/SMA200 (inserita manualmente).",
         "detail": (
-            "Percentuale di ticker (semiconduttori+difesa) con prezzo sopra la media "
-            "mobile a 50 e 200 giorni. Sotto il 20% su SMA50 il settore è ipervenduto "
-            "diffuso (potenziale opportunità); sotto il 30% su SMA200 il mercato è "
-            "deteriorato. Sopra il 50%/60% la struttura è positiva. Calcolata "
-            "localmente dai dati OHLCV (IndexIndicators non è scrapabile). "
-            "<strong>Nota (audit 2026-08-14)</strong>: la strategia F3/13-14 usa le "
-            "soglie &lt;20% / &lt;30% riferite a <em>tutto il mercato USA</em>; questa "
-            "card calcola la breadth <em>solo sui 29 ticker monitorati</em> (2 settori). "
-            "È un proxy settoriale, non l'indicatore di mercato originale."
+            "Percentuale di titoli USA con prezzo sopra la media mobile a 50 e 200 "
+            "giorni (F3/#13-14 della strategia). Sotto il 20% su SMA50 il mercato è "
+            "ipervenduto diffuso (potenziale opportunità); sotto il 30% su SMA200 il "
+            "mercato è deteriorato. Sopra il 50%/60% la struttura è positiva. "
+            "<strong>Nota (2026-08-17)</strong>: il proxy locale sui 29 ticker è stato "
+            "rimosso; il valore si inserisce manualmente (fonte con breadth del mercato "
+            "USA, es. IndexIndicators via browser, StockCharts, Finviz)."
         ),
     },
     {

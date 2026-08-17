@@ -123,16 +123,6 @@ scrapers:
       drawdown_window: 252
       stale_after_hours: 24
 
-  pct_sma:
-    module: scrapers.pct_sma_scraper
-    output_key: pct_sma
-    schedule: daily
-    config:
-      cache_path: output/ohlcv_cache.json
-      sma_fast: 50
-      sma_slow: 200
-      stale_after_hours: 24
-
   insider:
     module: scrapers.insider_scraper
     output_key: insider

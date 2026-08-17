@@ -27,7 +27,7 @@ cd src && ../.venv/bin/python scheduler.py --config ../config.yaml --once
 
 - **`run.py`** (radice) — entry point unico, 3 modalità (full / `--report-only` / `--override-only`); risolve i path dalla propria posizione, funziona da qualsiasi directory
 - **`src/`** — `orchestrator.py` (entry point), `scheduler.py`, `config_loader.py`, `registry.py`, `consolidator.py`, `audit.py`, `report_html.py`, `fetch_utils.py`, `indicator_registry.py`, `manual_overrides.py`
-- **`src/scrapers/`** — i moduli scraper (8): `fgi_scraper.py`, `aaii_scraper.py`, `vix_scraper.py`, `pcr_scraper.py`, `ohlcv_fetcher.py`, `indicators.py`, `pct_sma_scraper.py`, `insider_scraper.py`
+- **`src/scrapers/`** — i moduli scraper (7): `fgi_scraper.py`, `aaii_scraper.py`, `vix_scraper.py`, `pcr_scraper.py`, `ohlcv_fetcher.py`, `indicators.py`, `insider_scraper.py`
 - **`src/tests/`** — test unitari `unittest` (funzioni pure, mock, nessuna rete)
 - **`config.yaml`** (radice) — chi/quando/dove + sezione `tickers` + `strategy` (indicator_registry, proxy_accepted, manual_overrides, force_manual_overrides)
 - **`indicator_registry.yaml`** + **`manual_overrides.yaml`** (radice) — matrice indicatori e override manuali
@@ -46,13 +46,15 @@ Ogni modulo in `src/scrapers/` espone `run(config: dict) -> dict` e ritorna un d
 4. **Aggiorna `src/report_html.py`** (render_market_cards / _ticker_sections / render_ticker_table) — manutenibilità esplicita
 5. Esegui l'orchestratore per verificare
 
+**Indicatori non scrapabili** (alimentabili a mano via `manual_overrides.yaml`): `naaim`, `vix_term_structure`, `pct_sma` (breadth mercato USA, F3/#13-14). Il registry (`indicator_registry.yaml`) li marca `manual_supported`.
+
 ## Convenzioni e gotcha
 
 - **Venv obbligatorio**: `.venv/bin/python` sempre (PEP 668); dipendenze in `requirements.txt` (pin esatte)
 - **pandas-ta è ESCLUSO** (numba incompatibile con Python 3.14) → usare `ta` 0.11.0
 - **Fail-closed (consolidator)**: un modulo fallito NON sparisce — compare con `status: "error"`; `signal_reliability: "low"` se errori o 0 sorgenti
 - **Priorità dati**: scraping (fresh) > manual override (valido+fresco) > missing/error; "scraping wins" vale SOLO per `origin == "scraped"` — un manual persistito non blocca un override YAML più recente
-- **Separazione semantica**: `coverage` (statico) ≠ `availability` (dinamico) ≠ `usable_in_strategy_score` (derivato, fail-closed); un proxy non entra mai nello score senza `proxy_accepted` esplicito
+- **Separazione semantica**: `coverage` (statico) ≠ `availability` (dinamico) ≠ `usable_in_strategy_score` (derivato, fail-closed); un proxy non entra mai nello score senza `proxy_accepted` esplicito; un manual override valido e fresco rende un indicatore `manual_supported` usabile nello score
 - **Isolamento per-ticker**: un ticker che fallisce non blocca gli altri; l'orchestratore inietta `tickers` e risolve `cache_path`
 - **Rate limiting**: `request_delay` (default 1.0s) tra i fetch dei ticker in `ohlcv_fetcher` (previene HTTP 429 di Yahoo)
 - **Naming**: snake_case per file/funzioni/config keys/JSON keys; lowercase per origin/coverage/segnale; uppercase per badge (COMPRA/WATCHLIST/ATTENDI)

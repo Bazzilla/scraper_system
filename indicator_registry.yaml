@@ -116,15 +116,16 @@ indicators:
     notes: "GAP DICHIARATO. Barchart (WAF 404) e StockCharts (404) non scrapabili. Nessuna fonte gratuita soddisfacente trovata. Coverage true perché previsto dalla strategia."
 
   pct_sma:
-    name: "% sopra SMA50/SMA200 (breadth settoriale)"
-    strategy_ref: "proxy per F3/#13-14"
+    name: "% sopra SMA50/SMA200 (breadth mercato USA)"
+    strategy_ref: "F3/#13-14"
     coverage: true
-    implementation_status: proxy
-    primary_source: "calcolo locale da OHLCV (29 ticker dei 2 settori)"
-    fallbacks: []
-    semantic_coherent: false
+    implementation_status: manual_supported
+    primary_source: null
+    fallbacks:
+      - "manual_overrides.yaml (pct_sma)"
+    semantic_coherent: true
     output_key: pct_sma
-    notes: "PROXY dell'indicatore strategico % stocks above SMA del MERCATO USA (IndexIndicators, solo PNG). Calcola la breadth solo sui 29 ticker monitorati: soglie <20%/<30% non direttamente applicabili. Usabile solo se accettato via strategy.proxy_accepted."
+    notes: "Previsto dalla strategia (F3/#13-14): % titoli USA sopra SMA50/SMA200. IndexIndicators espone solo PNG (non scrapabile). Il proxy locale sui 29 ticker è stato RIMOSSO (2026-08-17): l'indicatore si alimenta manualmente con i valori del mercato USA via manual_overrides.yaml (pct_sma50/pct_sma200). Coverage true anche quando non alimentato."
 
   indicators:
     name: "RSI(14), OBV, MFI(14), SMA50/200, drawdown 52w"

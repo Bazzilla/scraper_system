@@ -20,6 +20,8 @@ Supported indicators (fields they must provide):
     aaii  -> bullish, neutral, bearish
     fgi   -> score (+ optional zone)
     naaim -> exposure
+    vix_term_structure -> m1, m2
+    pct_sma -> pct_sma50, pct_sma200
 """
 
 from __future__ import annotations
@@ -41,6 +43,7 @@ _FREQUENCY: dict[str, str] = {
     "fgi": "daily",
     "naaim": "weekly",
     "vix_term_structure": "daily",
+    "pct_sma": "daily",
 }
 
 # Required value fields per supported indicator key.
@@ -49,6 +52,7 @@ _REQUIRED_FIELDS: dict[str, list[str]] = {
     "fgi": ["score"],
     "naaim": ["exposure"],
     "vix_term_structure": ["m1", "m2"],
+    "pct_sma": ["pct_sma50", "pct_sma200"],
 }
 
 # Common required metadata for every override.
@@ -213,6 +217,9 @@ def build_manual_result(
         result["difference_1_2"] = round(m2 - m1, 2)
         result["contango_pct_1_2"] = round((m2 - m1) / m1 * 100, 2) if m1 else 0.0
         result["structure"] = "backwardation" if m1 > m2 else "contango"
+    elif key == "pct_sma":
+        result["pct_sma50"] = override["pct_sma50"]
+        result["pct_sma200"] = override["pct_sma200"]
     if override.get("note"):
         result["note"] = override["note"]
     result["checked_at"] = now.isoformat()

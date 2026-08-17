@@ -1,4 +1,4 @@
-<!-- Context: project-intelligence/scraping-patterns | Priority: high | Version: 1.5 | Updated: 2026-08-14 -->
+<!-- Context: project-intelligence/scraping-patterns | Priority: high | Version: 1.6 | Updated: 2026-08-17 -->
 
 # Scraping Patterns
 
@@ -175,7 +175,7 @@ L'orchestratore **inietta** `tickers` nel config passato a ogni scraper (retroco
 **Scraper VIX**: `src/scrapers/vix_scraper.py` — VIX spot da CSV CBOE (scope cambiato da term structure)
 **Scraper OHLCV**: `src/scrapers/ohlcv_fetcher.py` — yfinance → cache su disco, multi_level_index=False, request_delay
 **Scraper Indicators**: `src/scrapers/indicators.py` — legge cache, normalizza TitleCase, calcola con `ta`
-**Scraper PCT SMA**: `src/scrapers/pct_sma_scraper.py` — breadth settoriale % sopra SMA50/200 da OHLCV locale (non IndexIndicators!)
+**Scraper PCT SMA**: *(rimosso 2026-08-17)* — il proxy breadth settoriale su 29 ticker non esiste più; `% sopra SMA50/200` del mercato USA (F3/#13-14) si alimenta manualmente via `manual_overrides.yaml` (pct_sma50/pct_sma200, `manual_supported`)
 **Scraper Insider**: `src/scrapers/insider_scraper.py` — bonus H5 da OpenInsider (HTTP, solo acquisti, BeautifulSoup)
 **Moduli**: `src/config_loader.py` (validazione incl. `_validate_tickers`), `src/registry.py`
 **Config**: `config.yaml` — chi/quando/dove + path output configurabili + sezione `tickers` + request_delay

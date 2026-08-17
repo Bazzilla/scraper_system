@@ -46,6 +46,16 @@ VALID_VIX_TS = {
     "note": "Letti manualmente da vixcentral.com",
 }
 
+VALID_PCT_SMA = {
+    "pct_sma50": 45.0,
+    "pct_sma200": 58.0,
+    "source": "manual",
+    "fetched_at": "2026-08-17T12:00:00+00:00",
+    "stale_after_hours": 24,
+    "entered_by": "user",
+    "note": "Breadth mercato USA letta manualmente",
+}
+
 
 class TestValidateEntry(unittest.TestCase):
     def test_valid_aaii(self):
@@ -65,6 +75,18 @@ class TestValidateEntry(unittest.TestCase):
         cleaned = validate_entry("vix_term_structure", VALID_VIX_TS)
         self.assertEqual(cleaned["m1"], 15.6)
         self.assertEqual(cleaned["m2"], 17.9)
+
+    def test_valid_pct_sma(self):
+        cleaned = validate_entry("pct_sma", VALID_PCT_SMA)
+        self.assertEqual(cleaned["pct_sma50"], 45.0)
+        self.assertEqual(cleaned["pct_sma200"], 58.0)
+        self.assertEqual(cleaned["source"], "manual")
+        self.assertEqual(cleaned["origin"], "manual")
+
+    def test_pct_sma_missing_field_rejected(self):
+        broken = {k: v for k, v in VALID_PCT_SMA.items() if k != "pct_sma200"}
+        with self.assertRaises(ValueError):
+            validate_entry("pct_sma", broken)
 
     def test_vix_ts_missing_m2_rejected(self):
         broken = {k: v for k, v in VALID_VIX_TS.items() if k != "m2"}
@@ -142,6 +164,15 @@ class TestBuildResult(unittest.TestCase):
         self.assertEqual(result["structure"], "contango")
         self.assertEqual(result["difference_1_2"], 2.3)
         self.assertAlmostEqual(result["contango_pct_1_2"], 14.74, places=2)
+        self.assertEqual(result["source"], "manual")
+        self.assertEqual(result["origin"], "manual")
+        self.assertEqual(result["status"], "fresh")
+
+    def test_pct_sma_build_manual_result(self):
+        cleaned = validate_entry("pct_sma", VALID_PCT_SMA)
+        result = build_manual_result("pct_sma", cleaned, NOW)
+        self.assertEqual(result["pct_sma50"], 45.0)
+        self.assertEqual(result["pct_sma200"], 58.0)
         self.assertEqual(result["source"], "manual")
         self.assertEqual(result["origin"], "manual")
         self.assertEqual(result["status"], "fresh")

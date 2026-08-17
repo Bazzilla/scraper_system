@@ -424,17 +424,18 @@ class TestRenderSections(unittest.TestCase):
 
     def test_market_cards_contains_breadth(self):
         data = _sample_data()
-        data["pct_sma"] = {"total": {"pct_sma50": 69.0, "pct_sma200": 86.2},
-                           "fetched_at": "2026-08-12T00:00:00+00:00"}
+        data["pct_sma"] = {"pct_sma50": 69.0, "pct_sma200": 86.2,
+                           "fetched_at": "2026-08-12T00:00:00+00:00",
+                           "origin": "manual"}
         html = render_market_cards(data)
-        self.assertIn("Breadth settoriale", html)
+        self.assertIn("Breadth di mercato", html)
         self.assertIn("69", html)
         self.assertIn("86.2", html)
         self.assertIn("12 ago 2026", html)
 
     def test_breadth_legend_entry(self):
         html = render_legend()
-        self.assertIn("Breadth settoriale", html)
+        self.assertIn("Breadth di mercato", html)
         self.assertIn("ipervenduto", html)
 
     def test_breadth_semaphore_thresholds(self):
@@ -445,9 +446,9 @@ class TestRenderSections(unittest.TestCase):
         ]
         for p50, p200, cls50, cls200 in cases:
             data = _sample_data()
-            data["pct_sma"] = {"total": {"pct_sma50": p50, "pct_sma200": p200}}
+            data["pct_sma"] = {"pct_sma50": p50, "pct_sma200": p200}
             html = render_market_cards(data)
-            card = html.split("Breadth settoriale")[1]
+            card = html.split("Breadth di mercato")[1]
             self.assertIn(f'class="sema {cls50}"', card)
             self.assertIn(f'class="sema {cls200}"', card)
 

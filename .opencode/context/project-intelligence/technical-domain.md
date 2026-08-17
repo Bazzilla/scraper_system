@@ -1,4 +1,4 @@
-<!-- Context: project-intelligence/technical | Priority: critical | Version: 1.16 | Updated: 2026-08-16 -->
+<!-- Context: project-intelligence/technical | Priority: critical | Version: 1.17 | Updated: 2026-08-17 -->
 
 # Technical Domain
 
@@ -107,7 +107,7 @@ deploy/systemd/scraper-scheduler.timer → service (--once) [daily]
 **Scraper OHLCV**: `src/scrapers/ohlcv_fetcher.py` — yfinance → cache su disco, multi_level_index=False, request_delay
 **Scraper Indicators**: `src/scrapers/indicators.py` — legge cache, normalizza TitleCase, calcola con `ta`
 **Scraper PCR**: `src/scrapers/pcr_scraper.py` — Equity PCR da CBOE (JSON escapato), Barchart sostituito (WAF 404)
-**Scraper PCT SMA**: `src/scrapers/pct_sma_scraper.py` — breadth settoriale % sopra SMA50/200 da OHLCV locale (proxy dichiarato)
+**Scraper PCT SMA**: *(rimosso 2026-08-17)* — `% sopra SMA50/200` mercato USA (F3/#13-14) → `manual_supported` via `manual_overrides.yaml` (pct_sma50/pct_sma200); il proxy sui 29 ticker non esiste più
 **Scraper Insider**: `src/scrapers/insider_scraper.py` — bonus H5 da OpenInsider (HTTP, solo acquisti)
 **Report HTML**: `src/report_html.py` — pagina statica da output.json (dark+light, semafori, segnale con gate FGI, matrice indicatori con badge coverage/availability/usable/source, badge manual sugli override); aggiornare ad ogni nuovo scraper
 **Orchestratore**: `src/orchestrator.py` — `run(config_path, output_path, db_path)`, crea `output/` automaticamente, inietta tickers e risolve cache_path, applica manual overrides, arricchisce matrice con source runtime
