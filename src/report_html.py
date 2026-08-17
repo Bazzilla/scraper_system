@@ -43,6 +43,8 @@ h1 { font-size: 1.5rem; }
         font-weight: 600; }
 .badge.fresh { background: var(--green); color: #fff; }
 .badge.stale { background: var(--red); color: #fff; }
+.age { color: var(--muted); font-size: 0.75rem; display: block; margin-top: 2px; }
+.badge.age-badge { margin-left: 8px; }
 button#theme-toggle { background: var(--card); color: var(--text);
         border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px;
         cursor: pointer; font-size: 0.9rem; }
@@ -137,6 +139,59 @@ _SCRIPT = """\
     localStorage.setItem("report-theme", next);
     btn.textContent = next === "dark" ? "☀️ Light" : "🌙 Dark";
   });
+
+  function fmtAge(ms) {
+    var min = Math.floor(ms / 60000);
+    if (min < 60) return min + "min fa";
+    var h = Math.floor(min / 60);
+    if (h < 24) return h + "h fa";
+    return Math.floor(h / 24) + "g fa";
+  }
+
+  function fmtRemaining(ms) {
+    var min = Math.ceil(ms / 60000);
+    if (min < 60) return "tra " + min + "min";
+    var h = Math.ceil(min / 60);
+    if (h < 24) return "tra " + h + "h";
+    return "tra " + Math.ceil(h / 24) + "g";
+  }
+
+  var els = document.querySelectorAll("[data-fetched-at]");
+  for (var i = 0; i < els.length; i++) {
+    var el = els[i];
+    var fetched = Date.parse(el.getAttribute("data-fetched-at"));
+    if (isNaN(fetched)) continue;
+    var staleHours = parseFloat(el.getAttribute("data-stale-hours")) || 0;
+    var ageMs = Date.now() - fetched;
+    var staleMs = staleHours * 3600000;
+    var isStale = ageMs > staleMs;
+    var status = isStale ? "stale" : "fresh";
+    var text = isStale
+      ? "scaduto da " + fmtAge(ageMs - staleMs)
+      : "aggiornato " + fmtAge(ageMs) + " · " + fmtRemaining(staleMs - ageMs);
+
+    var badge = document.createElement("span");
+    badge.className = "badge age-badge " + status;
+    badge.textContent = status;
+    var value = el.querySelector(".value");
+    if (value) {
+      value.parentNode.insertBefore(badge, value.nextSibling);
+    } else {
+      var firstCell = el.querySelector("td:first-child");
+      if (firstCell) firstCell.appendChild(badge);
+    }
+
+    var age = document.createElement("span");
+    age.className = "age";
+    age.textContent = text;
+    var meta = el.querySelector(".meta");
+    if (meta) {
+      meta.appendChild(age);
+    } else {
+      var lastCell = el.querySelector("td:last-child");
+      if (lastCell) lastCell.appendChild(age);
+    }
+  }
 })();
 </script>
 """

@@ -573,6 +573,20 @@ class TestAgeAttrs(unittest.TestCase):
         self.assertNotIn('" onclick="', attrs)
 
 
+class TestAgeScript(unittest.TestCase):
+    def test_script_contains_age_logic(self):
+        from report_html import _SCRIPT
+        self.assertIn("data-fetched-at", _SCRIPT)
+        self.assertIn("data-stale-hours", _SCRIPT)
+        self.assertIn("scaduto da", _SCRIPT)
+        self.assertIn("aggiornato", _SCRIPT)
+        self.assertIn("age-badge", _SCRIPT)
+
+    def test_css_contains_age_class(self):
+        from report_html import _CSS
+        self.assertIn(".age", _CSS)
+
+
 class TestRender(unittest.TestCase):
     def test_render_writes_html_file(self):
         with tempfile.TemporaryDirectory() as tmp:
