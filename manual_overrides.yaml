@@ -71,11 +71,11 @@ vix_term_structure:
 # localmente sui 29 ticker (proxy rimosso): si inseriscono i valori del
 # MERCATO USA letti da una fonte con breadth di mercato (es. IndexIndicators
 # via browser, StockCharts, Finviz).
-# pct_sma:
-#   pct_sma50: 45.0
-#   pct_sma200: 58.0
-#   source: manual
-#   fetched_at: "2026-08-17T12:00:00+00:00"
-#   stale_after_hours: 24
-#   entered_by: "user"
-#   note: "Letti manualmente da <fonte breadth mercato USA>"
+pct_sma:
+  pct_sma50: 45.0
+  pct_sma200: 58.0
+  source: manual
+  fetched_at: "2026-08-17T12:00:00+00:00"
+  stale_after_hours: 24
+  entered_by: "user"
+  note: "Letti manualmente da <fonte breadth mercato USA>"
