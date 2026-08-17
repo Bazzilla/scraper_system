@@ -637,6 +637,11 @@ class TestRender(unittest.TestCase):
             content = Path(html_path).read_text(encoding="utf-8")
             self.assertIn("Market Dashboard", content)
 
+    def test_page_links_to_overrides_page(self):
+        html = build_page(_sample_data())
+        self.assertIn("Immissione manuale", html)
+        self.assertIn("/overrides.html", html)
+
     def test_render_missing_output_raises(self):
         with tempfile.TemporaryDirectory() as tmp:
             config_path = f"{tmp}/config.yaml"
