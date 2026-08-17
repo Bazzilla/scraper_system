@@ -26,7 +26,7 @@ cd src && ../.venv/bin/python scheduler.py --config ../config.yaml --once
 ## Struttura
 
 - **`run.py`** (radice) — entry point unico, 3 modalità (full / `--report-only` / `--override-only`); risolve i path dalla propria posizione, funziona da qualsiasi directory
-- **`src/`** — `orchestrator.py` (entry point), `scheduler.py`, `config_loader.py`, `registry.py`, `consolidator.py`, `audit.py`, `report_html.py`, `fetch_utils.py`, `indicator_registry.py`, `manual_overrides.py`
+- **`src/`** — `orchestrator.py` (entry point), `scheduler.py`, `config_loader.py`, `registry.py`, `consolidator.py`, `audit.py`, `report_html.py` (orchestratore report, ri-esporta dai moduli), `report_helpers.py`, `report_cards.py`, `report_tables.py`, `report_legend.py`, `fetch_utils.py`, `indicator_registry.py`, `manual_overrides.py`, `indicator_fields.py`, `overrides_page.py`, `overrides_server.py`
 - **`src/scrapers/`** — i moduli scraper (7): `fgi_scraper.py`, `aaii_scraper.py`, `vix_scraper.py`, `pcr_scraper.py`, `ohlcv_fetcher.py`, `indicators.py`, `insider_scraper.py`
 - **`src/tests/`** — test unitari `unittest` (funzioni pure, mock, nessuna rete)
 - **`config.yaml`** (radice) — chi/quando/dove + sezione `tickers` + `strategy` (indicator_registry, proxy_accepted, manual_overrides, force_manual_overrides)
@@ -59,6 +59,7 @@ Ogni modulo in `src/scrapers/` espone `run(config: dict) -> dict` e ritorna un d
 - **Rate limiting**: `request_delay` (default 1.0s) tra i fetch dei ticker in `ohlcv_fetcher` (previene HTTP 429 di Yahoo)
 - **Naming**: snake_case per file/funzioni/config keys/JSON keys; lowercase per origin/coverage/segnale; uppercase per badge (COMPRA/WATCHLIST/ATTENDI)
 - **Verifiche mirate**: per controllare `output/output.json` o `output/report.html` usa `grep`/query mirate (es. `grep -c 'chiave' output/report.html`), NON fare dump completi del file nel contesto — sono grandi (32KB/45KB) e inquinano la conversazione
+- **Piani brevi**: i piani di implementazione (`docs/superpowers/plans/`) devono essere SINTETICI — solo interfacce, firme, test e punti chiave, NON codice completo trascritto. I piani lunghi (800+ righe) vengono riletti integralmente dai subagent e gonfiano il contesto. I piani completati vanno spostati in `docs/superpowers/plans/archive/`
 - **⚠️ `.gitignore` contiene un marcatore di merge conflict committato** (`<<<<<<< HEAD` alla riga 1) — è intenzionale/storico, non un conflitto in corso; non "fixarlo" senza chiedere
 
 ## Contesto di progetto
