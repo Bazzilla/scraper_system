@@ -318,6 +318,19 @@ def _badge(status: str) -> str:
     return f'<span class="badge {cls}">{html_mod.escape(status)}</span>'
 
 
+def _age_attrs(fetched_at: str | None, stale_after_hours: float | None) -> str:
+    """Return HTML data-* attributes for client-side age computation.
+
+    Returns a string like `` data-fetched-at="..." data-stale-hours="..."``
+    (leading space included) or an empty string when the timestamp or the
+    validity window is missing.
+    """
+    if not fetched_at or stale_after_hours is None:
+        return ""
+    iso = html_mod.escape(fetched_at)
+    return f' data-fetched-at="{iso}" data-stale-hours="{stale_after_hours}"'
+
+
 def render_market_cards(data: dict[str, Any]) -> str:
     """Render the market indicator cards (FGI, VIX, PCR, breadth, insider, AAII).
 

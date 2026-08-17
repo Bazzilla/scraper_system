@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 
 from report_html import (
+    _age_attrs,
     build_page,
     compute_signal,
     fmt,
@@ -524,6 +525,24 @@ class TestRenderSections(unittest.TestCase):
         html = build_page(data)
         self.assertIn("SEMICONDUCTORS (1)", html)
         self.assertNotIn(">status</span>", html)
+
+
+class TestAgeAttrs(unittest.TestCase):
+    def test_returns_attrs_with_valid_timestamp(self):
+        attrs = _age_attrs("2026-08-12T14:30:06+00:00", 24)
+        self.assertIn('data-fetched-at="2026-08-12T14:30:06+00:00"', attrs)
+        self.assertIn('data-stale-hours="24"', attrs)
+
+    def test_returns_empty_without_fetched_at(self):
+        self.assertEqual(_age_attrs(None, 24), "")
+        self.assertEqual(_age_attrs("", 24), "")
+
+    def test_returns_empty_without_stale_hours(self):
+        self.assertEqual(_age_attrs("2026-08-12T14:30:06+00:00", None), "")
+
+    def test_escapes_iso_value(self):
+        attrs = _age_attrs('2026-08-12T14:30:06+00:00" onclick="x', 24)
+        self.assertNotIn('" onclick="', attrs)
 
 
 class TestRender(unittest.TestCase):
