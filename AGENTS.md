@@ -58,6 +58,7 @@ Ogni modulo in `src/scrapers/` espone `run(config: dict) -> dict` e ritorna un d
 - **Isolamento per-ticker**: un ticker che fallisce non blocca gli altri; l'orchestratore inietta `tickers` e risolve `cache_path`
 - **Rate limiting**: `request_delay` (default 1.0s) tra i fetch dei ticker in `ohlcv_fetcher` (previene HTTP 429 di Yahoo)
 - **Naming**: snake_case per file/funzioni/config keys/JSON keys; lowercase per origin/coverage/segnale; uppercase per badge (COMPRA/WATCHLIST/ATTENDI)
+- **Verifiche mirate**: per controllare `output/output.json` o `output/report.html` usa `grep`/query mirate (es. `grep -c 'chiave' output/report.html`), NON fare dump completi del file nel contesto — sono grandi (32KB/45KB) e inquinano la conversazione
 - **⚠️ `.gitignore` contiene un marcatore di merge conflict committato** (`<<<<<<< HEAD` alla riga 1) — è intenzionale/storico, non un conflitto in corso; non "fixarlo" senza chiedere
 
 ## Contesto di progetto
