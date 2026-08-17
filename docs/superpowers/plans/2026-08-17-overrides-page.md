@@ -188,7 +188,7 @@ git commit -m "feat: add enabled flag and save_override to manual_overrides"
 
 **Interfaces:**
 - Consumes: `_CSS`, `_SCRIPT`, `_ITALIAN_MONTHS`, `format_iso_dt` da `report_html.py`; `load_overrides` da `manual_overrides.py`
-- Produces: `render_overrides_page(overrides: dict[str, Any]) -> str` — pagina HTML completa con header (titolo, link al report, theme-toggle), una card per indicatore (nome + badge, checkbox enabled, campi specifici, stale_after_hours, note, pulsante WRITE), e il JS che carica `/api/data` e POST `/api/save`
+- Produces: `render_overrides_page(overrides: dict[str, Any]) -> str` — pagina HTML completa con header (titolo, link al report, theme-toggle), una card per indicatore (nome + badge, checkbox enabled, campi specifici, stale_after_hours, note, pulsante WRITE), e il JS che POST `/api/save`. La pagina è **server-rendered** (valori precompilati dal YAML): il JS NON carica `/api/data` (l'endpoint resta sul server per debug, non è consumato dalla pagina)
 
 - [ ] **Step 1: Write the failing test**
 

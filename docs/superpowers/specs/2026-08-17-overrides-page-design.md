@@ -23,7 +23,7 @@ Bind su `127.0.0.1`, single-user, niente autenticazione (uso domestico).
 | Componente | Cosa fa |
 |---|---|
 | `src/overrides_server.py` (nuovo) | Mini-server HTTP stdlib: router GET/POST, valida con `validate_entry`, scrive YAML con `yaml.safe_dump`, chiama `rebuild_report()` dopo il save. CLI: `python overrides_server.py [--port 8000]` |
-| `src/overrides_page.py` (nuovo) | Funzioni che generano la pagina HTML (`render_overrides_page(overrides: dict) -> str`), riusando `_CSS`/`_SCRIPT` di `report_html.py` (stessi stili + theme-toggle). Include il JS fetch che carica `/api/data` e invia POST `/api/save` |
+| `src/overrides_page.py` (nuovo) | Funzioni che generano la pagina HTML (`render_overrides_page(overrides: dict) -> str`), riusando `_CSS`/`_SCRIPT` di `report_html.py` (stessi stili + theme-toggle). Include il JS fetch che invia POST `/api/save`. La pagina è **server-rendered** (valori precompilati dal YAML): il JS NON consuma `GET /api/data` (l'endpoint resta sul server per debug/verifica) |
 | `src/manual_overrides.py` | Esteso: (1) flag `enabled` per-riga (default `true` se assente, retrocompatibile); (2) `save_override(path, key, values, enabled)` che scrive il YAML aggiornato con `fetched_at` fresco (UTC now) |
 | `src/report_html.py` | Header: link "Immissione manuale" → `/overrides.html` |
 

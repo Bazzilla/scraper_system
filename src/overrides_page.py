@@ -5,8 +5,10 @@ that lets the user edit the manual overrides supported by
 ``manual_overrides.yaml`` and submit them to the local server
 (``overrides_server.py``) which persists them and re-renders the report.
 
-The page is served by ``GET /`` from the overrides server; it fetches the
-current values from ``GET /api/data`` and posts edits to ``POST /api/save``.
+The page is server-rendered by ``GET /`` from the overrides server (values
+are pre-filled from ``manual_overrides.yaml``); the JS posts edits to
+``POST /api/save``. The ``GET /api/data`` endpoint exists on the server for
+debugging/verification but is not consumed by this page.
 """
 
 from __future__ import annotations
