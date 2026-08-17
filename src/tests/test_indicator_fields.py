@@ -5,6 +5,7 @@ from __future__ import annotations
 import unittest
 
 from indicator_fields import INDICATOR_FIELDS, SUPPORTED_KEYS
+from indicator_registry import load_and_summarize
 
 EXPECTED_KEYS = {"aaii", "fgi", "naaim", "vix_term_structure", "pct_sma"}
 
@@ -47,6 +48,36 @@ class TestDescriptors(unittest.TestCase):
         for key in EXPECTED_KEYS:
             with self.subTest(key=key):
                 self.assertIn(INDICATOR_FIELDS[key]["badge"], {"manual", "fallback"})
+
+
+class TestRegistryCoherence(unittest.TestCase):
+    """Ogni override manuale in indicator_fields.py deve corrispondere a un
+    indicatore nel registry (implemented con fallback manuale, o
+    manual_supported), e ogni manual_supported deve avere un descriptor —
+    previene il drift tra le due fonti di verità."""
+
+    def test_every_manual_override_key_exists_in_registry(self):
+        summary = load_and_summarize()
+        for key in SUPPORTED_KEYS:
+            with self.subTest(key=key):
+                entry = summary.get(key)
+                self.assertIsNotNone(entry, f"{key} manca nel registry")
+                self.assertIn(
+                    entry["implementation_status"],
+                    ("implemented", "manual_supported"),
+                    f"{key} deve essere implemented o manual_supported nel registry",
+                )
+
+    def test_every_manual_supported_in_registry_has_descriptor(self):
+        summary = load_and_summarize()
+        manual_supported = {
+            key for key, entry in summary.items()
+            if isinstance(entry, dict)
+            and entry.get("implementation_status") == "manual_supported"
+        }
+        # Ogni manual_supported deve avere un descriptor (inclusione, non
+        # uguaglianza: aaii/fgi sono implemented ma supportano override manuale).
+        self.assertTrue(manual_supported.issubset(SUPPORTED_KEYS))
 
 
 if __name__ == "__main__":

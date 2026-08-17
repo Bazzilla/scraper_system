@@ -7,7 +7,7 @@ Sistema **config-driven** di scraping finanziario: un orchestratore legge `confi
 Tutto va eseguito con il Python del venv (sistema PEP 668, niente install globale):
 
 ```bash
-# Test (DA src/, import relativi) — 224 test, ~0.2s
+# Test (DA src/, import relativi) — 265 test, ~0.2s
 cd src && ../.venv/bin/python -m unittest discover -s tests
 
 # Pipeline completa (dalla radice): orchestrazione + report
@@ -43,10 +43,10 @@ Ogni modulo in `src/scrapers/` espone `run(config: dict) -> dict` e ritorna un d
 1. Crea `src/scrapers/<nome>_scraper.py` con `run(config) -> dict`
 2. Aggiungi la voce in `config.yaml` sotto `scrapers:` (module, output_key, schedule, config)
 3. Aggiungi un test in `src/tests/test_<nome>_scraper.py`
-4. **Aggiorna `src/report_html.py`** (render_market_cards / _ticker_sections / render_ticker_table) — manutenibilità esplicita
+4. **Aggiorna i moduli report** (`report_cards.py` / `report_tables.py` / `report_legend.py`, ri-esportati da `report_html.py`) — manutenibilità esplicita
 5. Esegui l'orchestratore per verificare
 
-**Indicatori non scrapabili** (alimentabili a mano via `manual_overrides.yaml`): `naaim`, `vix_term_structure`, `pct_sma` (breadth mercato USA, F3/#13-14). Il registry (`indicator_registry.yaml`) li marca `manual_supported`.
+**Indicatori non scrapabili** (alimentabili a mano via `manual_overrides.yaml`): `naaim`, `vix_term_structure`, `pct_sma` (breadth mercato USA, F3/#13-14) — il registry (`indicator_registry.yaml`) li marca `manual_supported`. Anche `aaii` e `fgi` supportano override manuale come fallback (sono `implemented`). I campi/whitelist vivono in `indicator_fields.py` (fonte unica).
 
 ## Convenzioni e gotcha
 
@@ -60,6 +60,7 @@ Ogni modulo in `src/scrapers/` espone `run(config: dict) -> dict` e ritorna un d
 - **Naming**: snake_case per file/funzioni/config keys/JSON keys; lowercase per origin/coverage/segnale; uppercase per badge (COMPRA/WATCHLIST/ATTENDI)
 - **Verifiche mirate**: per controllare `output/output.json` o `output/report.html` usa `grep`/query mirate (es. `grep -c 'chiave' output/report.html`), NON fare dump completi del file nel contesto — sono grandi (32KB/45KB) e inquinano la conversazione
 - **Piani brevi**: i piani di implementazione (`docs/superpowers/plans/`) devono essere SINTETICI — solo interfacce, firme, test e punti chiave, NON codice completo trascritto. I piani lunghi (800+ righe) vengono riletti integralmente dai subagent e gonfiano il contesto. I piani completati vanno spostati in `docs/superpowers/plans/archive/`
+- **Sessioni corte**: chiudi e riapri la sessione tra una feature e l'altra — la memoria conversazionale lunga (più feature in una sessione) gonfia il contesto e rallenta. Una sessione = una feature
 - **⚠️ `.gitignore` contiene un marcatore di merge conflict committato** (`<<<<<<< HEAD` alla riga 1) — è intenzionale/storico, non un conflitto in corso; non "fixarlo" senza chiedere
 
 ## Contesto di progetto
@@ -70,4 +71,4 @@ I pattern dettagliati vivono in `.opencode/context/project-intelligence/` (fonte
 - `report-html.md` — pattern report HTML + segnale con gate FGI
 - `aaii-scraping-guide.md` — dettaglio scraping AAII
 
-Leggili prima di modificare codice che tocca questi pattern.
+Leggili prima di modificare codice che tocca questi pattern. **Caricali per sezione, non in blocco**: usa `grep` per trovare la sezione rilevante e `read` con `offset`/`limit` per leggere solo quella — i file hanno sezioni `##` ben definite e caricarli interi gonfia il contesto.

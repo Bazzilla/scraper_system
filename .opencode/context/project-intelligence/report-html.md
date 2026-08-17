@@ -1,4 +1,4 @@
-<!-- Context: project-intelligence/report-html | Priority: high | Version: 1.1 | Updated: 2026-08-14 -->
+<!-- Context: project-intelligence/report-html | Priority: high | Version: 1.2 | Updated: 2026-08-17 -->
 
 # Report HTML (Market Dashboard)
 
@@ -10,7 +10,7 @@
 **Audience**: Sviluppatori, agenti AI
 
 ## Concept
-`src/report_html.py` legge `output/output.json` e genera `output/report.html` (pagina self-contained, dark+light toggle, semafori, tabelle per categoria, legenda interattiva, guida operativa). Funzioni pure per ogni sezione. CLI: `render(config_path)`.
+`src/report_html.py` (orchestratore) legge `output/output.json` e genera `output/report.html` (pagina self-contained, dark+light toggle, semafori, tabelle per categoria, legenda interattiva, guida operativa). Funzioni pure per ogni sezione, distribuite in `report_helpers.py`/`report_cards.py`/`report_tables.py`/`report_legend.py` e ri-esportate da `report_html.py`. CLI: `render(config_path)`.
 
 **Card FGI**: può includere una mini-griglia dei 7 sub-indicatori da `fgi.fgi_components` (score + rating per componente, badge via `_fgi_rating_badge`). `fgi_components` è DISPLAY-ONLY: non entra mai nello score di segnale.
 
@@ -48,8 +48,8 @@ Ogni cella mostra **sempre il valore numerico** + badge colorato. Valori None �
 - **Guida operativa**: quando comprare (convergenza ipervenduto+inversione+clima fear), quando vendere se in profitto (ipercomprato/indebolimento+clima greed), cautela su segnali misti. Disclaimer.
 
 ## 📂 Codebase References
-**Report HTML**: `src/report_html.py` — `render(config_path)`, `build_page`, `compute_signal(entry, regime)`, `market_regime(fgi_score)`, `render_legend`, `render_market_cards`, `render_ticker_table`, `semaphore_class`, `format_iso_dt`
-**Test**: `src/tests/test_report_html.py` — 35 test (semafori, format, segnale, gate, legenda, render)
+**Report HTML**: `src/report_html.py` (orchestratore, ri-esporta) — `render(config_path)`, `build_page`; moduli: `report_helpers.py` (`compute_signal`, `market_regime`, `semaphore_class`, `format_iso_dt`, badge), `report_cards.py` (`render_market_cards`), `report_tables.py` (`render_ticker_table`, `render_indicator_matrix`, `render_stale_summary`), `report_legend.py` (`render_legend`)
+**Test**: `src/tests/test_report_html.py` — test (semafori, format, segnale, gate, legenda, render)
 **Output**: `output/report.html` (pagina generata), `output/output.json` (fonte)
 **Spec**: `docs/superpowers/specs/2026-08-12-report-html-design.md`
 **Strategia**: `docs/strategy/strategia_trading.md` + `specifiche_strategia.md`

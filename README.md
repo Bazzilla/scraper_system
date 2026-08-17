@@ -76,7 +76,11 @@ scraper-system/
     ├── registry.py              # Mappa nome → modulo scraper (import dinamico)
     ├── consolidator.py          # Costruisce il JSON di output (funzione pura)
     ├── audit.py                 # Audit log SQLite (cosa/quando/esito)
-    ├── report_html.py              # Genera pagina HTML statica (output/report.html)
+    ├── report_html.py              # Orchestratore report (ri-esporta dai moduli)
+    ├── report_helpers.py           #   Funzioni pure (semafori, format, badge)
+    ├── report_cards.py             #   Card indicatori di mercato
+    ├── report_tables.py            #   Tabelle ticker + matrice indicatori
+    ├── report_legend.py            #   Legenda e guida
     ├── scrapers/                # ★ I moduli scraper vivono qui
     │   ├── fgi_scraper.py       #   CNN Fear & Greed Index
     │   ├── aaii_scraper.py      #   AAII Sentiment Survey
@@ -547,8 +551,8 @@ Il file viene scritto in `output/report.html`. La funzione accetta un override:
 ```
 
 > **⚠️ Manutenibilità**: quando aggiungi un nuovo scraper/modulo, **aggiorna
-> `src/report_html.py`** (render_market_cards / _ticker_sections / render_ticker_table)
-> per renderizzarlo nella pagina. Aggiungi anche un test in `test_report_html.py`.
+> i moduli report** (`report_cards.py` / `report_tables.py` / `report_legend.py`,
+> ri-esportati da `report_html.py`) per renderizzarlo nella pagina. Aggiungi anche un test in `test_report_html.py`.
 
 ---
 
