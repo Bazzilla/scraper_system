@@ -37,17 +37,19 @@ Ogni sorgente ha già nel JSON i campi necessari: `fetched_at` (timestamp ISO) e
 ## Punti di applicazione
 
 1. **Card indicatori di mercato** (`render_market_cards`): ogni card riceve `data-*` dalla sua sorgente principale:
-   - FGI → `fgi`, VIX → `vix`, PCR → `pcr`, AAII → `aaii`, NAAIM → `naaim`, VIX TS → `vix_term_structure`, breadth → `pct_sma`, insider → `insider`
-   - Il JS aggiorna il badge e aggiunge il testo età nel `.meta`
+   - FGI → `fgi`, VIX → `vix`, PCR → `pcr`, AAII → `aaii`, NAAIM → `naaim`, breadth → `pct_sma`, insider → `insider`
+   - Nota: la VIX Term Structure non ha una card propria — è solo una nota dentro la card VIX, quindi usa `vix` come timestamp di riferimento
+   - Il JS aggiorna il badge e aggiunge il testo età nell'ultimo `.meta` della card (le card breadth e insider ne hanno due: riga dati + riga "Aggiornato:")
 2. **Tabelle ticker** (`render_ticker_table`): ogni riga `<tr>` riceve `data-*` dal `fetched_at` del ticker. Il JS aggiorna la cella "Aggiornato" con il testo età.
 
 **Escluso**: la matrice indicatori (`render_indicator_matrix`) resta invariata — mostra già availability/source, non ha un timestamp diretto per riga.
 
 ## Fallback
 
-- JS disabilitato → badge server-side esistenti restano (nessuna regressione)
+- JS disabilitato → badge server-side esistenti restano (l'header overall; le card/righe non avevano badge per-card server-side prima di questa feature — il JS li crea dinamicamente)
 - Card di errore (`_error_card`) → nessun `data-*` (non c'è timestamp)
 - Dati senza `fetched_at` → nessun `data-*`, il JS li ignora
+- `fetched_at` nel futuro (clock skew) → età clampata a 0 (mai "aggiornato -Xmin fa")
 
 ## Test
 
