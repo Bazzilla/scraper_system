@@ -540,6 +540,20 @@ class TestRenderSections(unittest.TestCase):
         self.assertIn("SEMICONDUCTORS (1)", html)
         self.assertNotIn(">status</span>", html)
 
+    def test_ticker_rows_include_age_attrs(self):
+        data = _sample_data()
+        entries = data["indicators"]["semiconductors"]
+        html = render_ticker_table("semiconductors", entries)
+        self.assertIn('data-fetched-at="2026-08-12T14:30:06+00:00"', html)
+        self.assertIn('data-stale-hours="24"', html)
+
+    def test_ticker_row_without_fetched_at_has_no_attrs(self):
+        data = _sample_data()
+        entries = data["indicators"]["semiconductors"]
+        no_ts = dict(entries["AMAT"], fetched_at=None)
+        html = render_ticker_table("semiconductors", {"AMAT": no_ts})
+        self.assertNotIn("data-fetched-at=", html)
+
 
 class TestAgeAttrs(unittest.TestCase):
     def test_returns_attrs_with_valid_timestamp(self):

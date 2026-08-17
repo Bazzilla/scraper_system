@@ -521,7 +521,7 @@ def render_ticker_table(
         entry = entries[symbol]
         ind = entry
         rows.append(
-            "<tr>"
+            f"<tr{_age_attrs(ind.get('fetched_at'), ind.get('stale_after_hours'))}>"
             f'<td><span class="ticker">{html_mod.escape(symbol)}</span>'
             f'<br><span class="name">{html_mod.escape(entry.get("name", ""))}</span></td>'
             f"<td>{_sema(ind.get('last_close'), 'close')}</td>"
