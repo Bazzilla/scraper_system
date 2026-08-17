@@ -45,6 +45,11 @@ h1 { font-size: 1.5rem; }
 .badge.stale { background: var(--red); color: #fff; }
 .age { color: var(--muted); font-size: 0.75rem; display: block; margin-top: 2px; }
 .badge.age-badge { margin-left: 8px; }
+.fgi-components { margin-top: 10px; border-top: 1px solid var(--border);
+        padding-top: 8px; display: grid; gap: 4px; font-size: 0.8rem; }
+.fgi-components .comp { display: flex; justify-content: space-between;
+        align-items: center; gap: 8px; }
+.fgi-components .comp-name { color: var(--muted); }
 button#theme-toggle { background: var(--card); color: var(--text);
         border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px;
         cursor: pointer; font-size: 0.9rem; }
@@ -375,6 +380,12 @@ def _badge(status: str) -> str:
     return f'<span class="badge {cls}">{html_mod.escape(status)}</span>'
 
 
+def _fgi_rating_badge(rating: str) -> str:
+    """Render a FGI component rating badge (fear/greed/neutral...)."""
+    cls = rating.strip().lower().replace(" ", "_")
+    return f'<span class="sema {cls}">{html_mod.escape(rating)}</span>'
+
+
 def _age_attrs(fetched_at: str | None, stale_after_hours: float | None) -> str:
     """Return HTML data-* attributes for client-side age computation.
 
@@ -437,11 +448,26 @@ def render_market_cards(data: dict[str, Any]) -> str:
             zone_badge = ""
         fgi_source = fgi.get("source")
         source_html = f' · Fonte: {html_mod.escape(str(fgi_source))}' if fgi_source else ""
+        fgi_components = fgi.get("fgi_components")
+        if fgi_components:
+            comp_rows = []
+            for key, comp in fgi_components.items():
+                name = key.replace("_", " ").title()
+                score = comp.get("score")
+                rating = str(comp.get("rating", ""))
+                comp_rows.append(
+                    '<div class="comp"><span class="comp-name">'
+                    f"{html_mod.escape(name)}</span>"
+                    f"<span>{fmt(score)} {_fgi_rating_badge(rating)}</span></div>"
+                )
+            components_html = f'<div class="fgi-components">{"".join(comp_rows)}</div>'
+        else:
+            components_html = ""
         parts.append(
             f'<div class="card"{_age_attrs(fgi.get("fetched_at"), fgi.get("stale_after_hours"))}><div class="label">CNN Fear &amp; Greed</div>'
             f'<div class="value">{fmt(fgi_score)}</div>{zone_badge}'
             f'<div class="meta">Aggiornato: {format_iso_dt(fgi.get("fetched_at"))}{source_html}</div>'
-            f'{_origin_html(fgi)}</div>'
+            f'{components_html}{_origin_html(fgi)}</div>'
         )
 
     vix = data.get("vix", {})

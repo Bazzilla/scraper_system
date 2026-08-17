@@ -296,6 +296,23 @@ class TestRenderSections(unittest.TestCase):
         # La card di errore non ha timestamp → nessun data-fetched-at per fgi
         self.assertNotIn('data-fetched-at="2026-08-12T14:29:42+00:00"', html)
 
+    def test_fgi_card_shows_components_grid(self):
+        data = _sample_data()
+        data["fgi"]["fgi_components"] = {
+            "market_momentum": {"score": 74.6, "rating": "greed"},
+            "stock_price_strength": {"score": 28.6, "rating": "fear"},
+        }
+        html = render_market_cards(data)
+        self.assertIn("fgi-components", html)
+        self.assertIn("Market Momentum", html)
+        self.assertIn("74.6", html)
+        self.assertIn("Stock Price Strength", html)
+        self.assertIn("28.6", html)
+
+    def test_fgi_card_without_components_no_grid(self):
+        html = render_market_cards(_sample_data())
+        self.assertNotIn("fgi-components", html)
+
     def test_stale_summary_shows_error_count(self):
         summary = {
             "total_sources": 2,
