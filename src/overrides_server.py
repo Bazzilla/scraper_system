@@ -20,6 +20,7 @@ from typing import Any
 
 from config_loader import load_config
 from consolidator import consolidate
+from indicator_fields import SUPPORTED_KEYS
 from manual_overrides import (
     apply_overrides,
     load_overrides,
@@ -30,11 +31,6 @@ from manual_overrides import (
 from orchestrator import _build_strategy_indicators
 from overrides_page import render_overrides_page
 from report_html import render as render_report
-
-# Whitelist degli indicatori supportati per override manuale.
-SUPPORTED_KEYS = frozenset(
-    {"aaii", "fgi", "naaim", "vix_term_structure", "pct_sma"}
-)
 
 # Path del config: risolto rispetto alla root del progetto (src/..).
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -187,8 +183,8 @@ def _overrides_path() -> Path:
 
 
 def _field_specs(key: str) -> dict[str, Any]:
-    from overrides_page import _INDICATOR_FIELDS
-    return _INDICATOR_FIELDS[key]["fields"]
+    from indicator_fields import INDICATOR_FIELDS
+    return INDICATOR_FIELDS[key]["fields"]
 
 
 def main() -> int:

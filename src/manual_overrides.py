@@ -33,27 +33,11 @@ from typing import Any
 
 import yaml
 
+from indicator_fields import INDICATOR_FIELDS
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_OVERRIDES_PATH = "manual_overrides.yaml"
-
-# Frequency per indicator (used for the output "frequency" field).
-_FREQUENCY: dict[str, str] = {
-    "aaii": "weekly",
-    "fgi": "daily",
-    "naaim": "weekly",
-    "vix_term_structure": "daily",
-    "pct_sma": "daily",
-}
-
-# Required value fields per supported indicator key.
-_REQUIRED_FIELDS: dict[str, list[str]] = {
-    "aaii": ["bullish", "neutral", "bearish"],
-    "fgi": ["score"],
-    "naaim": ["exposure"],
-    "vix_term_structure": ["m1", "m2"],
-    "pct_sma": ["pct_sma50", "pct_sma200"],
-}
 
 # Common required metadata for every override.
 _COMMON_REQUIRED = ("fetched_at", "stale_after_hours", "entered_by")
@@ -114,9 +98,10 @@ def validate_entry(key: str, entry: Any) -> dict[str, Any]:
     if not isinstance(entered_by, str) or not entered_by.strip():
         raise OverrideValidationError(f"{key}: entered_by must be a non-empty string")
 
-    required = _REQUIRED_FIELDS.get(key)
-    if required is None:
+    descriptor = INDICATOR_FIELDS.get(key)
+    if descriptor is None:
         raise OverrideValidationError(f"{key}: indicator not supported for override")
+    required = descriptor["required"]
 
     values: dict[str, Any] = {}
     for field in required:
@@ -198,7 +183,7 @@ def build_manual_result(
         "source": "manual",
         "origin": "manual",
         "fetched_at": override["fetched_at"],
-        "frequency": _FREQUENCY.get(key, "daily"),
+        "frequency": INDICATOR_FIELDS[key]["frequency"],
         "stale_after_hours": override["stale_after_hours"],
         "entered_by": override["entered_by"],
         "status": "fresh",

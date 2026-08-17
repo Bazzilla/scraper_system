@@ -17,50 +17,7 @@ import html as html_mod
 from typing import Any
 
 from report_html import _CSS, _SCRIPT, format_iso_dt
-
-# Field descriptors per supported indicator: label, input type, step.
-_INDICATOR_FIELDS: dict[str, dict[str, Any]] = {
-    "aaii": {
-        "label": "AAII Investor Sentiment Survey",
-        "badge": "fallback",
-        "fields": {
-            "bullish": {"label": "Bullish %", "type": "number", "step": "0.1"},
-            "neutral": {"label": "Neutral %", "type": "number", "step": "0.1"},
-            "bearish": {"label": "Bearish %", "type": "number", "step": "0.1"},
-        },
-    },
-    "fgi": {
-        "label": "Fear & Greed Index",
-        "badge": "fallback",
-        "fields": {
-            "score": {"label": "Score (0-100)", "type": "number", "step": "0.1"},
-            "zone": {"label": "Zone", "type": "text", "step": None},
-        },
-    },
-    "naaim": {
-        "label": "NAAIM Exposure Index",
-        "badge": "manual",
-        "fields": {
-            "exposure": {"label": "Exposure", "type": "number", "step": "0.1"},
-        },
-    },
-    "vix_term_structure": {
-        "label": "VIX Term Structure",
-        "badge": "manual",
-        "fields": {
-            "m1": {"label": "M1 (futures 1 mese)", "type": "number", "step": "0.01"},
-            "m2": {"label": "M2 (futures 2 mesi)", "type": "number", "step": "0.01"},
-        },
-    },
-    "pct_sma": {
-        "label": "% sopra SMA50/SMA200 (mercato USA)",
-        "badge": "manual",
-        "fields": {
-            "pct_sma50": {"label": "% sopra SMA50", "type": "number", "step": "0.1"},
-            "pct_sma200": {"label": "% sopra SMA200", "type": "number", "step": "0.1"},
-        },
-    },
-}
+from indicator_fields import INDICATOR_FIELDS
 
 _PAGE_CSS = _CSS + """\
 .override-form { margin-top: 24px; }
@@ -148,7 +105,7 @@ def render_overrides_page(overrides: dict[str, Any]) -> str:
     """Render the complete overrides entry page."""
     cards = "".join(
         _render_card(indicator, spec, overrides.get(indicator, {}))
-        for indicator, spec in _INDICATOR_FIELDS.items()
+        for indicator, spec in INDICATOR_FIELDS.items()
     )
     return (
         "<!DOCTYPE html>\n<html lang=\"it\" data-theme=\"dark\">\n<head>"
