@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import unittest
 from unittest import mock
 
@@ -126,6 +127,31 @@ class TestParseCnn(unittest.TestCase):
             parse_cnn("not json")
 
 
+class TestParseCnnComponents(unittest.TestCase):
+    _BODY = json.dumps({
+        "fear_and_greed": {"score": 66.7, "rating": "greed"},
+        "market_momentum_sp500": {"score": 74.6, "rating": "greed"},
+        "stock_price_strength": {"score": 28.6, "rating": "fear"},
+        "stock_price_breadth": {"score": 57.8, "rating": "greed"},
+        "put_call_options": {"score": 66.4, "rating": "greed"},
+        "market_volatility_vix": {"score": 50.0, "rating": "neutral"},
+        "junk_bond_demand": {"score": 98.6, "rating": "extreme greed"},
+        "safe_haven_demand": {"score": 78.8, "rating": "extreme greed"},
+    })
+
+    def test_parse_cnn_includes_components(self):
+        result = parse_cnn(self._BODY)
+        self.assertEqual(result["score"], 66.7)
+        self.assertEqual(result["zone"], "greed")
+        self.assertEqual(len(result["fgi_components"]), 7)
+        self.assertEqual(result["fgi_components"]["market_momentum"], {"score": 74.6, "rating": "greed"})
+
+    def test_parse_cnn_omits_components_when_absent(self):
+        body = '{"fear_and_greed": {"score": 66.7, "rating": "greed"}}'
+        result = parse_cnn(body)
+        self.assertNotIn("fgi_components", result)
+
+
 class TestParseFeargreedmeter(unittest.TestCase):
     def test_parses_title(self):
         # title: "Fear and Greed Index: 67 (Greed) | Stock Market Sentiment"
@@ -204,6 +230,17 @@ class TestBuildResult(unittest.TestCase):
         self.assertEqual(result["fetched_at"], "2026-08-07T08:00:00+00:00")
 
 
+class TestBuildResultComponents(unittest.TestCase):
+    def test_includes_components_when_given(self):
+        comps = {"market_momentum": {"score": 74.6, "rating": "greed"}}
+        result = build_result(66.7, "greed", "2026-08-07T08:00:00+00:00", fgi_components=comps)
+        self.assertEqual(result["fgi_components"], comps)
+
+    def test_omits_components_when_none(self):
+        result = build_result(66.7, "greed", "2026-08-07T08:00:00+00:00")
+        self.assertNotIn("fgi_components", result)
+
+
 class TestRun(unittest.TestCase):
     def test_run_marks_source_cnn(self):
         # with the CNN responding, source = "cnn"
@@ -275,6 +312,32 @@ class TestRun(unittest.TestCase):
         )
         self.assertFalse(kwargs["validate"]("feargreedmeter", crypto_body))
         self.assertEqual(result["source"], "feargreedmeter")
+
+
+class TestRunComponents(unittest.TestCase):
+    def test_run_cnn_includes_components(self):
+        body = json.dumps({
+            "fear_and_greed": {"score": 66.7, "rating": "greed"},
+            "market_momentum_sp500": {"score": 74.6, "rating": "greed"},
+        })
+        with mock.patch(
+            "scrapers.fgi_scraper.fetch_first_success",
+            return_value=(body, "cnn"),
+        ):
+            result = run()
+        self.assertEqual(result["source"], "cnn")
+        self.assertIn("fgi_components", result)
+        self.assertEqual(result["fgi_components"]["market_momentum"], {"score": 74.6, "rating": "greed"})
+
+    def test_run_fallback_omits_components(self):
+        body = '{"value":71,"label":"Greed","source":"stock"}'
+        with mock.patch(
+            "scrapers.fgi_scraper.fetch_first_success",
+            return_value=(body, "feargreedindex"),
+        ):
+            result = run()
+        self.assertEqual(result["source"], "feargreedindex")
+        self.assertNotIn("fgi_components", result)
 
 
 if __name__ == "__main__":

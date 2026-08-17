@@ -122,7 +122,12 @@ def parse_components(payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
 
 def parse_cnn(payload: str) -> dict[str, Any]:
     """Parse the CNN API JSON payload (primary source)."""
-    return parse_score(json.loads(payload))
+    raw = json.loads(payload)
+    data = parse_score(raw)
+    components = parse_components(raw)
+    if components:
+        data["fgi_components"] = components
+    return data
 
 
 def parse_feargreedmeter(html: str) -> dict[str, Any]:
@@ -174,9 +179,14 @@ def parse_html(html: str) -> dict[str, Any]:
     return {"score": score, "zone": zone_from_score(score)}
 
 
-def build_result(score: float, zone: str, fetched_at: str) -> dict[str, Any]:
+def build_result(
+    score: float,
+    zone: str,
+    fetched_at: str,
+    fgi_components: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     """Build the output dict in the file.json format."""
-    return {
+    result = {
         "score": score,
         "zone": zone,
         "fetched_at": fetched_at,
@@ -184,6 +194,9 @@ def build_result(score: float, zone: str, fetched_at: str) -> dict[str, Any]:
         "stale_after_hours": DEFAULT_STALE_AFTER_HOURS,
         "status": "fresh",
     }
+    if fgi_components:
+        result["fgi_components"] = fgi_components
+    return result
 
 
 def run(config: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -223,6 +236,7 @@ def run(config: dict[str, Any] | None = None) -> dict[str, Any]:
 
     parser_list = [(source, parsers[source])]
     data, _ = try_parsers(body, parser_list)
-    result = build_result(data["score"], data["zone"], _now_iso())
+    components = data.get("fgi_components") if source == "cnn" else None
+    result = build_result(data["score"], data["zone"], _now_iso(), fgi_components=components)
     result["source"] = source
     return result
