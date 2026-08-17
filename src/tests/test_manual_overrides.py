@@ -10,6 +10,7 @@ from manual_overrides import (
     build_manual_result,
     build_stale_manual_result,
     is_fresh,
+    save_override,
     validate_entry,
 )
 
@@ -260,6 +261,80 @@ class TestApplyOverrides(unittest.TestCase):
         )
         self.assertEqual(merged["aaii"]["origin"], "scraped")
         self.assertEqual(merged["aaii"]["status"], "fresh")
+
+
+class TestEnabledFlag(unittest.TestCase):
+    def test_validate_conserves_enabled_false(self):
+        entry = dict(VALID_AAII, enabled=False)
+        cleaned = validate_entry("aaii", entry)
+        self.assertFalse(cleaned["enabled"])
+
+    def test_validate_defaults_enabled_true(self):
+        cleaned = validate_entry("aaii", VALID_AAII)
+        self.assertTrue(cleaned["enabled"])
+
+    def test_apply_ignores_disabled_override(self):
+        cleaned = validate_entry("aaii", dict(VALID_AAII, enabled=False))
+        results = {"aaii": {"status": "error", "origin": "missing", "error": "boom"}}
+        merged = apply_overrides(results, {"aaii": cleaned}, now=NOW)
+        # override disabilitato → il risultato error/missing resta
+        self.assertEqual(merged["aaii"]["status"], "error")
+
+    def test_apply_uses_enabled_override(self):
+        cleaned = validate_entry("aaii", dict(VALID_AAII, enabled=True))
+        results = {"aaii": {"status": "error", "origin": "missing", "error": "boom"}}
+        merged = apply_overrides(results, {"aaii": cleaned}, now=NOW)
+        self.assertEqual(merged["aaii"]["origin"], "manual")
+        self.assertEqual(merged["aaii"]["status"], "fresh")
+
+
+class TestSaveOverride(unittest.TestCase):
+    def test_save_override_updates_entry_and_fetched_at(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "manual_overrides.yaml"
+            path.write_text(
+                "naaim:\n  exposure: 79.70\n  source: manual\n"
+                "  fetched_at: \"2026-08-16T16:27:00+00:00\"\n"
+                "  stale_after_hours: 168\n  entered_by: \"user\"\n",
+                encoding="utf-8",
+            )
+            save_override(
+                str(path),
+                "naaim",
+                {"exposure": 85.0, "stale_after_hours": 168, "entered_by": "user"},
+                now=datetime(2026, 8, 20, 12, 0, tzinfo=timezone.utc),
+            )
+            import yaml
+            data = yaml.safe_load(path.read_text(encoding="utf-8"))
+            self.assertEqual(data["naaim"]["exposure"], 85.0)
+            self.assertEqual(data["naaim"]["fetched_at"], "2026-08-20T12:00:00+00:00")
+            self.assertEqual(data["naaim"]["source"], "manual")
+            self.assertIn("enabled", data["naaim"])
+
+    def test_save_override_preserves_other_indicators(self):
+        import tempfile
+        from pathlib import Path
+        import yaml
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "manual_overrides.yaml"
+            path.write_text(
+                "aaii:\n  bullish: 37.0\n  source: manual\n"
+                "  fetched_at: \"2026-08-14T18:20:00+00:00\"\n"
+                "  stale_after_hours: 168\n  entered_by: \"user\"\n",
+                encoding="utf-8",
+            )
+            save_override(
+                str(path),
+                "naaim",
+                {"exposure": 85.0, "stale_after_hours": 168, "entered_by": "user"},
+                now=datetime(2026, 8, 20, 12, 0, tzinfo=timezone.utc),
+            )
+            data = yaml.safe_load(path.read_text(encoding="utf-8"))
+            self.assertIn("aaii", data)
+            self.assertIn("naaim", data)
+            self.assertEqual(data["aaii"]["bullish"], 37.0)
 
 
 if __name__ == "__main__":

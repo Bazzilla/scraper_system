@@ -135,6 +135,10 @@ def validate_entry(key: str, entry: Any) -> dict[str, Any]:
     if zone is not None and not isinstance(zone, str):
         raise OverrideValidationError(f"{key}: zone must be a string")
 
+    enabled = entry.get("enabled", True)
+    if not isinstance(enabled, bool):
+        raise OverrideValidationError(f"{key}: enabled must be a boolean")
+
     return {
         **values,
         "source": "manual",
@@ -143,6 +147,7 @@ def validate_entry(key: str, entry: Any) -> dict[str, Any]:
         "stale_after_hours": int(stale_after_hours),
         "entered_by": entered_by.strip(),
         "note": note.strip() if note else None,
+        "enabled": enabled,
         **({"zone": zone.strip()} if zone else {}),
     }
 
@@ -274,6 +279,9 @@ def apply_overrides(
         if scraped_ok and key not in force:
             continue  # scraping wins (default)
 
+        if not override.get("enabled", True):
+            continue  # override disabilitato → ignorato (come se non esistesse)
+
         if is_fresh(override, now):
             merged[key] = build_manual_result(key, override, now)
         else:
@@ -283,6 +291,31 @@ def apply_overrides(
             if key not in results or results[key].get("status") != "fresh":
                 merged[key] = build_stale_manual_result(key, override, now)
     return merged
+
+
+def save_override(
+    path: str,
+    key: str,
+    values: dict[str, Any],
+    enabled: bool = True,
+    now: datetime | None = None,
+) -> None:
+    """Write/update one manual override entry in the YAML file.
+
+    Preserves the other indicators' entries; ``fetched_at`` is refreshed to
+    ``now`` (UTC), ``source`` is forced to "manual". Malformed values are
+    NOT written (caller must validate first).
+    """
+    now = now or datetime.now(timezone.utc)
+    overrides = load_overrides(path)
+    entry = dict(overrides.get(key, {}))
+    entry.update(values)
+    entry["source"] = "manual"
+    entry["enabled"] = bool(enabled)
+    entry["fetched_at"] = now.isoformat()
+    overrides[key] = entry
+    with open(path, "w", encoding="utf-8") as fh:
+        yaml.safe_dump(overrides, fh, sort_keys=False, allow_unicode=True)
 
 
 def _parse_iso(value: Any) -> datetime:
