@@ -282,6 +282,20 @@ class TestRenderSections(unittest.TestCase):
         self.assertIn("errore", html)
         self.assertIn("All sources failed", html)
 
+    def test_market_cards_include_age_attrs(self):
+        html = render_market_cards(_sample_data())
+        self.assertIn('data-fetched-at="2026-08-12T14:29:42+00:00"', html)  # fgi
+        self.assertIn('data-stale-hours="24"', html)  # fgi
+        self.assertIn('data-fetched-at="2026-08-12T14:29:43+00:00"', html)  # aaii
+        self.assertIn('data-stale-hours="168"', html)  # aaii
+
+    def test_error_card_has_no_age_attrs(self):
+        data = _sample_data()
+        data["fgi"] = {"status": "error", "error": "All sources failed"}
+        html = render_market_cards(data)
+        # La card di errore non ha timestamp → nessun data-fetched-at per fgi
+        self.assertNotIn('data-fetched-at="2026-08-12T14:29:42+00:00"', html)
+
     def test_stale_summary_shows_error_count(self):
         summary = {
             "total_sources": 2,

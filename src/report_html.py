@@ -381,7 +381,7 @@ def render_market_cards(data: dict[str, Any]) -> str:
         fgi_source = fgi.get("source")
         source_html = f' · Fonte: {html_mod.escape(str(fgi_source))}' if fgi_source else ""
         parts.append(
-            '<div class="card"><div class="label">CNN Fear &amp; Greed</div>'
+            f'<div class="card"{_age_attrs(fgi.get("fetched_at"), fgi.get("stale_after_hours"))}><div class="label">CNN Fear &amp; Greed</div>'
             f'<div class="value">{fmt(fgi_score)}</div>{zone_badge}'
             f'<div class="meta">Aggiornato: {format_iso_dt(fgi.get("fetched_at"))}{source_html}</div>'
             f'{_origin_html(fgi)}</div>'
@@ -401,7 +401,7 @@ def render_market_cards(data: dict[str, Any]) -> str:
         else:
             ts_note = " · term structure non disponibile"
         parts.append(
-            '<div class="card"><div class="label">VIX Spot '
+            f'<div class="card"{_age_attrs(vix.get("fetched_at"), vix.get("stale_after_hours"))}><div class="label">VIX Spot '
             '<span class="sema warning">proxy</span></div>'
             f'<div class="value">{fmt(vix.get("vix_close"))}</div>'
             f'<div class="meta">Aggiornato: {format_iso_dt(vix.get("fetched_at"))}{ts_note}</div>'
@@ -418,7 +418,7 @@ def render_market_cards(data: dict[str, Any]) -> str:
         pcr_badge = "" if pcr_cls == "neutral" else (
             f'<span class="sema {pcr_cls}">{pcr_cls}</span>')
         parts.append(
-            '<div class="card"><div class="label">Equity Put/Call Ratio</div>'
+            f'<div class="card"{_age_attrs(pcr.get("fetched_at"), pcr.get("stale_after_hours"))}><div class="label">Equity Put/Call Ratio</div>'
             f'<div class="value">{fmt(equity_pcr)}</div>{pcr_badge}'
             f'<div class="meta">Giorno: {pcr.get("trade_date", "—")} · '
             f'Aggiornato: {format_iso_dt(pcr.get("fetched_at"))}</div></div>'
@@ -440,7 +440,7 @@ def render_market_cards(data: dict[str, Any]) -> str:
             return f'<span class="sema {cls}">{cls}</span>'
 
         parts.append(
-            '<div class="card"><div class="label">Breadth settoriale '
+            f'<div class="card"{_age_attrs(pct_sma.get("fetched_at"), pct_sma.get("stale_after_hours"))}><div class="label">Breadth settoriale '
             '<span class="sema warning">proxy</span></div>'
             f'<div class="value">SMA50 {fmt(p50)}% {_breadth_sema(p50, 20, 50)}</div>'
             f'<div class="meta">SMA200 {fmt(p200)}% {_breadth_sema(p200, 30, 60)}</div>'
@@ -457,7 +457,7 @@ def render_market_cards(data: dict[str, Any]) -> str:
         max_ticker = total_ins.get("max_ticker")
         max_html = f'<span class="ticker">{html_mod.escape(str(max_ticker))}</span>' if max_ticker else "—"
         parts.append(
-            '<div class="card"><div class="label">Insider (bonus)</div>'
+            f'<div class="card"{_age_attrs(insider.get("fetched_at"), insider.get("stale_after_hours"))}><div class="label">Insider (bonus)</div>'
             f'<div class="value">{n_bonus} titoli</div>'
             f'<div class="meta">Max bonus {fmt(max_bonus)} ({max_html})</div>'
             f'<div class="meta">Aggiornato: {format_iso_dt(insider.get("fetched_at"))}</div></div>'
@@ -473,7 +473,7 @@ def render_market_cards(data: dict[str, Any]) -> str:
         aaii_source = aaii.get("source")
         aaii_source_html = f' · Fonte: {html_mod.escape(str(aaii_source))}' if aaii_source else ""
         parts.append(
-            '<div class="card"><div class="label">AAII Sentiment</div>'
+            f'<div class="card"{_age_attrs(aaii.get("fetched_at"), aaii.get("stale_after_hours"))}><div class="label">AAII Sentiment</div>'
             f'<div class="value">B {fmt(bullish)} · N {fmt(neutral)} · R {fmt(bearish)}</div>'
             f'<div class="meta">Aggiornato: {format_iso_dt(aaii.get("fetched_at"))}'
             f' (prossimo: {aaii.get("next_expected", "—")}){aaii_source_html}</div>'
@@ -488,7 +488,7 @@ def render_market_cards(data: dict[str, Any]) -> str:
             naaim_source = naaim.get("source")
             naaim_source_html = f' · Fonte: {html_mod.escape(str(naaim_source))}' if naaim_source else ""
             parts.append(
-                '<div class="card"><div class="label">NAAIM Exposure</div>'
+                f'<div class="card"{_age_attrs(naaim.get("fetched_at"), naaim.get("stale_after_hours"))}><div class="label">NAAIM Exposure</div>'
                 f'<div class="value">{fmt(naaim.get("exposure"))}</div>'
                 f'<div class="meta">Aggiornato: {format_iso_dt(naaim.get("fetched_at"))}{naaim_source_html}</div>'
                 f'{_origin_html(naaim)}</div>'
