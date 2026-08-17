@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -128,6 +127,10 @@ class OverridesHandler(BaseHTTPRequestHandler):
             self._send_json(400, {"ok": False, "message": "JSON malformato"})
             return
 
+        if not isinstance(payload, dict):
+            self._send_json(400, {"ok": False, "message": "body deve essere un oggetto JSON"})
+            return
+
         key = payload.get("key")
         if key not in SUPPORTED_KEYS:
             self._send_json(400, {"ok": False, "message": f"indicatore non supportato: {key}"})
@@ -148,7 +151,11 @@ class OverridesHandler(BaseHTTPRequestHandler):
                     return
             else:
                 values[field] = str(raw).strip()
-        values["stale_after_hours"] = float(payload.get("stale_after_hours", 24))
+        try:
+            values["stale_after_hours"] = float(payload.get("stale_after_hours", 24))
+        except (TypeError, ValueError):
+            self._send_json(400, {"ok": False, "message": "stale_after_hours non numerico"})
+            return
         values["entered_by"] = "user"
         if payload.get("note"):
             values["note"] = str(payload["note"]).strip()

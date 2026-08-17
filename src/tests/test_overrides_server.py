@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from overrides_server import OverridesHandler, rebuild_report
+from overrides_server import SUPPORTED_KEYS, rebuild_report
 
 
 class TestRebuildReport(unittest.TestCase):
@@ -51,9 +51,8 @@ class TestRebuildReport(unittest.TestCase):
 
 
 class TestOverridesHandler(unittest.TestCase):
-    def _handler(self):
-        return OverridesHandler
-
-    def test_handler_is_bounded_to_localhost(self):
-        # OverridesHandler deve essere servito solo su 127.0.0.1
-        self.assertTrue(hasattr(OverridesHandler, "server_version"))
+    def test_supported_keys_whitelist(self):
+        self.assertEqual(
+            SUPPORTED_KEYS,
+            frozenset({"aaii", "fgi", "naaim", "vix_term_structure", "pct_sma"}),
+        )
