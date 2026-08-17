@@ -313,6 +313,15 @@ class TestRenderSections(unittest.TestCase):
         html = render_market_cards(_sample_data())
         self.assertNotIn("fgi-components", html)
 
+    def test_fgi_rating_badge_escapes_class(self):
+        from report_html import _fgi_rating_badge
+        badge = _fgi_rating_badge('greed" onmouseover="alert(1)')
+        # La classe non deve contenere un attributo iniettabile: html.escape
+        # converte le virgolette in &quot;, quindi la sequenza esatta
+        # `class="sema greed" onmouseover` non deve comparire.
+        self.assertNotIn('class="sema greed" onmouseover', badge)
+        self.assertIn('&quot;_onmouseover=&quot;', badge)
+
     def test_stale_summary_shows_error_count(self):
         summary = {
             "total_sources": 2,

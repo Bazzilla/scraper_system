@@ -12,6 +12,8 @@
 ## Concept
 `src/report_html.py` legge `output/output.json` e genera `output/report.html` (pagina self-contained, dark+light toggle, semafori, tabelle per categoria, legenda interattiva, guida operativa). Funzioni pure per ogni sezione. CLI: `render(config_path)`.
 
+**Card FGI**: può includere una mini-griglia dei 7 sub-indicatori da `fgi.fgi_components` (score + rating per componente, badge via `_fgi_rating_badge`). `fgi_components` è DISPLAY-ONLY: non entra mai nello score di segnale.
+
 ## Segnale COMPRA / WATCHLIST / ATTENDI (compute_signal)
 `compute_signal(entry, regime)` fa scoring ±1 per indicatore. Classe: `score>=2` → buy, `score<=-2` → watchlist (mai sell da tecnici), altrimenti hold. Gate: in greed (FGI≥55) nessun buy.
 ```python

@@ -111,7 +111,10 @@ def parse_components(payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
             continue
         try:
             score = float(raw["score"])
-            rating = str(raw["rating"]).strip().lower()
+            rating_raw = raw.get("rating")
+            if not isinstance(rating_raw, str):
+                continue
+            rating = rating_raw.strip().lower()
         except (KeyError, TypeError, ValueError):
             continue
         if not rating:

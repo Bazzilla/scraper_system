@@ -382,7 +382,7 @@ def _badge(status: str) -> str:
 
 def _fgi_rating_badge(rating: str) -> str:
     """Render a FGI component rating badge (fear/greed/neutral...)."""
-    cls = rating.strip().lower().replace(" ", "_")
+    cls = html_mod.escape(rating.strip().lower().replace(" ", "_"))
     return f'<span class="sema {cls}">{html_mod.escape(rating)}</span>'
 
 

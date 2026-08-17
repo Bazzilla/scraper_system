@@ -109,6 +109,20 @@ class TestParseComponents(unittest.TestCase):
     def test_returns_empty_when_no_valid_components(self):
         self.assertEqual(parse_components({}), {})
 
+    def test_skips_none_rating(self):
+        payload = dict(self._PAYLOAD)
+        payload["junk_bond_demand"] = {"score": 98.6, "rating": None}
+        result = parse_components(payload)
+        self.assertNotIn("junk_bond_demand", result)
+        self.assertIn("market_momentum", result)
+
+    def test_skips_non_string_rating(self):
+        payload = dict(self._PAYLOAD)
+        payload["safe_haven_demand"] = {"score": 78.8, "rating": {"a": 1}}
+        result = parse_components(payload)
+        self.assertNotIn("safe_haven_demand", result)
+        self.assertIn("market_momentum", result)
+
 
 class TestParseCnn(unittest.TestCase):
     def test_parses_score_and_zone(self):
