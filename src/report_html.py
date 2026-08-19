@@ -39,6 +39,7 @@ from report_helpers import (  # noqa: F401
     _sema,
     _signal_badge,
     _status_badge,
+    buy_the_dip_gate,
     compute_signal,
     fmt,
     format_iso_dt,

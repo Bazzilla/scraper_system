@@ -10,6 +10,7 @@ from pathlib import Path
 from report_html import (
     _age_attrs,
     build_page,
+    buy_the_dip_gate,
     compute_signal,
     fmt,
     format_iso_dt,
@@ -320,6 +321,41 @@ class TestComputeSignal(unittest.TestCase):
         self.assertEqual(market_regime(62.66), "greed")
         self.assertEqual(compute_signal(qcom, "greed"), "watchlist")
         self.assertNotEqual(compute_signal(qcom, "greed"), "sell")
+
+
+class TestBuyTheDipGate(unittest.TestCase):
+    def test_none_is_missing_or_stale(self):
+        self.assertEqual(buy_the_dip_gate(None), "missing_or_stale")
+
+    def test_53_57_is_closed(self):
+        self.assertEqual(buy_the_dip_gate(53.57), "closed")
+
+    def test_41_is_closed(self):
+        self.assertEqual(buy_the_dip_gate(41), "closed")
+
+    def test_40_is_watch_only(self):
+        self.assertEqual(buy_the_dip_gate(40), "watch_only")
+
+    def test_30_is_watch_only(self):
+        self.assertEqual(buy_the_dip_gate(30), "watch_only")
+
+    def test_25_is_open(self):
+        self.assertEqual(buy_the_dip_gate(25), "open")
+
+    def test_20_is_strong_open(self):
+        self.assertEqual(buy_the_dip_gate(20), "strong_open")
+
+    def test_below_20_is_strong_open(self):
+        self.assertEqual(buy_the_dip_gate(15), "strong_open")
+
+    def test_stale_flag_forces_missing_or_stale(self):
+        # stale=True vince sul punteggio (fail-closed)
+        self.assertEqual(buy_the_dip_gate(20, stale=True), "missing_or_stale")
+        self.assertEqual(buy_the_dip_gate(None, stale=True), "missing_or_stale")
+
+    def test_non_numeric_is_missing_or_stale(self):
+        self.assertEqual(buy_the_dip_gate("abc"), "missing_or_stale")
+        self.assertEqual(buy_the_dip_gate("53.57"), "missing_or_stale")
 
 
 class TestRenderSections(unittest.TestCase):

@@ -64,6 +64,43 @@ def market_regime(fgi_score: float | None) -> str:
     return "neutral"
 
 
+# Buy-the-Dip gate states (audit 2026-08-19). Descriptive market_regime()
+# (fear/neutral/greed) is separate from this OPERATIONAL gate: it decides
+# whether a technical BUY may stand, degrade to WATCHLIST, or be blocked.
+GATE_MISSING_OR_STALE = "missing_or_stale"
+GATE_CLOSED = "closed"
+GATE_WATCH_ONLY = "watch_only"
+GATE_OPEN = "open"
+GATE_STRONG_OPEN = "strong_open"
+
+
+def buy_the_dip_gate(fgi_score: float | str | None, stale: bool = False) -> str:
+    """Operational Buy-the-Dip gate from the Fear & Greed score.
+
+    Decides whether a technical BUY is operable. This is the strategy gate
+    (separate from the descriptive ``market_regime`` classification):
+
+    - missing/None/non-numeric/stale  → ``missing_or_stale`` (no BUY)
+    - fgi_score > 40                  → ``closed`` (no BUY)
+    - 25 < fgi_score <= 40            → ``watch_only`` (BUY → WATCHLIST)
+    - 20 < fgi_score <= 25            → ``open`` (BUY allowed)
+    - fgi_score <= 20                 → ``strong_open`` (BUY allowed, no
+      additional operational distinction yet)
+
+    ``stale`` is an explicit freshness flag; when True the gate is
+    ``missing_or_stale`` regardless of the score (fail-closed).
+    """
+    if stale or fgi_score is None or not isinstance(fgi_score, (int, float)):
+        return GATE_MISSING_OR_STALE
+    if fgi_score > 40:
+        return GATE_CLOSED
+    if fgi_score > 25:
+        return GATE_WATCH_ONLY
+    if fgi_score > 20:
+        return GATE_OPEN
+    return GATE_STRONG_OPEN
+
+
 def compute_signal(
     entry: dict[str, Any],
     regime: str = "neutral",
@@ -96,12 +133,10 @@ def compute_signal(
     never produces a sell.
 
     Buy-the-Dip FGI gate (audit 2026-08-19): a technical BUY is only operable
-    in sufficient fear. ``fgi_score`` is the Fear & Greed score (None when
-    missing/stale/unreliable — fail-closed: no BUY):
-    - fgi_score is None or > 40  → 'buy' becomes 'hold'
-    - 25 < fgi_score <= 40       → 'buy' becomes 'watchlist'
-    - fgi_score <= 25            → 'buy' stays 'buy'
-    Non-buy signals are never upgraded to 'buy'.
+    in sufficient fear. The operational gate is delegated to
+    ``buy_the_dip_gate(fgi_score)`` (missing/stale → no BUY; > 40 → no BUY;
+    25 < FGI <= 40 → WATCHLIST; <= 25 → BUY stays). Non-buy signals are never
+    upgraded to 'buy'.
 
     Proxy guard (audit 2026-08-14): this scorer consumes only IMPLEMENTED
     per-ticker indicators (rsi_14, mfi_14, sma_50, sma_200, drawdown_52w from
@@ -156,11 +191,12 @@ def compute_signal(
         return "hold"
 
     # Buy-the-Dip FGI gate (audit 2026-08-19): technical BUY only in
-    # sufficient fear. Missing/stale FGI (None) → fail-closed, no BUY.
+    # sufficient fear. Missing/stale FGI → fail-closed, no BUY.
     if signal == "buy":
-        if fgi_score is None or fgi_score > 40:
+        gate = buy_the_dip_gate(fgi_score)
+        if gate in (GATE_MISSING_OR_STALE, GATE_CLOSED):
             return "hold"
-        if fgi_score > 25:
+        if gate == GATE_WATCH_ONLY:
             return "watchlist"
     return signal
 
