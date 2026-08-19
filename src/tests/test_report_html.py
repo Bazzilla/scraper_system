@@ -107,7 +107,8 @@ class TestComputeSignal(unittest.TestCase):
             "sma_200": 80.0,   # price sopra → +1
             "drawdown_52w": -2.0,  # ok → +1
         }
-        self.assertEqual(compute_signal(entry), "buy")
+        # FGI 20 (paura sufficiente) → il buy tecnico resta valido
+        self.assertEqual(compute_signal(entry, fgi_score=20), "buy")
 
     def test_watchlist_on_deep_weakness(self):
         entry = {
@@ -165,8 +166,8 @@ class TestComputeSignal(unittest.TestCase):
             "drawdown_52w": -2.0,
         }
         # Senza gate → buy; con regime greed → bloccato a hold
-        self.assertEqual(compute_signal(entry, "neutral"), "buy")
-        self.assertEqual(compute_signal(entry, "greed"), "hold")
+        self.assertEqual(compute_signal(entry, "neutral", fgi_score=20), "buy")
+        self.assertEqual(compute_signal(entry, "greed", fgi_score=60), "hold")
 
     def test_watchlist_survives_in_fear(self):
         entry = {
@@ -199,8 +200,82 @@ class TestComputeSignal(unittest.TestCase):
             "drawdown_52w": -20.0,
         }
         # fear favorisce buy; la debolezza resta watchlist in ogni regime
-        self.assertEqual(compute_signal(entry_buy, "fear"), "buy")
-        self.assertEqual(compute_signal(entry_weak, "greed"), "watchlist")
+        self.assertEqual(compute_signal(entry_buy, "fear", fgi_score=20), "buy")
+        self.assertEqual(compute_signal(entry_weak, "greed", fgi_score=60), "watchlist")
+
+    def _buy_entry(self) -> dict:
+        return {
+            "last_close": 100.0,
+            "rsi_14": 25.0,
+            "mfi_14": 15.0,
+            "sma_50": 90.0,
+            "sma_200": 80.0,
+            "drawdown_52w": -2.0,
+        }
+
+    def test_fgi_gate_none_blocks_buy(self):
+        # FGI mancante/stale → fail-closed: nessun BUY
+        self.assertEqual(compute_signal(self._buy_entry(), fgi_score=None), "hold")
+
+    def test_fgi_gate_53_57_blocks_buy(self):
+        # FGI 53.57 (neutral) → BUY tecnico diventa ATTENDI
+        self.assertEqual(compute_signal(self._buy_entry(), fgi_score=53.57), "hold")
+
+    def test_fgi_gate_41_blocks_buy(self):
+        # FGI 41 (> 40) → BUY tecnico diventa ATTENDI
+        self.assertEqual(compute_signal(self._buy_entry(), fgi_score=41), "hold")
+
+    def test_fgi_gate_40_is_watchlist(self):
+        # FGI 40 (25 < FGI <= 40) → BUY tecnico diventa WATCHLIST
+        self.assertEqual(compute_signal(self._buy_entry(), fgi_score=40), "watchlist")
+
+    def test_fgi_gate_30_is_watchlist(self):
+        # FGI 30 (25 < FGI <= 40) → BUY tecnico diventa WATCHLIST
+        self.assertEqual(compute_signal(self._buy_entry(), fgi_score=30), "watchlist")
+
+    def test_fgi_gate_25_allows_buy(self):
+        # FGI 25 (<= 25) → BUY tecnico resta BUY
+        self.assertEqual(compute_signal(self._buy_entry(), fgi_score=25), "buy")
+
+    def test_fgi_gate_20_allows_buy(self):
+        # FGI 20 (<= 25) → BUY tecnico resta BUY
+        self.assertEqual(compute_signal(self._buy_entry(), fgi_score=20), "buy")
+
+    def test_fgi_gate_never_upgrades_non_buy(self):
+        # Segnali non-buy non devono MAI diventare buy, qualunque sia il FGI
+        weak = {
+            "last_close": 100.0,
+            "rsi_14": 75.0,
+            "mfi_14": 85.0,
+            "sma_50": 110.0,
+            "sma_200": 120.0,
+            "drawdown_52w": -20.0,
+        }
+        mixed = {
+            "last_close": 100.0,
+            "rsi_14": 50.0,
+            "mfi_14": 50.0,
+            "sma_50": 110.0,
+            "sma_200": 80.0,
+            "drawdown_52w": -8.0,
+        }
+        for fgi in (None, 10, 20, 25, 30, 40, 41, 53.57, 70):
+            self.assertEqual(compute_signal(weak, fgi_score=fgi), "watchlist")
+            self.assertEqual(compute_signal(mixed, fgi_score=fgi), "hold")
+
+    def test_table_fgi_53_57_renders_no_compra(self):
+        # Con FGI 53.57 nessun ticker tecnicamente buy deve renderizzare COMPRA
+        data = _sample_data()
+        data["fgi"]["score"] = 53.57
+        data["fgi"]["status"] = "fresh"
+        entries = data["indicators"]["semiconductors"]
+        strong = dict(entries["AMAT"], rsi_14=25.0, mfi_14=15.0,
+                      last_close=560.0, sma_50=500.0, sma_200=400.0,
+                      drawdown_52w=-1.0)
+        html = render_ticker_table("semiconductors", {"AMAT": strong},
+                                   regime="neutral", fgi_score=53.57)
+        self.assertIn("ATTENDI", html)
+        self.assertNotIn("COMPRA", html)
 
     def test_scorer_accepts_proxy_accepted_parameter(self):
         # Guardia proxy (audit 2026-08-14): il parametro esiste e non cambia il
@@ -214,8 +289,8 @@ class TestComputeSignal(unittest.TestCase):
             "drawdown_52w": -2.0,
         }
         self.assertEqual(
-            compute_signal(entry, "neutral", proxy_accepted={"vix_spot"}),
-            compute_signal(entry, "neutral"),
+            compute_signal(entry, "neutral", proxy_accepted={"vix_spot"}, fgi_score=20),
+            compute_signal(entry, "neutral", fgi_score=20),
         )
 
     def test_table_uses_market_regime(self):

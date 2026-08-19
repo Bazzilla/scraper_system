@@ -158,12 +158,15 @@ _LEGEND_STOCK = [
             "profilo buy-the-dip (calo ≥10%), ma NON è un motivo di vendita: osserva, "
             "non entrare senza conferme (causa del calo, MFI, volume). <strong>ATTENDI</strong> "
             "(tra -1 e +1): segnali misti, meglio aspettare.<br>"
-            "<strong>Gate di mercato (FGI)</strong>: il clima deve puntare nella stessa "
-            "direzione del titolo. In zona <em>greed</em> (FGI ≥ 55) nessun COMPRA — non "
-            "si insegue un mercato caldo. <strong>Nessun VENDI viene emesso dai dati "
-            "tecnici</strong>: vendere richiede un trigger di uscita esplicito (take-profit "
-            "+15/20%, deterioramento fondamentale, time-stop 18 mesi) che il dashboard "
-            "non può calcolare. Non è un consiglio finanziario."
+            "<strong>Gate di mercato (FGI)</strong>: con la strategia buy-the-dip "
+            "un COMPRA è operativo solo in paura sufficiente. FGI ≤ 25 → il "
+            "segnale tecnico COMPRA resta valido; 25 &lt; FGI ≤ 40 → diventa "
+            "WATCHLIST; FGI &gt; 40 o FGI non affidabile → diventa ATTENDI — non "
+            "si insegue un mercato non in paura. <strong>Nessun VENDI viene emesso "
+            "dai dati tecnici</strong>: vendere richiede un trigger di uscita "
+            "esplicito (take-profit +15/20%, deterioramento fondamentale, "
+            "time-stop 18 mesi) che il dashboard non può calcolare. Non è un "
+            "consiglio finanziario."
         ),
     },
 ]

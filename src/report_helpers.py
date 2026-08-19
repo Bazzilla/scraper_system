@@ -68,6 +68,7 @@ def compute_signal(
     entry: dict[str, Any],
     regime: str = "neutral",
     proxy_accepted: set[str] | frozenset[str] | None = None,
+    fgi_score: float | None = None,
 ) -> str:
     """Compute a trading signal from a ticker's indicators and market regime.
 
@@ -93,6 +94,14 @@ def compute_signal(
     Market gate (Regola 0): in GREED no 'buy' (do not chase a hot market); in
     FEAR deep weakness stays 'watchlist' (discounts are more real). The gate
     never produces a sell.
+
+    Buy-the-Dip FGI gate (audit 2026-08-19): a technical BUY is only operable
+    in sufficient fear. ``fgi_score`` is the Fear & Greed score (None when
+    missing/stale/unreliable — fail-closed: no BUY):
+    - fgi_score is None or > 40  → 'buy' becomes 'hold'
+    - 25 < fgi_score <= 40       → 'buy' becomes 'watchlist'
+    - fgi_score <= 25            → 'buy' stays 'buy'
+    Non-buy signals are never upgraded to 'buy'.
 
     Proxy guard (audit 2026-08-14): this scorer consumes only IMPLEMENTED
     per-ticker indicators (rsi_14, mfi_14, sma_50, sma_200, drawdown_52w from
@@ -145,6 +154,14 @@ def compute_signal(
     # Market gate (Regola 0): climate must point in the same direction.
     if regime == "greed" and signal == "buy":
         return "hold"
+
+    # Buy-the-Dip FGI gate (audit 2026-08-19): technical BUY only in
+    # sufficient fear. Missing/stale FGI (None) → fail-closed, no BUY.
+    if signal == "buy":
+        if fgi_score is None or fgi_score > 40:
+            return "hold"
+        if fgi_score > 25:
+            return "watchlist"
     return signal
 
 

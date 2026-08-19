@@ -21,6 +21,7 @@ def render_ticker_table(
     category: str,
     entries: dict[str, Any],
     regime: str = "neutral",
+    fgi_score: float | None = None,
 ) -> str:
     """Render one sector's ticker table with indicator semaphores."""
     rows: list[str] = []
@@ -38,7 +39,7 @@ def render_ticker_table(
             f"<td>{fmt(ind.get('sma_50'))}</td>"
             f"<td>{fmt(ind.get('sma_200'))}</td>"
             f"<td>{_sema(ind.get('drawdown_52w'), 'drawdown')}</td>"
-            f"<td>{_signal_badge(compute_signal(ind, regime))}</td>"
+            f"<td>{_signal_badge(compute_signal(ind, regime, fgi_score=fgi_score))}</td>"
             f'<td>{format_iso_dt(ind.get("fetched_at"))}</td>'
             "</tr>"
         )
@@ -151,6 +152,10 @@ def _ticker_sections(data: dict[str, Any]) -> str:
     sections: list[str] = []
 
     regime = market_regime(data.get("fgi", {}).get("score"))
+    # Buy-the-Dip FGI gate: il punteggio FGI è usabile solo se fresh.
+    # Se mancante/stale → None → compute_signal fa fail-closed (no BUY).
+    fgi = data.get("fgi", {})
+    fgi_score = fgi.get("score") if fgi.get("status") == "fresh" else None
 
     def _categories(mapping: dict[str, Any]) -> set[str]:
         # Solo le chiavi il cui valore è un dict rappresentano categorie
@@ -182,5 +187,5 @@ def _ticker_sections(data: dict[str, Any]) -> str:
             continue
         display = category.upper()
         sections.append(f"<h2>{html_mod.escape(display)} ({len(merged)})</h2>")
-        sections.append(render_ticker_table(category, merged, regime=regime))
+        sections.append(render_ticker_table(category, merged, regime=regime, fgi_score=fgi_score))
     return "".join(sections)
