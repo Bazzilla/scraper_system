@@ -148,25 +148,33 @@ _LEGEND_STOCK = [
     },
     {
         "name": "Segnale",
-        "range": "COMPRA / WATCHLIST / ATTENDI",
+        "range": "VALUTA INGRESSO / OSSERVA / ATTENDI",
         "short": "Sintesi degli indicatori del ticker + clima di mercato.",
         "detail": (
             "Punteggio che combina RSI, MFI, SMA50, SMA200 e drawdown (+1 bullish, "
-            "-1 bearish per indicatore). <strong>COMPRA</strong> (punteggio ≥ +2): "
-            "convergenza di segnali di ipervenduto e forza — possibile ingresso. "
-            "<strong>WATCHLIST</strong> (punteggio ≤ -2): debolezza profonda — è il "
-            "profilo buy-the-dip (calo ≥10%), ma NON è un motivo di vendita: osserva, "
-            "non entrare senza conferme (causa del calo, MFI, volume). <strong>ATTENDI</strong> "
-            "(tra -1 e +1): segnali misti, meglio aspettare.<br>"
+            "-1 bearish per indicatore). Il report NON dà ordini operativi: i "
+            "segnali indicano setup da <strong>valutare</strong>, non acquisti "
+            "automatici.<br>"
+            "<strong>VALUTA INGRESSO</strong> (punteggio ≥ +2): setup tecnico "
+            "positivo (convergenza di ipervenduto e forza) E gate Buy-the-Dip "
+            "aperto (FGI ≤ 25) — candidato da valutare per un ingresso, con le "
+            "conferme della strategia.<br>"
+            "<strong>OSSERVA</strong>: setup interessante o contesto in "
+            "avvicinamento, ma ingresso non pienamente abilitato — debolezza "
+            "profonda (punteggio ≤ -2, profilo buy-the-dip con calo ≥10%) oppure "
+            "FGI tra 25 e 40: osserva, non entrare senza conferme (causa del "
+            "calo, MFI, volume).<br>"
+            "<strong>ATTENDI</strong> (tra -1 e +1): segnali misti o nessuna "
+            "azione operativa.<br>"
             "<strong>Gate di mercato (FGI)</strong>: con la strategia buy-the-dip "
-            "un COMPRA è operativo solo in paura sufficiente. FGI ≤ 25 → il "
-            "segnale tecnico COMPRA resta valido; 25 &lt; FGI ≤ 40 → diventa "
-            "WATCHLIST; FGI &gt; 40 o FGI non affidabile → diventa ATTENDI — non "
-            "si insegue un mercato non in paura. <strong>Nessun VENDI viene emesso "
-            "dai dati tecnici</strong>: vendere richiede un trigger di uscita "
-            "esplicito (take-profit +15/20%, deterioramento fondamentale, "
-            "time-stop 18 mesi) che il dashboard non può calcolare. Non è un "
-            "consiglio finanziario."
+            "un ingresso è valutabile solo in paura sufficiente. FGI ≤ 25 → "
+            "valutazione ingresso consentita; 25 &lt; FGI ≤ 40 → solo "
+            "osservazione; FGI &gt; 40 → nessun ingresso Buy-the-Dip; FGI "
+            "mancante/stale → fail-closed, nessun ingresso. <strong>Nessun VENDI "
+            "viene emesso dai dati tecnici</strong>: vendere richiede un trigger "
+            "di uscita esplicito (take-profit +15/20%, deterioramento "
+            "fondamentale, time-stop 18 mesi) che il dashboard non può calcolare. "
+            "Non è un consiglio finanziario."
         ),
     },
 ]

@@ -1,4 +1,4 @@
-<!-- Context: project-intelligence/navigation | Priority: critical | Version: 1.15 | Updated: 2026-08-17 -->
+<!-- Context: project-intelligence/navigation | Priority: critical | Version: 1.16 | Updated: 2026-08-19 -->
 
 # Project Intelligence
 
@@ -7,7 +7,7 @@
 |------|-------------|----------|
 | technical-domain.md | Tech stack, architettura, naming, standard, security, strategy registry & manual override | critical |
 | scraping-patterns.md | Pattern scraper per modulo (FGI, VIX, AAII, OHLCV, Indicators, PCR, PCT SMA, Insider, config) | high |
-| report-html.md | Pattern report HTML + segnale COMPRA/WATCHLIST/ATTENDI con gate FGI | high |
+| report-html.md | Pattern report HTML + segnale VALUTA INGRESSO/OSSERVA/ATTENDI con gate FGI | high |
 | aaii-scraping-guide.md | Guida dettagliata scraping AAII (selectors, fallback, strategia) | high |
 
 ## Deep Dives
@@ -36,3 +36,4 @@
 - **2026-08-16**: VIX term structure → manual_supported (M1/M2 via manual_overrides, fonte vixcentral.com) — technical-domain.md v1.15, navigation.md v1.13
 - **2026-08-16**: run.py 3 modalità (full/--report-only/--override-only), fix persisted manual non blocca override, aliases fish scraper-run/scraper-report — technical-domain.md v1.16, navigation.md v1.14
 - **2026-08-17**: rimosso proxy pct_sma (breadth settoriale 29 ticker) → `% sopra SMA50/200` mercato USA manual_supported via manual_overrides.yaml — technical-domain.md v1.17, navigation.md v1.15, scraping-patterns.md v1.6
+- **2026-08-19**: label segnale non-operative (VALUTA INGRESSO/OSSERVA/ATTENDI, niente COMPRA) + pipeline technical_signal/buy_the_dip_gate/final_action — report-html.md v1.3, technical-domain.md v1.19, navigation.md v1.16

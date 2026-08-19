@@ -1,4 +1,4 @@
-<!-- Context: project-intelligence/technical | Priority: critical | Version: 1.18 | Updated: 2026-08-17 -->
+<!-- Context: project-intelligence/technical | Priority: critical | Version: 1.19 | Updated: 2026-08-19 -->
 
 # Technical Domain
 
@@ -39,7 +39,7 @@ deploy/systemd/scraper-scheduler.timer → service (--once) [daily]
 
 ## Pattern di riferimento (deep dive)
 - **Scraping**: pattern per modulo in `scraping-patterns.md` (FGI, VIX, AAII, OHLCV, Indicators, PCR, PCT SMA, Insider, config YAML, tickers)
-- **Report HTML**: pattern del segnale COMPRA/WATCHLIST/ATTENDI con gate FGI in `report-html.md`
+- **Report HTML**: pattern del segnale VALUTA INGRESSO/OSSERVA/ATTENDI con gate FGI in `report-html.md`
 - **Strategy Registry & Manual Override**: sezione sotto — stato per indicatore (coverage/availability/usable) e override manuali validati
 
 ## Strategy Registry & Manual Override
@@ -68,7 +68,7 @@ deploy/systemd/scraper-scheduler.timer → service (--once) [daily]
 | Origin keys | lowercase | scraped, manual, missing |
 | Coverage keys | lowercase | coverage, implementation_status, availability, usable_in_strategy_score |
 | Segnale classes | lowercase | buy, watchlist, hold |
-| Badge label | uppercase | COMPRA, WATCHLIST, ATTENDI |
+| Badge label | uppercase | VALUTA INGRESSO, OSSERVA, ATTENDI |
 
 ## Code Standards
 - Type hints su tutte le funzioni e moduli
@@ -85,8 +85,8 @@ deploy/systemd/scraper-scheduler.timer → service (--once) [daily]
 - **Separazione semantica**: coverage ≠ availability ≠ usable_in_strategy_score; un proxy non entra mai nello score senza `proxy_accepted` esplicito
 - **Priorità dati**: scraping (fresh) > manual override (valido+fresco) > missing/error
 - **Persisted manual non blocca override nuovo**: in `apply_overrides`, lo scraping "vince" solo se `origin == "scraped"` — un manual persistito deve poter essere aggiornato dal YAML
-- **Segnale conforme alla strategia buy-the-dip**: la debolezza tecnica (sotto SMA, drawdown profondo) è profilo WATCHLIST, MAI sell — vendere richiede trigger di uscita (take-profit, deterioramento fondamentale, time-stop) non calcolabili dai dati tecnici
-- **Gate FGI nella sintesi**: in greed (FGI≥56, per bande strategia F1) nessun COMPRA (non inseguire mercato caldo)
+- **Segnale conforme alla strategia buy-the-dip**: la debolezza tecnica (sotto SMA, drawdown profondo) è profilo OSSERVA, MAI sell — vendere richiede trigger di uscita (take-profit, deterioramento fondamentale, time-stop) non calcolabili dai dati tecnici
+- **Gate FGI nella sintesi**: VALUTA INGRESSO solo con FGI ≤ 25; 25 < FGI ≤ 40 → OSSERVA; FGI > 40 o mancante/stale → ATTENDI (fail-closed, nessun ingresso); in greed (FGI≥56, per bande strategia F1) nessun ingresso (non inseguire mercato caldo)
 
 ## Security Requirements
 - Rate limiting e User-Agent browser per ogni richiesta (evita blocchi HTTP 418/403)

@@ -226,9 +226,13 @@ def compute_signal(
 
 
 def _signal_badge(signal: str) -> str:
-    """Render the signal badge for a ticker."""
+    """Render the signal badge for a ticker.
+
+    Labels are deliberately non-operational: the report signals setups to
+    EVALUATE, it never issues buy orders (buy-the-dip strategy with FGI gate).
+    """
     cls = {"buy": "buy", "watchlist": "watchlist", "hold": "hold"}[signal]
-    label = {"buy": "COMPRA", "watchlist": "WATCHLIST", "hold": "ATTENDI"}[signal]
+    label = {"buy": "VALUTA INGRESSO", "watchlist": "OSSERVA", "hold": "ATTENDI"}[signal]
     icon = {"buy": "🟢", "watchlist": "🟠", "hold": "⚪"}[signal]
     return f'<span class="signal {cls}">{icon} {label}</span>'
 

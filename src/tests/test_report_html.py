@@ -147,7 +147,7 @@ class TestComputeSignal(unittest.TestCase):
                          sma_50=600.0, sma_200=600.0, drawdown_52w=-30.0)
         html = render_ticker_table("semiconductors", {"AMAT": with_weak})
         self.assertIn('class="signal watchlist"', html)
-        self.assertIn("WATCHLIST", html)
+        self.assertIn("OSSERVA", html)
 
     def test_market_regime_classification(self):
         self.assertEqual(market_regime(70.0), "greed")
@@ -267,7 +267,8 @@ class TestComputeSignal(unittest.TestCase):
             self.assertEqual(compute_signal(mixed, fgi_score=fgi), "hold")
 
     def test_table_fgi_53_57_renders_no_compra(self):
-        # Con FGI 53.57 nessun ticker tecnicamente buy deve renderizzare COMPRA
+        # Con FGI 53.57 nessun ticker tecnicamente buy deve renderizzare
+        # VALUTA INGRESSO (nessun segnale di ingresso)
         data = _sample_data()
         data["fgi"]["score"] = 53.57
         data["fgi"]["status"] = "fresh"
@@ -278,7 +279,7 @@ class TestComputeSignal(unittest.TestCase):
         html = render_ticker_table("semiconductors", {"AMAT": strong},
                                    regime="neutral", fgi_score=53.57)
         self.assertIn("ATTENDI", html)
-        self.assertNotIn("COMPRA", html)
+        self.assertNotIn("VALUTA INGRESSO", html)
 
     def test_compute_signal_delegates_to_pipeline(self):
         # Compatibilità: compute_signal == technical_signal + gate + final_action
@@ -308,13 +309,13 @@ class TestComputeSignal(unittest.TestCase):
         data = _sample_data()
         data["fgi"]["score"] = 70.0  # greed
         entries = data["indicators"]["semiconductors"]
-        # Titolo tecnicamente forte → in greed NON deve comparire COMPRA
+        # Titolo tecnicamente forte → in greed NON deve comparire VALUTA INGRESSO
         strong = dict(entries["AMAT"], rsi_14=50.0, mfi_14=50.0,
                       last_close=560.0, sma_50=500.0, sma_200=400.0,
                       drawdown_52w=-1.0)
         html = render_ticker_table("semiconductors", {"AMAT": strong}, regime="greed")
         self.assertIn("ATTENDI", html)
-        self.assertNotIn("COMPRA", html)
+        self.assertNotIn("VALUTA INGRESSO", html)
 
     def test_qcom_case_is_watchlist_not_sell(self):
         # Regressione: il caso QCOM (deep weakness + greed) NON deve essere sell

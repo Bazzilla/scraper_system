@@ -1,4 +1,4 @@
-<!-- Context: project-intelligence/report-html | Priority: high | Version: 1.2 | Updated: 2026-08-17 -->
+<!-- Context: project-intelligence/report-html | Priority: high | Version: 1.3 | Updated: 2026-08-19 -->
 
 # Report HTML (Market Dashboard)
 
@@ -14,24 +14,22 @@
 
 **Card FGI**: può includere una mini-griglia dei 7 sub-indicatori da `fgi.fgi_components` (score + rating per componente, badge via `_fgi_rating_badge`). `fgi_components` è DISPLAY-ONLY: non entra mai nello score di segnale.
 
-## Segnale COMPRA / WATCHLIST / ATTENDI (compute_signal)
-`compute_signal(entry, regime)` fa scoring ±1 per indicatore. Classe: `score>=2` → buy, `score<=-2` → watchlist (mai sell da tecnici), altrimenti hold. Gate: in greed (FGI≥55) nessun buy.
+## Segnale VALUTA INGRESSO / OSSERVA / ATTENDI (pipeline)
+Pipeline a 3 stadi: `technical_signal(entry)` (valutazione tecnica locale: score≥2 bullish, ≤-2 weak, altrimenti neutral) → `buy_the_dip_gate(fgi_score)` (gate operativo: FGI None/stale/>40 → closed; 25<FGI≤40 → watch_only; 20<FGI≤25 → open; ≤20 → strong_open) → `final_action(technical, gate)` (buy/watchlist/hold). `compute_signal(entry, regime, proxy_accepted, fgi_score)` è wrapper compatibile che delega alla pipeline.
 ```python
-def compute_signal(entry, regime="neutral"):
-    # +1/-1: RSI<30/>70, MFI<20/>80, prezzo vs SMA50/200, drawdown>=−5/<-15
-    if score >= 2: signal = "buy"
-    elif score <= -2: signal = "watchlist"   # debolezza = profilo buy-the-dip, MAI sell
-    else: signal = "hold"
-    if regime == "greed" and signal == "buy":
-        return "hold"                        # non inseguire mercato caldo
-    return signal
+def compute_signal(entry, regime="neutral", proxy_accepted=None, fgi_score=None):
+    technical = technical_signal(entry)      # +1/-1: RSI<30/>70, MFI<20/>80, prezzo vs SMA50/200, drawdown>=−5/<-15
+    if regime == "greed" and technical == "bullish":
+        return "hold"                        # non inseguire mercato caldo (legacy)
+    gate = buy_the_dip_gate(fgi_score)       # closed / watch_only / open / strong_open
+    return final_action(technical, gate)     # buy / watchlist / hold
 ```
-Badge: 🟢 COMPRA / 🟠 WATCHLIST / ⚪ ATTENDI.
+Badge (non-operativi, segnali da VALUTARE): 🟢 VALUTA INGRESSO / 🟠 OSSERVA / ⚪ ATTENDI.
 
 ## Regole chiave del segnale (allineate alla strategia buy-the-dip)
 - **Mai sell dai dati tecnici**: vendere richiede trigger di uscita (take-profit +15/20%, deterioramento fondamentale, time-stop 18 mesi) non calcolabili dal dashboard — vedi Regola 4 in `docs/strategy/strategia_trading.md`.
-- **Debolezza tecnica = WATCHLIST**: prezzo sotto SMA50/200 + drawdown profondo è il profilo buy-the-dip (calo ≥10%), NON un segnale di vendita — vedi Regola 2.
-- **Gate FGI**: in greed (FGI ≥ 55) nessun COMPRA (Regola 0: "i cali potrebbero essere trappole"); il clima deve puntare nella stessa direzione del titolo.
+- **Debolezza tecnica = OSSERVA**: prezzo sotto SMA50/200 + drawdown profondo è il profilo buy-the-dip (calo ≥10%), NON un segnale di vendita né di ingresso automatico — vedi Regola 2.
+- **Gate FGI Buy-the-Dip**: VALUTA INGRESSO solo con FGI ≤ 25; 25 < FGI ≤ 40 → OSSERVA; FGI > 40 o mancante/stale → ATTENDI (fail-closed, nessun ingresso).
 
 ## Semafori per metrica
 | Metrica | Soglie | Classe |
