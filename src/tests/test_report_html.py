@@ -12,6 +12,7 @@ from report_html import (
     build_page,
     buy_the_dip_gate,
     compute_signal,
+    final_action,
     fmt,
     format_iso_dt,
     market_regime,
@@ -22,6 +23,7 @@ from report_html import (
     render_stale_summary,
     render_ticker_table,
     semaphore_class,
+    technical_signal,
 )
 
 
@@ -278,6 +280,14 @@ class TestComputeSignal(unittest.TestCase):
         self.assertIn("ATTENDI", html)
         self.assertNotIn("COMPRA", html)
 
+    def test_compute_signal_delegates_to_pipeline(self):
+        # Compatibilità: compute_signal == technical_signal + gate + final_action
+        entry = self._buy_entry()
+        for fgi in (None, 53.57, 30, 25, 20):
+            gate = buy_the_dip_gate(fgi)
+            expected = final_action(technical_signal(entry), gate)
+            self.assertEqual(compute_signal(entry, fgi_score=fgi), expected)
+
     def test_scorer_accepts_proxy_accepted_parameter(self):
         # Guardia proxy (audit 2026-08-14): il parametro esiste e non cambia il
         # segnale — il motore consuma solo indicatori implemented per-ticker.
@@ -321,6 +331,79 @@ class TestComputeSignal(unittest.TestCase):
         self.assertEqual(market_regime(62.66), "greed")
         self.assertEqual(compute_signal(qcom, "greed"), "watchlist")
         self.assertNotEqual(compute_signal(qcom, "greed"), "sell")
+
+
+class TestTechnicalSignal(unittest.TestCase):
+    def _bullish_entry(self) -> dict:
+        return {
+            "last_close": 100.0,
+            "rsi_14": 25.0,    # oversold → +1
+            "mfi_14": 15.0,    # oversold → +1
+            "sma_50": 90.0,    # price sopra → +1
+            "sma_200": 80.0,   # price sopra → +1
+            "drawdown_52w": -2.0,  # ok → +1
+        }
+
+    def _weak_entry(self) -> dict:
+        return {
+            "last_close": 100.0,
+            "rsi_14": 75.0,    # overbought → -1
+            "mfi_14": 85.0,    # overbought → -1
+            "sma_50": 110.0,   # price sotto → -1
+            "sma_200": 120.0,  # price sotto → -1
+            "drawdown_52w": -20.0,  # critical → -1
+        }
+
+    def _neutral_entry(self) -> dict:
+        return {
+            "last_close": 100.0,
+            "rsi_14": 50.0,    # neutro → 0
+            "mfi_14": 50.0,    # neutro → 0
+            "sma_50": 110.0,   # price sotto → -1
+            "sma_200": 80.0,   # price sopra → +1
+            "drawdown_52w": -8.0,  # warning → 0
+        }
+
+    def test_bullish_on_oversold_convergence(self):
+        self.assertEqual(technical_signal(self._bullish_entry()), "bullish")
+
+    def test_weak_on_deep_weakness(self):
+        self.assertEqual(technical_signal(self._weak_entry()), "weak")
+
+    def test_neutral_on_mixed_signals(self):
+        self.assertEqual(technical_signal(self._neutral_entry()), "neutral")
+
+    def test_missing_indicators_are_neutral(self):
+        self.assertEqual(technical_signal({"last_close": 100.0}), "neutral")
+
+    def test_technical_signal_ignores_market_gate(self):
+        # La valutazione tecnica NON dipende dal FGI/regime
+        self.assertEqual(technical_signal(self._bullish_entry()), "bullish")
+
+
+class TestFinalAction(unittest.TestCase):
+    def test_bullish_closed_is_hold(self):
+        self.assertEqual(final_action("bullish", "closed"), "hold")
+
+    def test_bullish_missing_or_stale_is_hold(self):
+        self.assertEqual(final_action("bullish", "missing_or_stale"), "hold")
+
+    def test_bullish_watch_only_is_watchlist(self):
+        self.assertEqual(final_action("bullish", "watch_only"), "watchlist")
+
+    def test_bullish_open_is_buy(self):
+        self.assertEqual(final_action("bullish", "open"), "buy")
+
+    def test_bullish_strong_open_is_buy(self):
+        self.assertEqual(final_action("bullish", "strong_open"), "buy")
+
+    def test_neutral_is_hold_regardless_of_gate(self):
+        for gate in ("closed", "missing_or_stale", "watch_only", "open", "strong_open"):
+            self.assertEqual(final_action("neutral", gate), "hold")
+
+    def test_weak_is_watchlist_never_buy(self):
+        for gate in ("closed", "missing_or_stale", "watch_only", "open", "strong_open"):
+            self.assertEqual(final_action("weak", gate), "watchlist")
 
 
 class TestBuyTheDipGate(unittest.TestCase):

@@ -41,10 +41,12 @@ from report_helpers import (  # noqa: F401
     _status_badge,
     buy_the_dip_gate,
     compute_signal,
+    final_action,
     fmt,
     format_iso_dt,
     market_regime,
     semaphore_class,
+    technical_signal,
 )
 from report_cards import render_market_cards  # noqa: F401
 from report_legend import render_legend  # noqa: F401

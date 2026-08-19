@@ -101,52 +101,19 @@ def buy_the_dip_gate(fgi_score: float | str | None, stale: bool = False) -> str:
     return GATE_STRONG_OPEN
 
 
-def compute_signal(
-    entry: dict[str, Any],
-    regime: str = "neutral",
-    proxy_accepted: set[str] | frozenset[str] | None = None,
-    fgi_score: float | None = None,
-) -> str:
-    """Compute a trading signal from a ticker's indicators and market regime.
+def technical_signal(entry: dict[str, Any]) -> str:
+    """Technical evaluation of a ticker from its LOCAL indicators only.
 
-    Follows the project's trading strategy (buy-the-dip): technical weakness
-    (price below SMAs, deep drawdown) is the SCREENING INPUT for a potential
-    entry, not a sell reason. A sell is only justified by an explicit exit
-    trigger (take-profit, fundamental deterioration, time-stop — Regola 4),
-    which the dashboard cannot compute from price data alone.
+    Pure per-ticker scoring (no market gate): RSI, MFI, price vs SMA50,
+    price vs SMA200, drawdown 52w. Returns:
+    - 'bullish' (score >= +2): convergence of oversold + strength
+    - 'weak'    (score <= -2): deep weakness — the buy-the-dip profile, but
+                 NOT a sell reason. Watch, do not enter without confirmations.
+    - 'neutral' otherwise: mixed signals / no opportunity.
 
-    Scoring (per indicator, +1 bullish / -1 bearish):
-    - RSI < 30 (oversold) → +1 ; RSI > 70 (overbought) → -1
-    - MFI < 20 (oversold) → +1 ; MFI > 80 (overbought) → -1
-    - price above SMA50 → +1 ; below → -1
-    - price above SMA200 → +1 ; below → -1
-    - drawdown >= -5 (near high) → +1 ; < -15 (critical) → -1
-
-    Classes:
-    - 'buy'       (score >= +2): convergence of oversold + strength
-    - 'watchlist' (score <= -2): deep weakness — the buy-the-dip profile, but
-                   NOT a sell reason. Watch, do not enter without confirmations.
-    - 'hold'      otherwise: mixed signals / no opportunity.
-
-    Market gate (Regola 0): in GREED no 'buy' (do not chase a hot market); in
-    FEAR deep weakness stays 'watchlist' (discounts are more real). The gate
-    never produces a sell.
-
-    Buy-the-Dip FGI gate (audit 2026-08-19): a technical BUY is only operable
-    in sufficient fear. The operational gate is delegated to
-    ``buy_the_dip_gate(fgi_score)`` (missing/stale → no BUY; > 40 → no BUY;
-    25 < FGI <= 40 → WATCHLIST; <= 25 → BUY stays). Non-buy signals are never
-    upgraded to 'buy'.
-
-    Proxy guard (audit 2026-08-14): this scorer consumes only IMPLEMENTED
-    per-ticker indicators (rsi_14, mfi_14, sma_50, sma_200, drawdown_52w from
-    the OHLCV cache). Proxy indicators (VIX spot, sector breadth) are NOT
-    passed here and must never be treated as the original strategy indicator.
-    If a caller wants a proxy to influence scoring, it must do so explicitly
-    via ``proxy_accepted`` and the strategy indicator registry; the market
-    regime gate uses the FGI (implemented), never a proxy FGI variant.
+    This is the SCREENING INPUT for a potential entry, not the final action.
+    The final decision is made by ``final_action`` after the market gate.
     """
-    accepted = set(proxy_accepted or ())
     score = 0
 
     rsi = entry.get("rsi_14")
@@ -180,25 +147,82 @@ def compute_signal(
             score -= 1
 
     if score >= 2:
-        signal = "buy"
-    elif score <= -2:
-        signal = "watchlist"
-    else:
-        signal = "hold"
+        return "bullish"
+    if score <= -2:
+        return "weak"
+    return "neutral"
 
-    # Market gate (Regola 0): climate must point in the same direction.
-    if regime == "greed" and signal == "buy":
-        return "hold"
 
-    # Buy-the-Dip FGI gate (audit 2026-08-19): technical BUY only in
-    # sufficient fear. Missing/stale FGI → fail-closed, no BUY.
-    if signal == "buy":
-        gate = buy_the_dip_gate(fgi_score)
+def final_action(technical: str, gate: str) -> str:
+    """Combine a technical setup and the market gate into the final action.
+
+    Mapping (buy-the-dip strategy):
+    - technical 'bullish' + gate closed/missing_or_stale → 'hold'
+    - technical 'bullish' + gate watch_only              → 'watchlist'
+    - technical 'bullish' + gate open/strong_open        → 'buy'
+    - technical 'neutral'                                → 'hold'
+    - technical 'weak'                                   → 'watchlist'
+      (deep weakness is the buy-the-dip profile, never upgraded to 'buy')
+
+    Never produces a sell: a sell requires an explicit exit trigger
+    (take-profit, fundamental deterioration, time-stop — Regola 4) that the
+    dashboard cannot compute from price data alone.
+    """
+    if technical == "bullish":
         if gate in (GATE_MISSING_OR_STALE, GATE_CLOSED):
             return "hold"
         if gate == GATE_WATCH_ONLY:
             return "watchlist"
-    return signal
+        return "buy"
+    if technical == "weak":
+        return "watchlist"
+    return "hold"
+
+
+def compute_signal(
+    entry: dict[str, Any],
+    regime: str = "neutral",
+    proxy_accepted: set[str] | frozenset[str] | None = None,
+    fgi_score: float | None = None,
+) -> str:
+    """Compute the final trading signal for a ticker (compatibility wrapper).
+
+    Pipeline: ``technical_signal(entry)`` → market gate
+    (``buy_the_dip_gate(fgi_score)``) → ``final_action(technical, gate)``.
+
+    Follows the project's trading strategy (buy-the-dip): technical weakness
+    (price below SMAs, deep drawdown) is the SCREENING INPUT for a potential
+    entry, not a sell reason. A sell is only justified by an explicit exit
+    trigger (take-profit, fundamental deterioration, time-stop — Regola 4),
+    which the dashboard cannot compute from price data alone.
+
+    Market gate (Regola 0): in GREED no 'buy' (do not chase a hot market); in
+    FEAR deep weakness stays 'watchlist' (discounts are more real). The gate
+    never produces a sell.
+
+    Buy-the-Dip FGI gate (audit 2026-08-19): a technical BUY is only operable
+    in sufficient fear. The operational gate is delegated to
+    ``buy_the_dip_gate(fgi_score)`` (missing/stale → no BUY; > 40 → no BUY;
+    25 < FGI <= 40 → WATCHLIST; <= 25 → BUY stays). Non-buy signals are never
+    upgraded to 'buy'.
+
+    Proxy guard (audit 2026-08-14): this scorer consumes only IMPLEMENTED
+    per-ticker indicators (rsi_14, mfi_14, sma_50, sma_200, drawdown_52w from
+    the OHLCV cache). Proxy indicators (VIX spot, sector breadth) are NOT
+    passed here and must never be treated as the original strategy indicator.
+    If a caller wants a proxy to influence scoring, it must do so explicitly
+    via ``proxy_accepted`` and the strategy indicator registry; the market
+    regime gate uses the FGI (implemented), never a proxy FGI variant.
+    """
+    accepted = set(proxy_accepted or ())
+    technical = technical_signal(entry)
+
+    # Market gate (Regola 0): climate must point in the same direction.
+    if regime == "greed" and technical == "bullish":
+        return "hold"
+
+    gate = buy_the_dip_gate(fgi_score)
+    return final_action(technical, gate)
 
 
 def _signal_badge(signal: str) -> str:
