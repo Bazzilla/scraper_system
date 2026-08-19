@@ -86,25 +86,40 @@ def render_market_cards(data: dict[str, Any]) -> str:
         )
 
     vix = data.get("vix", {})
-    if vix.get("status") == "error":
-        parts.append(_error_card("VIX Spot", vix))
-    else:
-        vix_ts = data.get("vix_term_structure", {})
-        if vix_ts.get("status") == "fresh":
-            ts_note = (
-                f' · M1 {fmt(vix_ts.get("m1"))} · M2 {fmt(vix_ts.get("m2"))}'
-                f' · {html_mod.escape(str(vix_ts.get("structure", "")))}'
-                f' ({fmt(vix_ts.get("contango_pct_1_2"))}%)'
-            )
-        else:
-            ts_note = " · term structure non disponibile"
+    vix_ts = data.get("vix_term_structure", {})
+    vix_ok = vix.get("status") != "error" and vix.get("vix_close") is not None
+    ts_ok = vix_ts.get("status") == "fresh" and vix_ts.get("m1") is not None
+
+    if ts_ok:
+        # F3/#10: il term structure (M1/M2) è l'indicatore strategico → è il
+        # valore principale della card. VIX spot resta come nota informativa.
+        structure = str(vix_ts.get("structure", ""))
+        structure_cls = "fear" if structure == "backwardation" else "neutral"
+        spot_note = (
+            f' · VIX spot: {fmt(vix.get("vix_close"))} (info, non strategico)'
+            if vix_ok else ""
+        )
         parts.append(
-            f'<div class="card"{_age_attrs(vix.get("fetched_at"), vix.get("stale_after_hours"))}><div class="label">VIX Spot '
-            '<span class="sema warning">proxy</span></div>'
-            f'<div class="value">{fmt(vix.get("vix_close"))}</div>'
-            f'<div class="meta">Aggiornato: {format_iso_dt(vix.get("fetched_at"))}{ts_note}</div>'
+            f'<div class="card"{_age_attrs(vix_ts.get("fetched_at"), vix_ts.get("stale_after_hours"))}>'
+            f'<div class="label">VIX Term Structure '
+            f'<span class="sema {structure_cls}">{html_mod.escape(structure)}</span></div>'
+            f'<div class="value">M1 {fmt(vix_ts.get("m1"))} · M2 {fmt(vix_ts.get("m2"))}</div>'
+            f'<div class="meta">Aggiornato: {format_iso_dt(vix_ts.get("fetched_at"))}'
+            f'{spot_note}</div>'
             f'{_origin_html(vix_ts)}</div>'
         )
+    elif vix_ok:
+        # Fallback: senza term structure mostra VIX spot (proxy informativo).
+        parts.append(
+            f'<div class="card"{_age_attrs(vix.get("fetched_at"), vix.get("stale_after_hours"))}>'
+            f'<div class="label">VIX Spot '
+            '<span class="sema warning">proxy</span></div>'
+            f'<div class="value">{fmt(vix.get("vix_close"))}</div>'
+            f'<div class="meta">Aggiornato: {format_iso_dt(vix.get("fetched_at"))}'
+            ' · term structure non disponibile</div></div>'
+        )
+    else:
+        parts.append(_error_card("VIX Term Structure", vix_ts if vix_ts.get("status") == "error" else vix))
 
     pcr = data.get("pcr", {})
     if pcr.get("status") == "error":

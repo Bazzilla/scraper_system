@@ -3,7 +3,7 @@ aaii:
   neutral: 27.4
   bearish: 37.9
   source: manual
-  fetched_at: '2026-08-17T14:25:24.394527+00:00'
+  fetched_at: '2026-08-19T07:25:11.847552+00:00'
   stale_after_hours: 168.0
   entered_by: user
   note: Inserito manualmente dal sito AAII
@@ -12,32 +12,33 @@ fgi:
   score: 62.0
   zone: greed
   source: manual
-  fetched_at: '2026-08-17T14:26:09.333238+00:00'
+  fetched_at: '2026-08-19T07:25:21.687547+00:00'
   stale_after_hours: 24.0
   entered_by: user
   note: Inserito manualmente
-  enabled: true
+  enabled: false
 naaim:
-  exposure: 79.7
+  exposure: 77.34
   source: manual
-  fetched_at: '2026-08-16T16:27:00+00:00'
-  stale_after_hours: 168
+  fetched_at: '2026-08-19T07:25:39.297148+00:00'
+  stale_after_hours: 168.0
   entered_by: user
   note: Inserito manualmente da report NAAIM
+  enabled: true
 vix_term_structure:
-  m1: 15.54
-  m2: 17.91
+  m1: 18.2
+  m2: 19.7
   source: manual
-  fetched_at: '2026-08-17T14:27:27.303730+00:00'
+  fetched_at: '2026-08-19T07:26:16.038033+00:00'
   stale_after_hours: 24.0
   entered_by: user
   note: Letti manualmente da https://vixcentral.com/ (contango M2 > M1)
   enabled: true
 pct_sma:
-  pct_sma50: 69.38
-  pct_sma200: 70.97
+  pct_sma50: 59.56
+  pct_sma200: 68.2
   stale_after_hours: 24.0
   entered_by: user
   source: manual
   enabled: true
-  fetched_at: '2026-08-17T14:24:32.666349+00:00'
+  fetched_at: '2026-08-19T07:27:12.062660+00:00'

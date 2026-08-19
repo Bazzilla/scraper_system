@@ -255,6 +255,38 @@ class TestRenderSections(unittest.TestCase):
         self.assertIn("15.28", html)
         self.assertIn("37", html)
 
+    def test_market_cards_vix_term_structure_is_primary_when_available(self):
+        # F3/#10: il term structure (M1/M2) è l'indicatore strategico → deve
+        # essere il valore principale della card, con VIX spot come nota.
+        data = _sample_data()
+        data["vix_term_structure"] = {
+            "m1": 18.2, "m2": 19.7, "structure": "contango",
+            "contango_pct_1_2": 8.24, "fetched_at": "2026-08-12T14:29:45+00:00",
+            "stale_after_hours": 24, "status": "fresh", "origin": "manual",
+        }
+        html = render_market_cards(data)
+        self.assertIn("VIX Term Structure", html)
+        self.assertIn("contango", html)
+        self.assertIn("M1 18.20", html)
+        self.assertIn("M2 19.70", html)
+        # VIX spot resta come nota informativa, non come valore principale.
+        self.assertIn("VIX spot", html)
+        self.assertIn("15.28", html)
+
+    def test_market_cards_vix_spot_fallback_when_no_term_structure(self):
+        # Senza term structure la card mostra VIX spot (proxy) come fallback.
+        html = render_market_cards(_sample_data())
+        self.assertIn("VIX Spot", html)
+        self.assertIn("proxy", html)
+        self.assertIn("15.28", html)
+
+    def test_market_cards_vix_error_when_both_missing(self):
+        data = _sample_data()
+        data["vix"] = {"status": "error", "error": "CBOE unreachable"}
+        data["vix_term_structure"] = {"status": "error", "error": "no manual"}
+        html = render_market_cards(data)
+        self.assertIn("errore", html)
+
     def test_market_cards_shows_fgi_source(self):
         data = _sample_data()
         data["fgi"]["source"] = "feargreedmeter"
