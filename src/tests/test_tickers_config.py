@@ -46,9 +46,15 @@ class TestTickersValidation(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_config(_config_with_tickers({"semiconductors": "AMAT"}))
 
-    def test_entry_must_be_mapping(self):
+    def test_entry_must_be_mapping_or_string(self):
+        # Legacy simple-list format: plain strings are normalized to {symbol, name}.
+        result = validate_config(_config_with_tickers({"semiconductors": ["AMAT"]}))
+        self.assertEqual(result["tickers"]["semiconductors"][0]["symbol"], "AMAT")
+        self.assertEqual(result["tickers"]["semiconductors"][0]["name"], "AMAT")
+
+    def test_entry_must_be_mapping_or_string_rejects_other_types(self):
         with self.assertRaises(ValueError):
-            validate_config(_config_with_tickers({"semiconductors": ["AMAT"]}))
+            validate_config(_config_with_tickers({"semiconductors": [123]}))
 
     def test_entry_missing_symbol(self):
         with self.assertRaises(ValueError):
@@ -84,6 +90,76 @@ class TestTickersValidation(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_config(_config_with_tickers(
                 {"semiconductors": [{"symbol": "   ", "name": "A"}]}))
+
+    def test_metadata_valid(self):
+        config = _config_with_tickers(
+            {
+                "semiconductors": [
+                    {
+                        "symbol": "NVDA",
+                        "name": "NVIDIA",
+                        "quality_tier": "core",
+                        "strategy_role": "compounder",
+                        "buy_the_dip_validity": "high",
+                        "notes": "Rischio geopolitico",
+                    }
+                ]
+            }
+        )
+        result = validate_config(config)
+        entry = result["tickers"]["semiconductors"][0]
+        self.assertEqual(entry["quality_tier"], "core")
+        self.assertEqual(entry["strategy_role"], "compounder")
+        self.assertEqual(entry["buy_the_dip_validity"], "high")
+        self.assertEqual(entry["notes"], "Rischio geopolitico")
+
+    def test_metadata_optional(self):
+        # Entries without metadata still validate (backward compatible).
+        config = _config_with_tickers(
+            {"semiconductors": [{"symbol": "AMAT", "name": "Applied Materials"}]}
+        )
+        result = validate_config(config)
+        self.assertNotIn("quality_tier", result["tickers"]["semiconductors"][0])
+
+    def test_invalid_quality_tier_rejected(self):
+        with self.assertRaises(ValueError):
+            validate_config(_config_with_tickers(
+                {"semiconductors": [{"symbol": "AMAT", "name": "A",
+                                     "quality_tier": "mega"}]}))
+
+    def test_invalid_buy_the_dip_validity_rejected(self):
+        with self.assertRaises(ValueError):
+            validate_config(_config_with_tickers(
+                {"semiconductors": [{"symbol": "AMAT", "name": "A",
+                                     "buy_the_dip_validity": "extreme"}]}))
+
+    def test_invalid_strategy_role_rejected(self):
+        with self.assertRaises(ValueError):
+            validate_config(_config_with_tickers(
+                {"semiconductors": [{"symbol": "AMAT", "name": "A",
+                                     "strategy_role": "moon_shot"}]}))
+
+    def test_notes_must_be_string(self):
+        with self.assertRaises(ValueError):
+            validate_config(_config_with_tickers(
+                {"semiconductors": [{"symbol": "AMAT", "name": "A",
+                                     "notes": 42}]}))
+
+    def test_normalize_tickers_legacy_list(self):
+        from config_loader import normalize_tickers
+
+        result = normalize_tickers({"semiconductors": ["AMAT", "LRCX"]})
+        self.assertEqual(result["semiconductors"][0], {"symbol": "AMAT", "name": "AMAT"})
+        self.assertEqual(result["semiconductors"][1], {"symbol": "LRCX", "name": "LRCX"})
+
+    def test_normalize_tickers_enriched(self):
+        from config_loader import normalize_tickers
+
+        result = normalize_tickers(
+            {"semiconductors": [{"symbol": "NVDA", "name": "NVIDIA",
+                                 "quality_tier": "core"}]}
+        )
+        self.assertEqual(result["semiconductors"][0]["quality_tier"], "core")
 
 
 if __name__ == "__main__":

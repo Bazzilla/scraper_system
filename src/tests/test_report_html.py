@@ -808,6 +808,102 @@ class TestRenderSections(unittest.TestCase):
         html = render_ticker_table("semiconductors", {"AMAT": no_ts})
         self.assertNotIn("data-fetched-at=", html)
 
+    def test_ticker_meta_rendered_when_provided(self):
+        data = _sample_data()
+        entries = data["indicators"]["semiconductors"]
+        meta = {"AMAT": {"symbol": "AMAT", "name": "Applied Materials",
+                         "quality_tier": "core", "strategy_role": "semiconductor_equipment",
+                         "buy_the_dip_validity": "high", "notes": "Rischio geopolitico"}}
+        html = render_ticker_table("semiconductors", entries, tickers_meta=meta)
+        self.assertIn("ticker-meta", html)
+        self.assertIn("core", html)
+        self.assertIn("semiconductor_equipment", html)
+        self.assertIn("high", html)
+        self.assertIn("Rischio geopolitico", html)
+
+    def test_ticker_meta_absent_no_meta_line(self):
+        data = _sample_data()
+        entries = data["indicators"]["semiconductors"]
+        html = render_ticker_table("semiconductors", entries)
+        self.assertNotIn("ticker-meta", html)
+
+    def test_ticker_meta_escaped(self):
+        data = _sample_data()
+        entries = data["indicators"]["semiconductors"]
+        meta = {"AMAT": {"symbol": "AMAT", "name": "Applied Materials",
+                         "quality_tier": "core", "notes": "<script>alert(1)</script>"}}
+        html = render_ticker_table("semiconductors", entries, tickers_meta=meta)
+        self.assertNotIn("<script>", html)
+        self.assertIn("&lt;script&gt;", html)
+
+    def test_ticker_meta_ordering_core_first(self):
+        data = _sample_data()
+        entries = data["indicators"]["semiconductors"]
+        # Aggiungo un ticker opportunistico che alfabeticamente verrebbe prima.
+        entries["ZZZZ"] = {"symbol": "ZZZZ", "name": "Zeta", "rsi_14": 50.0,
+                           "fetched_at": "2026-08-12T14:30:06+00:00",
+                           "frequency": "daily", "stale_after_hours": 24, "status": "fresh"}
+        meta = {
+            "AMAT": {"symbol": "AMAT", "name": "Applied Materials", "quality_tier": "core"},
+            "ZZZZ": {"symbol": "ZZZZ", "name": "Zeta", "quality_tier": "opportunistic"},
+        }
+        html = render_ticker_table("semiconductors", entries, tickers_meta=meta)
+        # core (AMAT) deve comparire prima di opportunistic (ZZZZ)
+        self.assertLess(html.index("AMAT"), html.index("ZZZZ"))
+
+    def test_ticker_meta_ordering_unknown_tier_last(self):
+        data = _sample_data()
+        entries = data["indicators"]["semiconductors"]
+        entries["ZZZZ"] = {"symbol": "ZZZZ", "name": "Zeta", "rsi_14": 50.0,
+                           "fetched_at": "2026-08-12T14:30:06+00:00",
+                           "frequency": "daily", "stale_after_hours": 24, "status": "fresh"}
+        meta = {
+            "AMAT": {"symbol": "AMAT", "name": "Applied Materials", "quality_tier": "core"},
+            "ZZZZ": {"symbol": "ZZZZ", "name": "Zeta"},  # nessun tier
+        }
+        html = render_ticker_table("semiconductors", entries, tickers_meta=meta)
+        self.assertLess(html.index("AMAT"), html.index("ZZZZ"))
+
+    def test_build_page_with_tickers_config_renders_meta(self):
+        data = _sample_data()
+        tickers_config = {
+            "semiconductors": [
+                {"symbol": "AMAT", "name": "Applied Materials",
+                 "quality_tier": "core", "strategy_role": "semiconductor_equipment",
+                 "buy_the_dip_validity": "high"}
+            ]
+        }
+        html = build_page(data, tickers_config)
+        self.assertIn("ticker-meta", html)
+        self.assertIn("semiconductor_equipment", html)
+
+    def test_build_page_without_tickers_config_no_meta(self):
+        html = build_page(_sample_data())
+        # La classe CSS .ticker-meta è sempre presente nello <style>;
+        # verifichiamo che NON ci sia alcuna riga metadata nel corpo.
+        self.assertNotIn("class='ticker-meta'", html)
+
+    def test_metadata_never_bypasses_fgi_gate(self):
+        # Anche con metadata "core/high", un FGI non-fresh (fail-closed) NON
+        # produce un segnale di acquisto: il gate FGI resta l'unico gate.
+        data = _sample_data()
+        data["fgi"] = {"score": 62.65, "zone": "greed",
+                       "fetched_at": "2026-08-12T14:29:42+00:00",
+                       "frequency": "daily", "stale_after_hours": 24,
+                       "status": "stale"}  # stale → gate fail-closed
+        tickers_config = {
+            "semiconductors": [
+                {"symbol": "AMAT", "name": "Applied Materials",
+                 "quality_tier": "core", "buy_the_dip_validity": "high"}
+            ]
+        }
+        html = build_page(data, tickers_config)
+        self.assertIn("class='ticker-meta'", html)  # metadata mostrati...
+        # ...ma mai come segnale: nessun badge "signal buy" (VALUTA INGRESSO).
+        # NB: "VALUTA INGRESSO" compare nella legenda, quindi verifichiamo il badge.
+        self.assertNotIn('class="signal buy"', html)
+        self.assertIn('class="signal hold"', html)
+
 
 class TestAgeAttrs(unittest.TestCase):
     def test_returns_attrs_with_valid_timestamp(self):

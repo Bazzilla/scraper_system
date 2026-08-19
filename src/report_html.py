@@ -27,6 +27,8 @@ from typing import Any
 
 import yaml
 
+from config_loader import normalize_tickers
+
 # Re-export from submodules so existing imports (tests, overrides_page,
 # overrides_server) keep working unchanged.
 from report_helpers import (  # noqa: F401
@@ -126,6 +128,12 @@ tr:last-child td { border-bottom: none; }
 tr:hover td { background: rgba(88, 166, 255, 0.06); }
 .ticker { font-weight: 700; }
 .name { color: var(--muted); font-size: 0.8rem; }
+.ticker-meta { display: block; color: var(--muted); font-size: 0.72rem;
+        line-height: 1.4; margin-top: 2px; }
+.meta-tier { color: var(--accent); font-weight: 600; }
+.meta-validity { color: var(--muted); }
+.meta-role { color: var(--muted); font-style: italic; }
+.meta-notes { color: var(--muted); opacity: 0.85; }
 footer { margin-top: 32px; color: var(--muted); font-size: 0.85rem;
         border-top: 1px solid var(--border); padding-top: 16px; }
 .legend { margin-top: 24px; }
@@ -240,8 +248,12 @@ _SCRIPT = """\
 """
 
 
-def build_page(data: dict[str, Any]) -> str:
-    """Assemble the complete HTML document."""
+def build_page(data: dict[str, Any], tickers_config: dict[str, Any] | None = None) -> str:
+    """Assemble the complete HTML document.
+
+    ``tickers_config`` (optional) is the normalized ``tickers`` section from
+    config.yaml; used only for display metadata and tier ordering.
+    """
     stale = data.get("stale_summary", {})
     overall = "fresh" if stale.get("stale", 0) == 0 else "stale"
     title = "Market Dashboard"
@@ -261,7 +273,7 @@ def build_page(data: dict[str, Any]) -> str:
         f"<h2>Indicatori di mercato</h2>"
         f"{render_market_cards(data)}"
         f"{render_indicator_matrix(data.get('strategy_indicators', {}))}"
-        f"{_ticker_sections(data)}"
+        f"{_ticker_sections(data, tickers_config)}"
         f"{render_stale_summary(stale)}"
         f"{render_legend()}"
         "</div>"
@@ -299,8 +311,12 @@ def render(config_path: str, output_path: str | None = None) -> str:
     with json_path.open("r", encoding="utf-8") as fh:
         data = json.load(fh)
 
+    # Normalizza la sezione tickers (lista semplice → metadata arricchiti)
+    # per il rendering dei metadata strategici nel report (display-only).
+    tickers_config = normalize_tickers(config["tickers"]) if "tickers" in config else None
+
     html_path = output_path or str(base_dir / DEFAULT_HTML_PATH)
     path = Path(html_path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(build_page(data), encoding="utf-8")
+    path.write_text(build_page(data, tickers_config), encoding="utf-8")
     return str(path)

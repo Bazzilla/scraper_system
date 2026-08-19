@@ -14,6 +14,24 @@ REQUIRED_TOP_LEVEL = ("scrapers",)
 REQUIRED_SCRAPER_FIELDS = ("module", "output_key", "schedule")
 VALID_SCHEDULES = ("daily", "weekly")
 
+# Strategic ticker classification (display-only, never used as a BUY signal).
+QUALITY_TIERS = ("core", "secondary", "opportunistic")
+VALIDITY_LEVELS = ("high", "medium", "low")
+STRATEGY_ROLES = (
+    "compounder",
+    "cyclical_leader",
+    "turnaround",
+    "defense_resilient",
+    "valuation_sensitive",
+    "semiconductor_equipment",
+    "foundry",
+    "analog_industrial",
+    "memory",
+    "defense_prime",
+    "aerospace_components",
+    "defense_tech",
+)
+
 
 def load_config(path: str) -> dict[str, Any]:
     """Load and validate the YAML config from the given path."""
@@ -39,7 +57,9 @@ def validate_config(config: dict[str, Any]) -> dict[str, Any]:
         _validate_scraper(name, scraper)
 
     if "tickers" in config:
-        _validate_tickers(config["tickers"])
+        # Normalizza la sezione ticker (lista semplice → metadata arricchiti)
+        # e valida i metadata strategici. Il config ritornato ha forma canonica.
+        config["tickers"] = normalize_tickers(config["tickers"])
 
     if "scheduler" in config:
         _validate_scheduler(config["scheduler"])
@@ -90,6 +110,83 @@ def _validate_scraper(name: str, scraper: Any) -> None:
             f"Scraper {name!r} has invalid schedule {schedule!r}; "
             f"expected one of {VALID_SCHEDULES}"
         )
+
+
+def normalize_tickers(tickers: Any) -> dict[str, Any]:
+    """Normalize the ``tickers`` section into a canonical shape.
+
+    Supports two input formats (backward compatible):
+    - legacy simple list:  {"semiconductors": ["AMAT", "LRCX"]}
+    - enriched metadata:   {"semiconductors": [{"symbol": "AMAT",
+                                                "name": "Applied Materials",
+                                                "quality_tier": "core", ...}]}
+
+    Returns the same mapping with every entry as ``{symbol, name, ...meta}``.
+    Entries given as plain strings become ``{symbol: <s>, name: <s>}``.
+    """
+    if not isinstance(tickers, dict):
+        raise ValueError("Config 'tickers' must be a mapping")
+
+    normalized: dict[str, Any] = {}
+    for category, entries in tickers.items():
+        if not isinstance(entries, list) or not entries:
+            raise ValueError(f"Ticker category {category!r} must be a non-empty list")
+        normalized_entries: list[dict[str, Any]] = []
+        for entry in entries:
+            if isinstance(entry, str):
+                entry = {"symbol": entry, "name": entry}
+            if not isinstance(entry, dict):
+                raise ValueError(f"Ticker entry in category {category!r} must be a mapping or string")
+            for field in ("symbol", "name"):
+                if field not in entry:
+                    raise ValueError(
+                        f"Ticker entry in category {category!r} "
+                        f"missing required field: {field!r}"
+                    )
+            symbol = entry["symbol"]
+            name = entry["name"]
+            if not isinstance(name, str):
+                raise ValueError(f"Ticker 'name' for symbol {symbol!r} must be a string")
+            if not isinstance(symbol, str) or not symbol.strip():
+                raise ValueError("Ticker 'symbol' must be a non-empty string")
+            normalized_entries.append(dict(entry))
+        normalized[category] = normalized_entries
+
+    _validate_tickers_metadata(normalized)
+    return normalized
+
+
+def _validate_tickers_metadata(tickers: dict[str, Any]) -> None:
+    """Validate optional strategic metadata. Display-only, never a BUY signal."""
+    seen_symbols: set[str] = set()
+    for category, entries in tickers.items():
+        for entry in entries:
+            symbol = entry["symbol"].strip()
+            if symbol in seen_symbols:
+                raise ValueError(f"Duplicate ticker symbol: {symbol!r}")
+            seen_symbols.add(symbol)
+
+            tier = entry.get("quality_tier")
+            if tier is not None and tier not in QUALITY_TIERS:
+                raise ValueError(
+                    f"Invalid quality_tier {tier!r} for {symbol!r}; "
+                    f"expected one of {QUALITY_TIERS}"
+                )
+            validity = entry.get("buy_the_dip_validity")
+            if validity is not None and validity not in VALIDITY_LEVELS:
+                raise ValueError(
+                    f"Invalid buy_the_dip_validity {validity!r} for {symbol!r}; "
+                    f"expected one of {VALIDITY_LEVELS}"
+                )
+            role = entry.get("strategy_role")
+            if role is not None and role not in STRATEGY_ROLES:
+                raise ValueError(
+                    f"Invalid strategy_role {role!r} for {symbol!r}; "
+                    f"expected one of {STRATEGY_ROLES}"
+                )
+            notes = entry.get("notes")
+            if notes is not None and not isinstance(notes, str):
+                raise ValueError(f"Ticker 'notes' for symbol {symbol!r} must be a string")
 
 
 def _validate_tickers(tickers: Any) -> None:

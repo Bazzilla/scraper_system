@@ -17,21 +17,63 @@ from report_helpers import (
 )
 
 
+_TIER_ORDER = {"core": 0, "secondary": 1, "opportunistic": 2}
+
+
+def _tier_sort_key(symbol: str, meta: dict[str, Any] | None) -> tuple[int, str]:
+    """Sort key: quality_tier first (core < secondary < opportunistic), then symbol."""
+    tier = (meta or {}).get("quality_tier", "")
+    rank = _TIER_ORDER.get(tier, 3)  # unknown/absent tiers sort last
+    return (rank, symbol)
+
+
+def _ticker_meta_line(meta: dict[str, Any] | None) -> str:
+    """Render the strategic metadata line under the ticker name (display-only)."""
+    if not meta:
+        return ""
+    parts: list[str] = []
+    tier = meta.get("quality_tier")
+    if tier:
+        parts.append(f"<span class='meta-tier'>{html_mod.escape(tier)}</span>")
+    validity = meta.get("buy_the_dip_validity")
+    if validity:
+        parts.append(f"<span class='meta-validity'>{html_mod.escape(validity)}</span>")
+    role = meta.get("strategy_role")
+    if role:
+        parts.append(f"<span class='meta-role'>{html_mod.escape(role)}</span>")
+    notes = meta.get("notes")
+    if notes:
+        parts.append(f"<span class='meta-notes'>{html_mod.escape(notes)}</span>")
+    if not parts:
+        return ""
+    return f"<br><span class='ticker-meta'>{' · '.join(parts)}</span>"
+
+
 def render_ticker_table(
     category: str,
     entries: dict[str, Any],
     regime: str = "neutral",
     fgi_score: float | None = None,
+    tickers_meta: dict[str, dict[str, Any]] | None = None,
 ) -> str:
-    """Render one sector's ticker table with indicator semaphores."""
+    """Render one sector's ticker table with indicator semaphores.
+
+    ``tickers_meta`` maps symbol → strategic metadata (quality_tier,
+    strategy_role, buy_the_dip_validity, notes). Metadata is DISPLAY-ONLY:
+    it never influences the signal (the FGI Buy-the-Dip gate is the only
+    operational gate). Rows are sorted by quality_tier (core first), then
+    alphabetically; without metadata the order is purely alphabetical.
+    """
     rows: list[str] = []
-    for symbol in sorted(entries):
+    meta = tickers_meta or {}
+    for symbol in sorted(entries, key=lambda s: _tier_sort_key(s, meta.get(s))):
         entry = entries[symbol]
         ind = entry
         rows.append(
             f"<tr{_age_attrs(ind.get('fetched_at'), ind.get('stale_after_hours'))}>"
             f'<td><span class="ticker">{html_mod.escape(symbol)}</span>'
-            f'<br><span class="name">{html_mod.escape(entry.get("name", ""))}</span></td>'
+            f'<br><span class="name">{html_mod.escape(entry.get("name", ""))}</span>'
+            f"{_ticker_meta_line(meta.get(symbol))}</td>"
             f"<td>{_sema(ind.get('last_close'), 'close')}</td>"
             f"<td>{_sema(ind.get('rsi_14'), 'rsi')}</td>"
             f"<td>{_sema(ind.get('mfi_14'), 'mfi')}</td>"
@@ -143,13 +185,27 @@ def render_stale_summary(summary: dict[str, Any]) -> str:
     )
 
 
-def _ticker_sections(data: dict[str, Any]) -> str:
-    """Render per-category ticker tables merging ohlcv (close) + indicators."""
+def _ticker_sections(data: dict[str, Any], tickers_config: dict[str, Any] | None = None) -> str:
+    """Render per-category ticker tables merging ohlcv (close) + indicators.
+
+    ``tickers_config`` is the normalized ``tickers`` section from config.yaml
+    (category → list of {symbol, name, quality_tier, ...}). It is used ONLY
+    for display metadata and tier ordering — never as a signal.
+    """
     indicators = data.get("indicators", {})
     ohlcv = data.get("ohlcv", {})
     if not indicators and not ohlcv:
         return ""
     sections: list[str] = []
+
+    # Build symbol → metadata map from the config tickers section.
+    tickers_meta: dict[str, dict[str, Any]] = {}
+    for entries in (tickers_config or {}).values():
+        if not isinstance(entries, list):
+            continue
+        for entry in entries:
+            if isinstance(entry, dict) and entry.get("symbol"):
+                tickers_meta[entry["symbol"]] = entry
 
     regime = market_regime(data.get("fgi", {}).get("score"))
     # Buy-the-Dip FGI gate: il punteggio FGI è usabile solo se fresh.
@@ -187,5 +243,8 @@ def _ticker_sections(data: dict[str, Any]) -> str:
             continue
         display = category.upper()
         sections.append(f"<h2>{html_mod.escape(display)} ({len(merged)})</h2>")
-        sections.append(render_ticker_table(category, merged, regime=regime, fgi_score=fgi_score))
+        sections.append(render_ticker_table(
+            category, merged, regime=regime, fgi_score=fgi_score,
+            tickers_meta=tickers_meta,
+        ))
     return "".join(sections)
