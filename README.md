@@ -5,15 +5,13 @@ Un orchestratore legge un file di configurazione (chi scrapare, quando, dove sta
 esegue gli scraper in sequenza, consolida i risultati in un unico JSON strutturato
 e registra ogni esecuzione su un database SQLite di audit.
 
-> **Nota**: questo README viene aggiornato man mano che il progetto evolve.
-
 ---
 
 ## Indice
 
 - [Panoramica](#panoramica)
 - [Struttura del progetto](#struttura-del-progetto)
-- [Dove sono gli scraper](#dove-sono-gli-scraper)
+- [Scraper](#scraper)
 - [Configurazione](#configurazione)
 - [Comandi dell'orchestratore](#comandi-dellorchestratore)
 - [Output](#output)
@@ -59,6 +57,7 @@ scraper-system/
 │   ├── strategy/                # Strategia buy-the-dip (copia di riferimento nel progetto)
 │   │   ├── strategia_trading.md
 │   │   └── specifiche_strategia.md
+│   ├── history.md               # Storico: fonti escluse, audit, roadmap completata
 │   └── superpowers/
 │       ├── specs/2026-08-08-tickers-config-design.md
 │       └── plans/2026-08-08-tickers-config.md
@@ -102,14 +101,14 @@ scraper-system/
 
 ---
 
-## Dove sono gli scraper
+## Scraper
 
 Tutti i moduli scraper vivono in **`src/scrapers/`**. Ogni modulo segue lo stesso
 contratto: una funzione `run(config: dict) -> dict` che ritorna un dict strutturato.
 
 > **⚠️ Criterio di inclusione**: vengono eseguiti scraping **solo di fonti aggiornate
 > e gratuite**. Le fonti che richiedono abbonamento o che espongono dati ritardati
-> (es. NAAIM, ora a pagamento con 3 mesi di ritardo) vengono **escluse**.
+> vengono **escluse** (vedi `docs/history.md` per i motivi).
 
 | File | Fonte | Output | Frequenza |
 |------|-------|--------|-----------|
@@ -121,58 +120,65 @@ contratto: una funzione `run(config: dict) -> dict` che ritorna un dict struttur
 | `pcr_scraper.py` | CBOE | Equity Put/Call Ratio | giornaliera (lag 1gg) |
 | `insider_scraper.py` | OpenInsider (HTTP) | Bonus insider (acquisti dirigenti/CEO/CFO) | giornaliera |
 
-**Esclusi** (non gratuiti/aggiornati):
-- `naaim_scraper.py` — NAAIM Exposure Index ora è a pagamento; i dati pubblici hanno 3 mesi di ritardo. Alimentabile manualmente via `manual_overrides.yaml`.
-- `vix_term_scraper.py` — VIX term structure (M1/M2) da VIX Central/VolChart: non scrapabile (gate di sessione Flask non riproducibile con `requests`). **Scope cambiato** a VIX spot via CBOE. Alimentabile manualmente via `manual_overrides.yaml`.
-- `pct_sma_scraper.py` — % stocks above SMA50/SMA200 del **mercato USA** (F3/#13-14): IndexIndicators espone solo PNG (non scrapabile). Il proxy locale sui 29 ticker è stato **rimosso (2026-08-17)**: l'indicatore si alimenta manualmente via `manual_overrides.yaml` con i valori del mercato USA.
-- `nh_nl_scraper.py` — NYSE New Highs/New Lows (indicatore #12 della strategia): **non implementato**. Barchart (WAF 404) e StockCharts (404) non sono scrapabili con `requests`; nessuna altra fonte gratuita equivalente trovata. Il segnale NH-NL resta da valutare manualmente.
+**Non scrapabili → alimentabili manualmente** via `manual_overrides.yaml`:
+NAAIM, VIX term structure (M1/M2), % sopra SMA50/200 del mercato USA.
+NYSE NH-NL non è implementato (nessuna fonte gratuita equivalente).
 
-**⚠️ Gap semantici dichiarati** (rispetto a `specifiche_strategia.md`, verificati in audit 2026-08-14):
-- **VIX spot ≠ VIX Term Structure (F3/10)**: la strategia chiede la *backwardation* M1>M2 (panico a breve); il modulo fornisce il *livello* VIX spot. Sono indicatori diversi: il report etichetta la card "VIX Spot" per non confonderli.
-- **Breadth di mercato (F3/13-14)**: le soglie della strategia (<20% SMA50, <30% SMA200) si riferiscono a *tutto il mercato USA*. IndexIndicators espone solo PNG (non scrapabile); il proxy locale sui 29 ticker è stato **rimosso (2026-08-17)** e l'indicatore si alimenta **manualmente** via `manual_overrides.yaml` (pct_sma50/pct_sma200) con i valori del mercato USA.
-- **AAII**: fonte unica ufficiale (nessuna alternativa gratuita equivalente); `dataChart5` è stato rimosso da AAII (2026-08-14) → il parser attivo è `html_bars` (in versione precedente la fonte primaria dichiarata era `data_chart`, ora fallback legacy).
-
-**⚠️ Fail-closed**: un modulo che fallisce **non sparisce** dall'output: viene registrato con `status: "error"`, compare nel report con badge errore e abbassa `signal_reliability` a `low`. Un sistema con 0 sorgenti valide ha affidabilità `low`, mai `high`.
+**⚠️ Fail-closed**: un modulo che fallisce **non sparisce** dall'output: viene registrato
+con `status: "error"`, compare nel report con badge errore e abbassa `signal_reliability`
+a `low`. Un sistema con 0 sorgenti valide ha affidabilità `low`, mai `high`.
 
 ### Matrice indicatori strategia (`indicator_registry.yaml`)
 
-Il progetto include una **matrice machine-readable** (`indicator_registry.yaml`, caricata da `src/indicator_registry.py`) che dichiara per ogni indicatore della strategia:
+Il progetto include una **matrice machine-readable** (`indicator_registry.yaml`, caricata
+da `src/indicator_registry.py`) che dichiara per ogni indicatore della strategia:
 
-- `coverage` (**statico, dalle specifiche strategiche**): true = l'indicatore **appartiene alla strategia** (citato in `specifiche_strategia.md`). NON dipende dall'implementazione né dal runtime: resta true anche se non implementato, non scrapabile, rotto, disponibile solo manualmente o non usabile nello scoring. false = artefatto informativo NON strategico (es. VIX spot).
-- `implementation_status` (**statico**): `implemented` (modulo con semantica equivalente) · `proxy` (dato diverso che approssima l'indicatore, o artefatto informativo) · `missing` (gap dichiarato) · `manual_supported` (nessuno scraper, ma supporto via `manual_overrides.yaml`).
-- `semantic_coherent`: true/false — true solo se il dato misura esattamente l'indicatore della strategia
-- `output_key`: la chiave runtime dell'orchestratore che fornisce il dato (assente per gli indicatori senza modulo)
+- `coverage` (**statico**): true = l'indicatore **appartiene alla strategia** (citato in
+  `specifiche_strategia.md`). Non dipende da implementazione né runtime.
+- `implementation_status` (**statico**): `implemented` · `proxy` · `missing` ·
+  `manual_supported`.
+- `semantic_coherent`: true solo se il dato misura esattamente l'indicatore della strategia.
+- `output_key`: la chiave runtime dell'orchestratore che fornisce il dato.
 
-Per ogni indicatore vengono calcolati **campi distinti** (visibili sia nel JSON strutturato `strategy_indicators` sia nel report HTML):
+Per ogni indicatore vengono calcolati **campi distinti** (nel JSON `strategy_indicators`
+e nel report HTML):
 
 | Campo | Significato |
 |-------|-------------|
-| **`coverage`** | L'indicatore appartiene alla strategia (statico, dalle specifiche). Non cambia mai in base al runtime. |
-| **`implementation_status`** | Stato implementativo nel progetto (statico): implemented / proxy / missing / manual_supported. |
-| **`availability`** | Il dato è **davvero disponibile a runtime**: il modulo ha prodotto `status: "fresh"` oppure esiste un manual override valido e fresco. Dinamico. |
+| **`coverage`** | L'indicatore appartiene alla strategia (statico, dalle specifiche). |
+| **`implementation_status`** | Stato implementativo nel progetto (statico). |
+| **`availability`** | Il dato è **davvero disponibile a runtime**: modulo `status: "fresh"` oppure manual override valido e fresco. Dinamico. |
 | **`usable_in_strategy_score`** | True **solo** se `coverage=true` E `availability=true` E `implementation_status` in (implemented, manual_supported), oppure proxy esplicitamente accettato in `strategy.proxy_accepted` E disponibile. Fail-closed. |
 | **`source`** | Provenienza runtime: `scraped` \| `manual` \| `missing`. |
 
-Fail-closed: `coverage=false` mai usabile · `missing` mai usabile · proxy mai senza consenso esplicito · non disponibile a runtime → non usabile.
-
-Esempio: **NAAIM** è previsto dalla strategia (F3/#9) → `coverage: true`, `implementation_status: manual_supported`; se non c'è un override valido e fresco → `availability: false`, `usable_in_strategy_score: false`, `source: missing`.
-
-Il motore di scoring (`compute_signal`) consuma **solo indicatori implemented per-ticker** e non usa mai un proxy come se fosse l'originale senza consenso esplicito.
+Fail-closed: `coverage=false` mai usabile · `missing` mai usabile · proxy mai senza consenso
+esplicito · non disponibile a runtime → non usabile. Il motore di scoring (`compute_signal`)
+consuma **solo indicatori implemented per-ticker** e non usa mai un proxy come se fosse
+l'originale senza consenso esplicito.
 
 ### Manual overrides (`manual_overrides.yaml`)
 
-Per indicatori macro fragili (AAII, FGI, NAAIM) è possibile inserire manualmente un valore quando la fonte non è scrapabile o è temporaneamente indisponibile.
+Per indicatori macro fragili (AAII, FGI, NAAIM) è possibile inserire manualmente un valore
+quando la fonte non è scrapabile o è temporaneamente indisponibile.
 
 **Priorità (fail-closed)**: `scraping (fresh) > manual override (valido + fresco) > missing/error`.
 
 Regole:
-- **Tracciabilità**: il dato manuale è sempre marcato `source: "manual"` + `origin: "manual"` + `entered_by` + `note` — mai confuso con uno scrapato.
-- **Validità temporale**: scade dopo `stale_after_hours` da `fetched_at`. Un override scaduto diventa `status: "stale"` e non è mai usabile nello scoring.
-- **Fail-closed**: override malformato → log + ignorato (non rompe il pipeline); senza scraping valido E senza override valido → `missing/error`.
-- **Default**: se sia scraping che override sono validi, vince lo scraping. `strategy.force_manual_overrides` (es. `["aaii"]`) forza il manuale — **disabilitato di default**.
-- **Semantica**: un override valido dà `availability: true` e, se l'indicatore è previsto dalla strategia (`coverage: true`) con `implementation_status: manual_supported`, anche `usable_in_strategy_score: true` (es. NAAIM, VIX Term Structure). Gli indicatori `missing` (senza supporto manuale) restano non usabili finché il registry non viene aggiornato.
+- **Tracciabilità**: il dato manuale è sempre marcato `source: "manual"` + `origin: "manual"`
+  + `entered_by` + `note` — mai confuso con uno scrapato.
+- **Validità temporale**: scade dopo `stale_after_hours` da `fetched_at`. Un override scaduto
+  diventa `status: "stale"` e non è mai usabile nello scoring.
+- **Fail-closed**: override malformato → log + ignorato (non rompe il pipeline); senza
+  scraping valido E senza override valido → `missing/error`.
+- **Default**: se sia scraping che override sono validi, vince lo scraping.
+  `strategy.force_manual_overrides` (es. `["aaii"]`) forza il manuale — **disabilitato di default**.
+- **Semantica**: un override valido dà `availability: true` e, se l'indicatore è previsto
+  dalla strategia (`coverage: true`) con `implementation_status: manual_supported`, anche
+  `usable_in_strategy_score: true` (es. NAAIM, VIX Term Structure).
 
-Formato (vedi `manual_overrides.yaml`): campi comuni `fetched_at`, `stale_after_hours`, `entered_by`, `note`; campi specifici `aaii`→bullish/neutral/bearish, `fgi`→score/zone, `naaim`→exposure.
+Formato (vedi `manual_overrides.yaml`): campi comuni `fetched_at`, `stale_after_hours`,
+`entered_by`, `note`; campi specifici `aaii`→bullish/neutral/bearish, `fgi`→score/zone,
+`naaim`→exposure.
 
 ---
 
@@ -223,13 +229,18 @@ scrapers:
 ### Sezione `tickers` (lista titoli da monitorare)
 
 Sezione **opzionale** che elenca i titoli per i moduli OHLCV/indicators,
-raggruppati per categoria:
+raggruppati per categoria. Ogni ticker può avere **metadata strategici**
+(display-only nel report, mai usati come segnale):
 
 ```yaml
 tickers:
   semiconductors:
     - symbol: AMAT
       name: Applied Materials
+      quality_tier: core            # core | secondary | opportunistic
+      strategy_role: semiconductor_equipment
+      buy_the_dip_validity: high    # high | medium | low
+      notes: "Nota opzionale"       # mostrata nel report
   defense:
     - symbol: RTX
       name: RTX
@@ -238,6 +249,9 @@ tickers:
 - **Categoria** (es. `semiconductors`, `defense`): lista di ticker dello stesso settore.
 - **`symbol`**: simbolo del ticker (obbligatorio, univoco a livello globale).
 - **`name`**: nome dell'azienda (obbligatorio).
+- **Metadata** (opzionali): `quality_tier`, `strategy_role`, `buy_the_dip_validity`,
+  `notes` — validati da `config_loader` e mostrati nel report sotto il nome del ticker.
+  Formato legacy supportato: lista semplice di simboli (`["AMAT", "LRCX"]`).
 
 ### Moduli `ohlcv_fetcher` e `indicators` (OHLCV + indicatori tecnici)
 
@@ -575,27 +589,21 @@ con scraper mock (deterministici, senza chiamate di rete). I test di `ohlcv_fetc
 
 | Modulo | Stato | Note |
 |--------|-------|------|
-| `fgi_scraper.py` | ✅ Funzionante | Catena fallback CNN → feargreedmeter → feargreedindex (primo che risponde vince), `source` nell'output. Richiede header browser (CNN blocca User-Agent con HTTP 418). Validatore content-aware: rifiuta block page e body senza marker "Stock Market" (feargreedmeter pubblica anche un FGI crypto). |
-| `aaii_scraper.py` | ✅ Funzionante | Legge bullish/bearish/neutral. **`html_bars` è la strategia primaria** (AAII ha rimosso `dataChart5`, verificato 2026-08-14); `data_chart` resta come fallback legacy. ⚠️ 2026-08-14: blocco Cloudflare temporaneo (challenge `cf-chl`) — verificato di nuovo raggiungibile nella stessa giornata. Fail-closed a runtime se il blocco si ripresenta. |
-| `vix_scraper.py` | ✅ Funzionante | VIX spot (close) da CSV ufficiale CBOE. Scope cambiato da term structure (VIX Central non scrapabile) — **proxy, non l'indicatore F3/10 della strategia**. |
+| `fgi_scraper.py` | ✅ Funzionante | Catena fallback CNN → feargreedmeter → feargreedindex (primo che risponde vince), `source` nell'output. Richiede header browser (CNN blocca User-Agent con HTTP 418). Validatore content-aware: rifiuta block page e body senza marker "Stock Market". |
+| `aaii_scraper.py` | ✅ Funzionante | Legge bullish/bearish/neutral. Parser primario `html_bars`, fallback legacy `data_chart`. Fail-closed a runtime se la fonte blocca. |
+| `vix_scraper.py` | ✅ Funzionante | VIX spot (close) da CSV ufficiale CBOE. **Proxy**, non l'indicatore F3/10 della strategia (term structure). |
 | `ohlcv_fetcher.py` | ✅ Funzionante | OHLCV da Yahoo via yfinance, cache su disco. Rate limiting via `request_delay` (HTTP 429 evitato). |
 | `indicators.py` | ✅ Funzionante | RSI/OBV/MFI/SMA50/200/drawdown con libreria ta (pandas-ta escluso: numba incompatibile Python 3.14). |
 | Orchestratore | ✅ Funzionante | Config, isolamento errori, audit SQLite. Inietta `tickers` + risolve `cache_path`. **Fail-closed**: i moduli falliti compaiono con `status: "error"` nell'output. |
-| Config `tickers` | ✅ Funzionante | 29 ticker in 2 categorie (semiconductors, defense), validato da `config_loader` |
-| Moduli OHLCV/indicators | ✅ Smoke test OK | Orchestrazione end-to-end con rete reale: 5/5 fresh, 17/17 ticker con dati e indicatori. |
-| `pcr_scraper.py` | ✅ Funzionante | Equity PCR da CBOE (Barchart sostituito: WAF 404). Soglia >0.80 fear. |
-| `insider_scraper.py` | ✅ Funzionante | Bonus H5 da OpenInsider (HTTPS non risponde → HTTP) |
-| NAAIM | ⚠️ Manual override | A pagamento, dati pubblici ritardati di 3 mesi. `coverage: true` (previsto F3/#9), `implementation_status: manual_supported` — alimentabile via `manual_overrides.yaml`; senza override valido → `availability: false`, non usable. |
-| VIX term structure | ⚠️ Manual override | VIX Central non scrapabile (gateway di sessione). `coverage: true` (F3/#10), `implementation_status: manual_supported` — M1/M2 inseribili via `manual_overrides.yaml` (leggibili da https://vixcentral.com/); senza override valido → `availability: false`, non usable. VIX spot resta un proxy informativo separato. |
-| % sopra SMA 50/200 (mercato USA) | ⚠️ Manual override | IndexIndicators espone solo PNG (non scrapabile). `coverage: true` (F3/#13-14), `implementation_status: manual_supported` — pct_sma50/pct_sma200 inseribili via `manual_overrides.yaml` con i valori del mercato USA; il proxy locale sui 29 ticker è stato **rimosso (2026-08-17)**. |
-| NYSE NH-NL | ❌ Non implementato | Barchart (WAF 404) e StockCharts (404) non scrapabili; nessuna fonte gratuita equivalente trovata. |
+| Config `tickers` | ✅ Funzionante | 39 ticker in 2 categorie (semiconductors, defense) con metadata strategici, validato da `config_loader`. |
+| `pcr_scraper.py` | ✅ Funzionante | Equity PCR da CBOE. Soglia >0.80 fear. |
+| `insider_scraper.py` | ✅ Funzionante | Bonus H5 da OpenInsider (fallback HTTP). |
+| NAAIM | ⚠️ Manual override | `coverage: true` (F3/#9), `implementation_status: manual_supported` — alimentabile via `manual_overrides.yaml`; senza override valido → `availability: false`, non usable. |
+| VIX term structure | ⚠️ Manual override | `coverage: true` (F3/#10), `implementation_status: manual_supported` — M1/M2 inseribili via `manual_overrides.yaml` (leggibili da https://vixcentral.com/); senza override valido → `availability: false`, non usable. VIX spot resta un proxy informativo separato. |
+| % sopra SMA 50/200 (mercato USA) | ⚠️ Manual override | `coverage: true` (F3/#13-14), `implementation_status: manual_supported` — pct_sma50/pct_sma200 inseribili via `manual_overrides.yaml` con i valori del mercato USA. |
+| NYSE NH-NL | ❌ Non implementato | Nessuna fonte gratuita equivalente trovata. |
 
 ---
 
-## Roadmap
-
-- [x] Creare `pcr_scraper.py` (Equity PCR da CBOE)
-- [x] Creare `ohlcv_fetcher.py` (yfinance) e `indicators.py` (ta)
-- [x] Integrare uno scheduler (`src/scheduler.py` — loop/`--once`, sezione `scheduler:` in config)
-- [x] Aggiungere fallback per fonti instabili (FGI: catena 3 sorgenti, AAII: try_parsers, `fetch_utils.py`)
-- [x] Rimuovere il proxy `pct_sma` (breadth settoriale su 29 ticker) → `% sopra SMA50/200` del mercato USA alimentabile manualmente via `manual_overrides.yaml` (2026-08-17)
+Per lo **storico** del progetto (fonti escluse, note di audit, roadmap completata):
+vedi [`docs/history.md`](docs/history.md).
