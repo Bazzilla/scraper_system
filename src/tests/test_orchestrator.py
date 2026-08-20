@@ -323,7 +323,7 @@ class TestOrchestrator(unittest.TestCase):
         self.assertTrue(matrix["fgi"]["usable_in_strategy_score"])
         self.assertFalse(matrix["aaii"]["usable_in_strategy_score"])
         # I gap dichiarati restano missing (implementation_status) e mai usabili
-        self.assertEqual(matrix["nyse_nh_nl"]["implementation_status"], "missing")
+        self.assertEqual(matrix["nyse_nh_nl"]["implementation_status"], "implemented")
         self.assertEqual(matrix["vix_term_structure"]["implementation_status"], "manual_supported")
 
     def test_run_applies_manual_override_when_scraper_fails(self):

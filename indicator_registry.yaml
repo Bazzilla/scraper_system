@@ -109,11 +109,12 @@ indicators:
     name: "NYSE New Highs/New Lows"
     strategy_ref: "F3/#12"
     coverage: true
-    implementation_status: missing
-    primary_source: null
+    implementation_status: implemented
+    primary_source: "Barchart highs/lows summary (browser headers)"
     fallbacks: []
-    semantic_coherent: false
-    notes: "GAP DICHIARATO. Barchart (WAF 404) e StockCharts (404) non scrapabili. Nessuna fonte gratuita soddisfacente trovata. Coverage true perché previsto dalla strategia."
+    semantic_coherent: true
+    output_key: nh_nl
+    notes: "Scraper implementato 2026-08-19: Barchart risponde 200 con header browser (User-Agent + Referer), dati nell'HTML statico (tabella desktop, copia mobile skippata). NYSE 52-week new highs/lows, lag end-of-day (trade_date esplicita)."
 
   pct_sma:
     name: "% sopra SMA50/SMA200 (breadth mercato USA)"

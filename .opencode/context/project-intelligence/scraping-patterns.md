@@ -99,8 +99,10 @@ percentuale di ticker sopra SMA50/SMA200 dai dati OHLCV della cache locale.
 Riusare `records_to_frame` da indicators.py + `ta.trend.SMAIndicator`.
 
 ## PCR: JSON escapato CBOE (non Barchart!)
-Barchart non è scrapabile (WAF 404). Usare CBOE daily market statistics: il dato
-è in un JSON escapato dentro `__next_f.push`. Estrarre `EQUITY PUT/CALL RATIO`.
+Per il Put/Call Ratio usare CBOE daily market statistics: il dato è in un JSON
+escapato dentro `__next_f.push`. Estrarre `EQUITY PUT/CALL RATIO`. (Barchart
+risponde 200 solo con header browser; per l'NH-NL vedi sezione dedicata — per
+il PCR resta fonte CBOE, ufficiale.)
 ```python
 # NB: l'array "ratios" termina prima di "SUM OF ALL PRODUCTS" — NON usare `]\}`
 # come ancora finale (cattura dati extra e rompe il JSON parse).
@@ -113,6 +115,25 @@ pcr = next((r["value"] for r in rows if r["name"] == "EQUITY PUT/CALL RATIO"), N
 regex diretta sull'entry escapata `\\"EQUITY PUT/CALL RATIO\\",\\"value\\":\\"([\d.]+)\\"`;
 se nemmeno quella matcha → `ValueError` (pagina senza dati). Loggare sempre il
 fallback per rendere visibile la drift della pagina.
+
+## NH-NL: NYSE New Highs/New Lows da Barchart (browser headers!)
+Barchart è scrapabile (verificato 2026-08-19) SOLO con header browser
+(User-Agent Chrome + Referer `https://www.barchart.com/`), altrimenti WAF 404.
+URL: `https://www.barchart.com/stocks/highs-lows/summary` — i dati sono
+nell'**HTML statico**, tabella summary (Period, OVERALL, NYSE, NASDAQ, NYSE
+Arca, ETFs, OTC-US).
+```python
+rows = re.findall(r'<tr[^>]*>(.*?)</tr>', html, re.S)
+for row in rows:
+    if "timeFrame" not in row:      # skippa duplicato MOBILE (senza anchor)
+        continue
+    tds = re.findall(r'<td[^>]*>(.*?)</td>', row, re.S)
+    period = re.sub(r'<[^>]+>', '', tds[0]).strip()          # es. "52-Week Highs"
+    m = re.search(r'<a[^>]*>\s*(\d+)\s*</a>', tds[2])        # NYSE = 2ª colonna dati
+```
+Timestamp: `Last Updated: MM/DD/YYYY HH:MM ET` → `trade_date` ISO. **Caveat**:
+la pagina contiene una **seconda copia mobile** della tabella senza anchor
+`timeFrame` — il parser DEVE filtrarla (righe senza `timeFrame`).
 
 ## Insider: OpenInsider via HTTP (non HTTPS!)
 OpenInsider risponde SOLO su HTTP (HTTPS: connessione rifiutata dal server).

@@ -137,6 +137,29 @@ def render_market_cards(data: dict[str, Any]) -> str:
             f'Aggiornato: {format_iso_dt(pcr.get("fetched_at"))}</div></div>'
         )
 
+    nh_nl = data.get("nh_nl", {})
+    if nh_nl.get("status") == "error":
+        parts.append(_error_card("NYSE New Highs/Lows 52w", nh_nl))
+    else:
+        nh = nh_nl.get("nyse_highs_52w")
+        nl = nh_nl.get("nyse_lows_52w")
+        # Semaforo sul rapporto highs/lows: force vs debolezza del mercato.
+        nh_cls = "neutral"
+        if nh is not None and nl is not None and nl > 0:
+            ratio = nh / nl
+            if ratio >= 2.0:
+                nh_cls = "greed"
+            elif ratio <= 0.5:
+                nh_cls = "fear"
+        nh_badge = "" if nh_cls == "neutral" else (
+            f'<span class="sema {nh_cls}">{nh_cls}</span>')
+        parts.append(
+            f'<div class="card"{_age_attrs(nh_nl.get("fetched_at"), nh_nl.get("stale_after_hours"))}><div class="label">NYSE New Highs/Lows 52w</div>'
+            f'<div class="value">H {fmt(nh)} · L {fmt(nl)}</div>{nh_badge}'
+            f'<div class="meta">Giorno: {nh_nl.get("trade_date", "—")} · '
+            f'Aggiornato: {format_iso_dt(nh_nl.get("fetched_at"))}</div></div>'
+        )
+
     pct_sma = data.get("pct_sma", {})
     if pct_sma.get("status") == "error":
         parts.append(_error_card("Breadth di mercato", pct_sma))

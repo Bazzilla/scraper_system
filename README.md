@@ -118,11 +118,11 @@ contratto: una funzione `run(config: dict) -> dict` che ritorna un dict struttur
 | `ohlcv_fetcher.py` | Yahoo (yfinance) | OHLCV per ticker (cache) | giornaliera |
 | `indicators.py` | — | RSI, OBV, MFI, SMA50/200, drawdown | giornaliera |
 | `pcr_scraper.py` | CBOE | Equity Put/Call Ratio | giornaliera (lag 1gg) |
+| `nh_nl_scraper.py` | Barchart (browser headers) | NYSE 52-week new highs/lows | giornaliera (end-of-day) |
 | `insider_scraper.py` | OpenInsider (HTTP) | Bonus insider (acquisti dirigenti/CEO/CFO) | giornaliera |
 
 **Non scrapabili → alimentabili manualmente** via `manual_overrides.yaml`:
 NAAIM, VIX term structure (M1/M2), % sopra SMA50/200 del mercato USA.
-NYSE NH-NL non è implementato (nessuna fonte gratuita equivalente).
 
 **⚠️ Fail-closed**: un modulo che fallisce **non sparisce** dall'output: viene registrato
 con `status: "error"`, compare nel report con badge errore e abbassa `signal_reliability`
@@ -597,11 +597,12 @@ con scraper mock (deterministici, senza chiamate di rete). I test di `ohlcv_fetc
 | Orchestratore | ✅ Funzionante | Config, isolamento errori, audit SQLite. Inietta `tickers` + risolve `cache_path`. **Fail-closed**: i moduli falliti compaiono con `status: "error"` nell'output. |
 | Config `tickers` | ✅ Funzionante | 39 ticker in 2 categorie (semiconductors, defense) con metadata strategici, validato da `config_loader`. |
 | `pcr_scraper.py` | ✅ Funzionante | Equity PCR da CBOE. Soglia >0.80 fear. |
+| `nh_nl_scraper.py` | ✅ Funzionante | NYSE 52-week new highs/lows da Barchart (header browser; WAF 404 superato). Copia mobile duplicata skippata. `trade_date` end-of-day. |
 | `insider_scraper.py` | ✅ Funzionante | Bonus H5 da OpenInsider (fallback HTTP). |
 | NAAIM | ⚠️ Manual override | `coverage: true` (F3/#9), `implementation_status: manual_supported` — alimentabile via `manual_overrides.yaml`; senza override valido → `availability: false`, non usable. |
 | VIX term structure | ⚠️ Manual override | `coverage: true` (F3/#10), `implementation_status: manual_supported` — M1/M2 inseribili via `manual_overrides.yaml` (leggibili da https://vixcentral.com/); senza override valido → `availability: false`, non usable. VIX spot resta un proxy informativo separato. |
 | % sopra SMA 50/200 (mercato USA) | ⚠️ Manual override | `coverage: true` (F3/#13-14), `implementation_status: manual_supported` — pct_sma50/pct_sma200 inseribili via `manual_overrides.yaml` con i valori del mercato USA. |
-| NYSE NH-NL | ❌ Non implementato | Nessuna fonte gratuita equivalente trovata. |
+| NYSE NH-NL | ✅ Funzionante | `coverage: true` (F3/#12), `implementation_status: implemented` — NYSE 52-week new highs/lows da Barchart (header browser, copia mobile skippata). |
 
 ---
 

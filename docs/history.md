@@ -30,12 +30,15 @@ scrapabile). Il proxy locale sui 29 ticker è stato **rimosso (2026-08-17)**;
 l'indicatore si alimenta manualmente via `manual_overrides.yaml`
 (pct_sma50/pct_sma200) con i valori del mercato USA.
 
-### NYSE New Highs/New Lows — non implementato
+### NYSE New Highs/New Lows — implementato (2026-08-19)
 
-`nh_nl_scraper.py` (indicatore #12 della strategia) non è mai stato
-implementato: Barchart (WAF 404) e StockCharts (404) non sono scrapabili con
-`requests`; nessuna altra fonte gratuita equivalente trovata. Il segnale
-NH-NL resta da valutare manualmente.
+`nh_nl_scraper.py` (indicatore #12 della strategia) è stato implementato:
+Barchart (ritenuto WAF 404) risponde **200** con header browser
+(User-Agent + Referer `https://www.barchart.com/`) e i dati sono
+nell'**HTML statico** della tabella summary (Period, OVERALL, NYSE, ...).
+Lo scraper estrae NYSE 52-week new highs/lows (colonna NYSE = 2ª colonna dati,
+primo `<a>` per cella) e filtra la copia **mobile** duplicata (righe senza
+anchor `timeFrame`). `trade_date` da `Last Updated: MM/DD/YYYY HH:MM ET`.
 
 ---
 

@@ -61,6 +61,20 @@ _LEGEND_MARKET = [
         ),
     },
     {
+        "name": "NYSE New Highs/Lows (52w)",
+        "range": "conteggio",
+        "short": "Titoli NYSE a nuovi massimi vs nuovi minimi di 52 settimane.",
+        "detail": (
+            "Rapporto tra i titoli del NYSE che hanno toccato nuovi massimi e "
+            "nuovi minimi a 52 settimane (F3/#12 della strategia). Quando i "
+            "massimi superano ampiamente i minimi (ratio ≥ 2) il mercato è in "
+            "fase di forza (greed); quando i minimi dominano (ratio ≤ 0.5) "
+            "prevale la debolezza (fear). Un picco di nuovi minimi coincide "
+            "spesso con fasi di panico — potenziale contesto buy-the-dip. "
+            "Fonte: Barchart (dati end-of-day)."
+        ),
+    },
+    {
         "name": "Breadth di mercato (% sopra SMA)",
         "range": "%",
         "short": "Quota di titoli del MERCATO USA sopra SMA50/SMA200 (inserita manualmente).",

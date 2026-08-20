@@ -106,7 +106,8 @@ deploy/systemd/scraper-scheduler.timer → service (--once) [daily]
 **Scraper VIX**: `src/scrapers/vix_scraper.py` — VIX spot da CSV CBOE (scope cambiato da term structure; proxy dichiarato)
 **Scraper OHLCV**: `src/scrapers/ohlcv_fetcher.py` — yfinance → cache su disco, multi_level_index=False, request_delay
 **Scraper Indicators**: `src/scrapers/indicators.py` — legge cache, normalizza TitleCase, calcola con `ta`
-**Scraper PCR**: `src/scrapers/pcr_scraper.py` — Equity PCR da CBOE (JSON escapato), Barchart sostituito (WAF 404)
+**Scraper PCR**: `src/scrapers/pcr_scraper.py` — Equity PCR da CBOE (JSON escapato), fonte ufficiale
+**Scraper NH-NL**: `src/scrapers/nh_nl_scraper.py` — NYSE 52-week new highs/lows da Barchart (`/stocks/highs-lows/summary`, header browser User-Agent+Referer; WAF 404 superato), tabella desktop, copia mobile skippata, `trade_date` end-of-day
 **Scraper PCT SMA**: *(rimosso 2026-08-17)* — `% sopra SMA50/200` mercato USA (F3/#13-14) → `manual_supported` via `manual_overrides.yaml` (pct_sma50/pct_sma200); il proxy sui 29 ticker non esiste più
 **Scraper Insider**: `src/scrapers/insider_scraper.py` — bonus H5 da OpenInsider (HTTP, solo acquisti)
 **Report HTML**: `src/report_html.py` (orchestratore, ri-esporta da `report_helpers.py`/`report_cards.py`/`report_tables.py`/`report_legend.py`) — pagina statica da output.json (dark+light, semafori, segnale con gate FGI, matrice indicatori con badge coverage/availability/usable/source, badge manual sugli override); aggiornare i moduli report ad ogni nuovo scraper
