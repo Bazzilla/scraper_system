@@ -62,3 +62,24 @@ class TestRenderOverridesPage(unittest.TestCase):
         # Nessun URL fornito per FGI → nessun link nella sua card
         card = render_overrides_page({}).split('data-key="fgi"')[1]
         self.assertNotIn("ref-link", card.split('data-key="naaim"')[0])
+
+    def test_card_layout_structure(self):
+        html = render_overrides_page({})
+        # Griglia campi con label sopra l'input
+        self.assertIn('class="field-grid"', html)
+        self.assertIn('class="field"', html)
+        # Input decimali come text+inputmode (per accettare '.' e ',')
+        self.assertIn('inputmode="decimal"', html)
+        self.assertNotIn('type="number"', html)
+        # Footer: WRITE prima della data → date allineate a destra del tasto
+        footer = html.split('class="card-footer"')[1]
+        self.assertLess(footer.find(">WRITE</button>"), footer.find("Ultimo:"))
+        # Struttura card: titolo → abilitato → link fonte → campi → footer
+        card = html.split('data-key="naaim"')[1]
+        idx_enabled = card.find('name="enabled"')
+        idx_refs = card.find("ref-link")
+        idx_grid = card.find('class="field-grid"')
+        idx_footer = card.find('class="card-footer"')
+        self.assertLess(idx_enabled, idx_refs)
+        self.assertLess(idx_refs, idx_grid)
+        self.assertLess(idx_grid, idx_footer)

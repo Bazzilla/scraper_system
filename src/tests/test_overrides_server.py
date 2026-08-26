@@ -20,8 +20,24 @@ from overrides_server import (
     SUPPORTED_KEYS,
     is_authorized,
     load_credentials,
+    parse_number,
     rebuild_report,
 )
+
+
+class TestParseNumber(unittest.TestCase):
+    def test_accepts_dot_and_comma_as_decimal_separator(self):
+        self.assertEqual(parse_number("12.5"), 12.5)
+        self.assertEqual(parse_number("12,5"), 12.5)
+        self.assertEqual(parse_number(" 12,5 "), 12.5)
+        self.assertEqual(parse_number(24), 24.0)
+        self.assertEqual(parse_number("79,70"), 79.7)
+
+    def test_rejects_non_numeric(self):
+        with self.assertRaises(ValueError):
+            parse_number("abc")
+        with self.assertRaises(ValueError):
+            parse_number("")
 
 
 def _auth_header(user: str = "", password: str = "") -> str:

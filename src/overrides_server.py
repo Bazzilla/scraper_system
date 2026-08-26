@@ -222,14 +222,14 @@ class OverridesHandler(BaseHTTPRequestHandler):
                 return
             if fspec["type"] == "number":
                 try:
-                    values[field] = float(raw)
+                    values[field] = parse_number(raw)
                 except (TypeError, ValueError):
                     self._send_json(400, {"ok": False, "message": f"campo non numerico: {field}"})
                     return
             else:
                 values[field] = str(raw).strip()
         try:
-            values["stale_after_hours"] = float(payload.get("stale_after_hours", 24))
+            values["stale_after_hours"] = parse_number(payload.get("stale_after_hours", 24))
         except (TypeError, ValueError):
             self._send_json(400, {"ok": False, "message": "stale_after_hours non numerico"})
             return
@@ -292,6 +292,11 @@ class OverridesHandler(BaseHTTPRequestHandler):
 def _overrides_path() -> Path:
     strategy_cfg = load_config(DEFAULT_CONFIG).get("strategy", {})
     return PROJECT_ROOT / strategy_cfg.get("manual_overrides", "manual_overrides.yaml")
+
+
+def parse_number(raw: Any) -> float:
+    """Parse a number accepting both '.' and ',' as decimal separator."""
+    return float(str(raw).strip().replace(",", "."))
 
 
 def _field_specs(key: str) -> dict[str, Any]:

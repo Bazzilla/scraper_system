@@ -24,34 +24,62 @@ _PAGE_CSS = _CSS + """\
 .override-form { margin-top: 24px; }
 .override-card { background: var(--card); border: 1px solid var(--border);
         border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-.override-card .row { display: flex; align-items: center; gap: 12px;
-        flex-wrap: wrap; margin-bottom: 8px; }
-.override-card label { color: var(--muted); font-size: 0.85rem; }
-.override-card input[type="number"], .override-card input[type="text"] {
-        background: var(--bg); color: var(--text); border: 1px solid var(--border);
-        border-radius: 6px; padding: 6px 8px; font-size: 0.9rem; width: 140px; }
-.override-card input[type="text"] { width: 220px; }
-.override-card button { background: var(--green); color: #fff; border: none;
-        border-radius: 8px; padding: 8px 16px; cursor: pointer; font-size: 0.9rem;
-        font-weight: 600; }
-.override-card button:hover { opacity: 0.9; }
+.card-title { margin-bottom: 6px; }
+.card-enabled { margin-bottom: 4px; }
+.card-enabled label { color: var(--text); font-size: 0.9rem; cursor: pointer; }
+.card-refs { font-size: 0.85rem; margin-bottom: 12px; }
+.ref-link { color: var(--neutral); text-decoration: none; }
+.ref-link:hover { text-decoration: underline; }
+/* Griglia campi: label SOPRA l'input, celle allineate come una tabella */
+.field-grid { display: flex; flex-wrap: wrap; gap: 12px 20px;
+        margin-bottom: 14px; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field.wide { flex: 1 1 260px; }
+.field > label { color: var(--muted); font-size: 0.75rem; text-transform: uppercase;
+        letter-spacing: 0.05em; }
+.field input { background: var(--bg); color: var(--text);
+        border: 1px solid var(--border); border-radius: 6px;
+        padding: 6px 8px; font-size: 0.9rem; width: 130px; }
+.field input[type="text"] { width: 220px; }
+.field.wide input { width: 100%; }
+/* Footer: WRITE a larghezza fissa → le date partono tutte dallo stesso punto */
+.card-footer { display: flex; align-items: center; gap: 14px;
+        border-top: 1px solid var(--border); padding-top: 12px; }
+.card-footer button { background: var(--green); color: #fff; border: none;
+        border-radius: 8px; padding: 8px 16px; cursor: pointer;
+        font-size: 0.9rem; font-weight: 600; min-width: 110px; }
+.card-footer button:hover { opacity: 0.9; }
+.last-update { color: var(--muted); font-size: 0.85rem; }
 .msg { padding: 8px 12px; border-radius: 8px; margin: 8px 0; font-size: 0.9rem; }
 .msg.ok { background: var(--green); color: #fff; }
 .msg.err { background: var(--red); color: #fff; }
-.ref-links { font-size: 0.85rem; }
-.ref-link { color: var(--neutral); text-decoration: none; }
-.ref-link:hover { text-decoration: underline; }
 """
 
 
 def _render_field(key: str, spec: dict[str, Any], value: Any) -> str:
+    """One grid cell: label ABOVE the input (tabular alignment).
+
+    Numeric fields render as ``type="text" inputmode="decimal"`` so the user
+    can type either '.' or ',' — the comma is normalized to '.' before
+    sending (client) and on the server.
+    """
     ftype = spec["type"]
-    step = spec.get("step")
-    step_attr = f' step="{step}"' if step else ""
     val = "" if value is None else str(value)
+    wide = " wide" if key == "note" else ""
+    if ftype == "number":
+        input_el = (
+            f'<input type="text" inputmode="decimal" name="{key}" '
+            f'value="{html_mod.escape(val)}">'
+        )
+    else:
+        input_el = (
+            f'<input type="{ftype}" name="{key}" '
+            f'value="{html_mod.escape(val)}">'
+        )
     return (
-        f'<label>{html_mod.escape(spec["label"])}'
-        f'<input type="{ftype}" name="{key}" value="{html_mod.escape(val)}"{step_attr}></label>'
+        f'<div class="field{wide}">'
+        f"<label>{html_mod.escape(spec['label'])}</label>"
+        f"{input_el}</div>"
     )
 
 
@@ -76,22 +104,28 @@ def _render_card(indicator: str, spec: dict[str, Any], entry: dict[str, Any]) ->
         _render_field(key, fspec, entry.get(key))
         for key, fspec in spec["fields"].items()
     )
-    stale = entry.get("stale_after_hours", 24)
-    note = entry.get("note", "")
+    stale_cell = _render_field(
+        "stale_after_hours",
+        {"label": "Validità (h)", "type": "number"},
+        entry.get("stale_after_hours", 24),
+    )
+    note_cell = _render_field(
+        "note", {"label": "Nota", "type": "text"}, entry.get("note", "")
+    )
     fetched = format_iso_dt(entry.get("fetched_at"))
     badge_cls = "ok" if spec["badge"] == "manual" else "warning"
     return (
         f'<div class="override-card" data-key="{indicator}">'
-        f'<div class="row"><strong>{html_mod.escape(spec["label"])}</strong>'
-        f' <span class="sema {badge_cls}">{spec["badge"]}</span>'
-        f'{_reference_links_html(spec)}'
-        f'<label><input type="checkbox" name="enabled"{checked}> abilitato</label></div>'
-        f'<div class="row">{fields_html}</div>'
-        f'<div class="row"><label>Validità (h) '
-        f'<input type="number" name="stale_after_hours" value="{stale}" step="1"></label>'
-        f'<label>Nota <input type="text" name="note" value="{html_mod.escape(str(note))}"></label></div>'
-        f'<div class="row"><span class="name">Ultimo: {fetched}</span>'
-        f'<button type="button" onclick="saveOverride(\'{indicator}\')">WRITE</button></div>'
+        f'<div class="card-title"><strong>{html_mod.escape(spec["label"])}</strong>'
+        f' <span class="sema {badge_cls}">{spec["badge"]}</span></div>'
+        f'<div class="card-enabled"><label>'
+        f'<input type="checkbox" name="enabled"{checked}> abilitato</label></div>'
+        f'<div class="card-refs">{_reference_links_html(spec)}</div>'
+        f'<div class="field-grid">{fields_html}{stale_cell}{note_cell}</div>'
+        f'<div class="card-footer">'
+        f'<button type="button" onclick="saveOverride(\'{indicator}\')">WRITE</button>'
+        f'<span class="last-update">Ultimo: {fetched}</span>'
+        f"</div>"
         f"</div>"
     )
 
@@ -115,7 +149,14 @@ function saveOverride(key) {
   var card = document.querySelector('[data-key="' + key + '"]');
   var payload = { key: key, enabled: card.querySelector('[name="enabled"]').checked };
   card.querySelectorAll("input[name]").forEach(function (input) {
-    if (input.name !== "enabled") payload[input.name] = input.value;
+    if (input.name !== "enabled") {
+      var val = input.value;
+      // Campi decimali: '.' e ',' sono entrambi separatori decimali
+      if (input.getAttribute("inputmode") === "decimal") {
+        val = val.replace(/\\s/g, "").replace(",", ".");
+      }
+      payload[input.name] = val;
+    }
   });
   postJSON("/api/save", payload, 1).then(function (data) {
     var msg = document.createElement("div");
