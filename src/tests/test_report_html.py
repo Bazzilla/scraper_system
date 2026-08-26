@@ -815,6 +815,38 @@ class TestRenderSections(unittest.TestCase):
         self.assertIn('rel="icon"', html)
         self.assertIn("data:image/svg+xml", html)
 
+    def test_ticker_table_sortable_filterable_markup(self):
+        data = _sample_data()
+        entries = data["indicators"]["semiconductors"]
+        html = render_ticker_table("semiconductors", entries)
+        # Tabella marcata per il JS di sort/filter
+        self.assertIn('class="ticker-table"', html)
+        # Tipi di colonna dichiarati
+        self.assertIn('<th data-type="text">Ticker</th>', html)
+        self.assertIn('<th data-type="num">Close</th>', html)
+        self.assertIn('<th data-type="date">Aggiornato</th>', html)
+        # Valori machine-readable sulle celle
+        self.assertIn('data-value="AMAT"', html)
+        self.assertIn('data-value="52.08"', html)  # rsi
+        # Segnale machine-readable (uno dei tre valori operativi)
+        self.assertTrue(
+            any(f'data-value="{s}"' in html for s in ("buy", "watchlist", "hold"))
+        )
+
+    def test_build_page_has_table_script(self):
+        html = build_page(_sample_data())
+        # JS di sort/filter presente
+        self.assertIn("table.ticker-table", html)
+        self.assertIn("Azzera filtri e ordine", html)
+        self.assertIn("num-filter", html)
+
+    def test_legend_has_strategy_explanations(self):
+        html = render_legend()
+        # Spiegazione semplice buy/osserva/vendi per gli indicatori
+        self.assertEqual(html.count("legend-strategy"), 12)
+        self.assertIn("In pratica", html)
+        self.assertIn("<strong>comprare</strong>", html)
+
     def test_ticker_sections_ignores_category_status_key(self):
         # La categoria ha una chiave "status" (stringa) che NON è un ticker
         data = _sample_data()

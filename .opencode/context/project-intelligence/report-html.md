@@ -16,6 +16,8 @@
 
 **Menù di navigazione condiviso**: `render_nav(active)` in `report_helpers.py` — gruppo orizzontale di pulsanti (`nav.page-nav`, stile badge pill) con i link a tutte le pagine (Report / Immissione manuale / Ticker), presente nell'header di ogni pagina con la voce corrente evidenziata (`active`). Le pagine sono servite da overrides_server (`/report.html`, `/overrides.html`, `/tickers.html`). I backup dell'editor ticker finiscono in `backups/` (git-ignored).
 
+**Sort & filter tabelle ticker** (2026-08-26): `render_ticker_table` emette `class="ticker-table"`, `data-type="text|num|date"` sui `<th>` e `data-value` machine-readable su ogni `<td>`; il JS vanilla `_TABLE_SCRIPT` (report_html.py, separato da `_SCRIPT`) aggiunge per tabella: riga filtri (testo=contiene, num=operatori > ≥ = ≤ < con input che accetta ',' decimale, date semantiche oggi/ieri/ultimi 7gg/più vecchio), sort ciclico asc→desc→nessuno su click th (**un solo ordinamento**, no multi-sort, valori mancanti in fondo), bottone "↺ Azzera filtri e ordine". La legenda include per ogni indicatore un blocco `legend-strategy` ("💡 In pratica (compra / osserva / vendi)") dal campo `strategy` delle voci in report_legend.py.
+
 **Card FGI**: può includere una mini-griglia dei 7 sub-indicatori da `fgi.fgi_components` (score + rating per componente, badge via `_fgi_rating_badge`). `fgi_components` è DISPLAY-ONLY: non entra mai nello score di segnale.
 
 ## Segnale VALUTA INGRESSO / OSSERVA / ATTENDI (pipeline)

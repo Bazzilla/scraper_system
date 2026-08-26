@@ -195,6 +195,25 @@ button#sections-toggle { background: var(--card); color: var(--text);
 .page-nav a.active { background: var(--green); color: #fff;
         border-color: var(--green); }
 .page-nav a:hover { opacity: 0.85; }
+/* Sort & filter tabelle ticker */
+table.ticker-table th.sortable { cursor: pointer; user-select: none; }
+table.ticker-table th.sorted { color: var(--neutral); }
+.filter-row td { padding: 4px 6px; background: var(--bg); }
+.filter-row input, .filter-row select { width: 100%; min-width: 70px;
+        background: var(--card); color: var(--text);
+        border: 1px solid var(--border); border-radius: 6px;
+        padding: 4px 6px; font-size: 0.78rem; box-sizing: border-box; }
+.num-filter { display: flex; gap: 4px; }
+.num-filter select { width: auto; flex: 0 0 auto; }
+.table-tools { display: flex; justify-content: flex-end; margin-bottom: 6px; }
+.table-reset { background: var(--card); color: var(--text);
+        border: 1px solid var(--border); border-radius: 8px;
+        padding: 4px 10px; cursor: pointer; font-size: 0.8rem; }
+.table-reset:hover { opacity: 0.85; }
+.legend-strategy { margin-top: 8px; font-size: 0.85rem;
+        background: rgba(88, 166, 255, 0.08);
+        border-left: 3px solid var(--neutral); padding: 6px 10px;
+        border-radius: 6px; }
 """
 
 _SCRIPT = """\
@@ -300,6 +319,197 @@ _SCRIPT = """\
 """
 
 
+_TABLE_SCRIPT = """\
+<script>
+// --- Sort & filter per le tabelle ticker -------------------------------
+// Sort ciclico per colonna: click → asc, click → desc, click → nessuno.
+// Un solo ordinamento alla volta. Filtri: testo (contiene), numerici con
+// operatori (> ≥ = ≤ <) e date semantiche (oggi/ieri/ultimi 7gg/più vecchio).
+(function () {
+  var NUM_OPS = [">", "≥", "=", "≤", "<"];
+  var DATE_OPTS = [
+    ["", "(qualsiasi data)"],
+    ["today", "oggi"],
+    ["yesterday", "ieri"],
+    ["7d", "ultimi 7 giorni"],
+    ["older", "più vecchio di 7 giorni"]
+  ];
+
+  function cellValue(row, idx, type) {
+    var td = row.cells[idx];
+    var dv = td.getAttribute("data-value");
+    if (type === "num") {
+      var src = dv !== null && dv !== "" ? dv : td.textContent.replace(",", ".");
+      var n = parseFloat(src);
+      return isNaN(n) ? null : n;
+    }
+    if (type === "date") {
+      var t = Date.parse(dv !== null && dv !== "" ? dv : td.textContent);
+      return isNaN(t) ? null : t;
+    }
+    return ((dv || "") + " " + td.textContent).toLowerCase();
+  }
+
+  function startOfToday() {
+    var now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  }
+
+  function passes(row, headCells, filters) {
+    for (var idx = 0; idx < headCells.length; idx++) {
+      var f = filters[idx] && filters[idx]();
+      if (!f) continue;
+      var type = headCells[idx].getAttribute("data-type") || "text";
+      var val = cellValue(row, idx, type);
+      if (type === "num") {
+        if (val === null) return false;
+        if (f.op === ">" && !(val > f.num)) return false;
+        if (f.op === "≥" && !(val >= f.num)) return false;
+        if (f.op === "=" && !(val === f.num)) return false;
+        if (f.op === "≤" && !(val <= f.num)) return false;
+        if (f.op === "<" && !(val < f.num)) return false;
+      } else if (type === "date") {
+        if (val === null) return false;
+        var s0 = startOfToday(), day = 86400000;
+        if (f === "today" && val < s0) return false;
+        if (f === "yesterday" && !(val >= s0 - day && val < s0)) return false;
+        if (f === "7d" && val < s0 - 7 * day) return false;
+        if (f === "older" && val >= s0 - 7 * day) return false;
+      } else {
+        if (val.indexOf(f) === -1) return false;
+      }
+    }
+    return true;
+  }
+
+  function setupTable(table) {
+    var thead = table.tHead;
+    var headCells = thead.rows[0].cells;
+    var tbody = table.tBodies[0];
+    var dataRows = Array.prototype.slice.call(tbody.rows);
+    var sortCol = -1, sortDir = 0;   // 0 = nessun ordinamento
+    dataRows.forEach(function (r, i) { r.setAttribute("data-orig-index", i); });
+
+    // Toolbar con reset (filtri + ordinamento)
+    var tools = document.createElement("div");
+    tools.className = "table-tools";
+    var resetBtn = document.createElement("button");
+    resetBtn.type = "button";
+    resetBtn.className = "table-reset";
+    resetBtn.textContent = "↺ Azzera filtri e ordine";
+    tools.appendChild(resetBtn);
+    table.parentNode.insertBefore(tools, table);
+
+    // Riga filtri sotto l'intestazione
+    var filterRow = thead.insertRow(1);
+    filterRow.className = "filter-row";
+    var filters = [];
+
+    Array.prototype.forEach.call(headCells, function (th, idx) {
+      var type = th.getAttribute("data-type") || "text";
+      var cell = filterRow.insertCell(idx);
+      cell.className = "filter-cell";
+      if (type === "num") {
+        var wrap = document.createElement("div");
+        wrap.className = "num-filter";
+        var sel = document.createElement("select");
+        NUM_OPS.forEach(function (op) {
+          var o = document.createElement("option");
+          o.value = op; o.textContent = op; sel.appendChild(o);
+        });
+        var inp = document.createElement("input");
+        inp.type = "text"; inp.inputMode = "decimal"; inp.placeholder = "valore";
+        wrap.appendChild(sel); wrap.appendChild(inp);
+        cell.appendChild(wrap);
+        filters[idx] = function () {
+          var v = inp.value.trim().replace(",", ".");
+          return v ? { op: sel.value, num: parseFloat(v) } : null;
+        };
+        inp.addEventListener("input", apply);
+        sel.addEventListener("change", apply);
+      } else if (type === "date") {
+        var selD = document.createElement("select");
+        DATE_OPTS.forEach(function (pair) {
+          var o = document.createElement("option");
+          o.value = pair[0]; o.textContent = pair[1]; selD.appendChild(o);
+        });
+        cell.appendChild(selD);
+        filters[idx] = function () { return selD.value || null; };
+        selD.addEventListener("change", apply);
+      } else {
+        var inpT = document.createElement("input");
+        inpT.type = "text"; inpT.placeholder = "contiene…";
+        cell.appendChild(inpT);
+        filters[idx] = function () { return inpT.value.trim().toLowerCase() || null; };
+        inpT.addEventListener("input", apply);
+      }
+    });
+
+    // Ordinamento ciclico: asc → desc → nessuno (un solo sort alla volta)
+    Array.prototype.forEach.call(headCells, function (th, idx) {
+      th.classList.add("sortable");
+      th.title = "Clicca: ordina ↑ / ↓ / ripristina";
+      var ind = document.createElement("span");
+      ind.className = "sort-ind";
+      th.appendChild(ind);
+      th.addEventListener("click", function () {
+        if (sortCol !== idx) { sortCol = idx; sortDir = 1; }
+        else if (sortDir === 1) { sortDir = -1; }
+        else { sortCol = -1; sortDir = 0; }
+        updateIndicators();
+        apply();
+      });
+    });
+
+    function updateIndicators() {
+      Array.prototype.forEach.call(headCells, function (th, idx) {
+        th.querySelector(".sort-ind").textContent =
+          idx === sortCol && sortDir !== 0 ? (sortDir === 1 ? " ▲" : " ▼") : "";
+        th.classList.toggle("sorted", idx === sortCol && sortDir !== 0);
+      });
+    }
+
+    function apply() {
+      var visible = [];
+      dataRows.forEach(function (row) {
+        var ok = passes(row, headCells, filters);
+        row.style.display = ok ? "" : "none";
+        if (ok) visible.push(row);
+      });
+      if (sortCol >= 0 && sortDir !== 0) {
+        var type = headCells[sortCol].getAttribute("data-type") || "text";
+        visible.sort(function (a, b) {
+          var va = cellValue(a, sortCol, type), vb = cellValue(b, sortCol, type);
+          if (va === null && vb === null) return 0;
+          if (va === null) return 1;   // valori mancanti sempre in fondo
+          if (vb === null) return -1;
+          var cmp = (type === "text")
+            ? va.localeCompare(vb)
+            : (va < vb ? -1 : va > vb ? 1 : 0);
+          return cmp * sortDir;
+        });
+      } else {
+        visible.sort(function (a, b) {
+          return (+a.getAttribute("data-orig-index")) - (+b.getAttribute("data-orig-index"));
+        });
+      }
+      visible.forEach(function (row) { tbody.appendChild(row); });
+    }
+
+    resetBtn.addEventListener("click", function () {
+      sortCol = -1; sortDir = 0;
+      updateIndicators();
+      filterRow.querySelectorAll("input").forEach(function (i) { i.value = ""; });
+      filterRow.querySelectorAll("select").forEach(function (s) { s.selectedIndex = 0; });
+      apply();
+    });
+  }
+
+  document.querySelectorAll("table.ticker-table").forEach(setupTable);
+})();
+</script>
+"""
+
 def build_page(data: dict[str, Any], tickers_config: dict[str, Any] | None = None) -> str:
     """Assemble the complete HTML document.
 
@@ -332,7 +542,7 @@ def build_page(data: dict[str, Any], tickers_config: dict[str, Any] | None = Non
         f"{render_stale_summary(stale)}"
         f"{render_legend()}"
         "</div>"
-        f"{_SCRIPT}"
+        f"{_SCRIPT}{_TABLE_SCRIPT}"
         "</body>\n</html>"
     )
     return html_doc

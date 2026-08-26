@@ -64,35 +64,53 @@ def render_ticker_table(
     it never influences the signal (the FGI Buy-the-Dip gate is the only
     operational gate). Rows are sorted by quality_tier (core first), then
     alphabetically; without metadata the order is purely alphabetical.
+
+    Ogni cella porta ``data-value`` machine-readable e ogni colonna
+    ``data-type`` (text|num|date): il JS lato client li usa per
+    ordinamento ciclico e filtri (vedi report_html._SCRIPT).
     """
     rows: list[str] = []
     meta = tickers_meta or {}
     for symbol in sorted(entries, key=lambda s: _tier_sort_key(s, meta.get(s))):
         entry = entries[symbol]
         ind = entry
+        signal = compute_signal(ind, regime, fgi_score=fgi_score)
+
+        def _dv(value: Any) -> str:
+            """Machine-readable cell value ('' quando assente)."""
+            return html_mod.escape("" if value is None else str(value))
+
         rows.append(
             f"<tr{_age_attrs(ind.get('fetched_at'), ind.get('stale_after_hours'))}>"
-            f'<td><span class="ticker">{html_mod.escape(symbol)}</span>'
+            f'<td data-value="{_dv(symbol)}"><span class="ticker">{html_mod.escape(symbol)}</span>'
             f'<br><span class="name">{html_mod.escape(entry.get("name", ""))}</span>'
             f"{_ticker_meta_line(meta.get(symbol))}</td>"
-            f"<td>{_sema(ind.get('last_close'), 'close')}</td>"
-            f"<td>{_sema(ind.get('rsi_14'), 'rsi')}</td>"
-            f"<td>{_sema(ind.get('mfi_14'), 'mfi')}</td>"
-            f"<td>{fmt(ind.get('obv'))}</td>"
-            f"<td>{fmt(ind.get('sma_50'))}</td>"
-            f"<td>{fmt(ind.get('sma_200'))}</td>"
-            f"<td>{_sema(ind.get('drawdown_52w'), 'drawdown')}</td>"
-            f"<td>{_signal_badge(compute_signal(ind, regime, fgi_score=fgi_score))}</td>"
-            f'<td>{format_iso_dt(ind.get("fetched_at"))}</td>'
+            f"<td data-value=\"{_dv(ind.get('last_close'))}\">{_sema(ind.get('last_close'), 'close')}</td>"
+            f"<td data-value=\"{_dv(ind.get('rsi_14'))}\">{_sema(ind.get('rsi_14'), 'rsi')}</td>"
+            f"<td data-value=\"{_dv(ind.get('mfi_14'))}\">{_sema(ind.get('mfi_14'), 'mfi')}</td>"
+            f"<td data-value=\"{_dv(ind.get('obv'))}\">{fmt(ind.get('obv'))}</td>"
+            f"<td data-value=\"{_dv(ind.get('sma_50'))}\">{fmt(ind.get('sma_50'))}</td>"
+            f"<td data-value=\"{_dv(ind.get('sma_200'))}\">{fmt(ind.get('sma_200'))}</td>"
+            f"<td data-value=\"{_dv(ind.get('drawdown_52w'))}\">{_sema(ind.get('drawdown_52w'), 'drawdown')}</td>"
+            f'<td data-value="{signal}">{_signal_badge(signal)}</td>'
+            f'<td data-value="{_dv(ind.get("fetched_at"))}">{format_iso_dt(ind.get("fetched_at"))}</td>'
             "</tr>"
         )
     header = (
         "<thead><tr>"
-        "<th>Ticker</th><th>Close</th><th>RSI</th><th>MFI</th><th>OBV</th>"
-        "<th>SMA50</th><th>SMA200</th><th>Drawdown</th><th>Segnale</th><th>Aggiornato</th>"
+        '<th data-type="text">Ticker</th>'
+        '<th data-type="num">Close</th>'
+        '<th data-type="num">RSI</th>'
+        '<th data-type="num">MFI</th>'
+        '<th data-type="num">OBV</th>'
+        '<th data-type="num">SMA50</th>'
+        '<th data-type="num">SMA200</th>'
+        '<th data-type="num">Drawdown</th>'
+        '<th data-type="text">Segnale</th>'
+        '<th data-type="date">Aggiornato</th>'
         "</tr></thead>"
     )
-    return f"<table>{header}<tbody>{''.join(rows)}</tbody></table>"
+    return f'<table class="ticker-table">{header}<tbody>{"".join(rows)}</tbody></table>'
 
 
 def render_indicator_matrix(indicators_data: dict[str, Any] | None) -> str:

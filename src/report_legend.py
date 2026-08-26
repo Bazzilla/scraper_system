@@ -19,6 +19,9 @@ _LEGEND_MARKET = [
             "precedere correzioni. Va letto come termometro dell'umore di mercato, non "
             "come segnale di compra/vendita diretto."
         ),
+        "strategy": (
+            'FGI basso (paura, ≤25) = contesto migliore per <strong>comprare</strong> (gate aperto). Tra 25 e 40 = solo <strong>osservare</strong>. Sopra 40 (avidità) = <strong>evitare acquisti</strong>; se hai posizioni in profitto è il momento tipico per valutarne la presa parziale.'
+        ),
     },
     {
         "name": "VIX",
@@ -37,6 +40,9 @@ _LEGEND_MARKET = [
             "<code>manual_overrides.yaml</code> — valori leggibili da "
             "https://vixcentral.com/. Il dato spot resta un proxy parziale."
         ),
+        "strategy": (
+            'VIX alto = mercato teso: può offrire buoni punti di ingresso ma anche rischio elevato — serve paura sana, non panico. VIX basso = calma: poco sconto sui prezzi. Da solo non dice compra/vendi: è il termometro del rischio.'
+        ),
     },
     {
         "name": "AAII Sentiment",
@@ -49,6 +55,9 @@ _LEGEND_MARKET = [
             "contrarian: spesso i massimi si formano con sentiment molto positivo e i "
             "minimi con sentiment molto negativo."
         ),
+        "strategy": (
+            "Molti bearish e pochi bullish = segnale storico di fondo di mercato → contesto favorevole all'<strong>acquisto</strong>. Il contrario (euforia) = cautela: buon momento per <strong>valutare profitti</strong>, non per entrare."
+        ),
     },
     {
         "name": "Put/Call Ratio (PCR)",
@@ -60,6 +69,9 @@ _LEGEND_MARKET = [
             "speculazione — segnale di paura, storicamente favorevole per chi "
             "cerca sconti (buy-the-dip). Un PCR basso (< 0.70) indica ottimismo. "
             "Fonte: CBOE (lag 1 giorno di trading)."
+        ),
+        "strategy": (
+            'PCR alto (&gt;0.80) = paura → contesto favorevole al <strong>buy-the-dip</strong>. PCR basso (&lt;0.70) = ottimismo → meglio non inseguire; chi ha posizioni può valutare presa di profitto.'
         ),
     },
     {
@@ -75,6 +87,9 @@ _LEGEND_MARKET = [
             "spesso con fasi di panico — potenziale contesto buy-the-dip. "
             "Fonte: Barchart (dati end-of-day)."
         ),
+        "strategy": (
+            'Nuovi minimi ≫ nuovi massimi = mercato debole → possibili occasioni da <strong>comprare</strong> (con conferme). Massimi ≫ minimi = mercato forte e caro → <strong>non inseguire</strong>.'
+        ),
     },
     {
         "name": "Breadth di mercato (% sopra SMA)",
@@ -89,6 +104,9 @@ _LEGEND_MARKET = [
             "rimosso; il valore si inserisce manualmente (fonte con breadth del mercato "
             "USA, es. IndexIndicators via browser, StockCharts, Finviz)."
         ),
+        "strategy": (
+            '% su SMA50 molto basso (&lt;20%) = ipervenduto diffuso → zona storicamente buona per <strong>comprare</strong>. Valori alti (&gt;50-60%) = struttura sana ma prezzi meno scontati → selezionare bene.'
+        ),
     },
     {
         "name": "Insider (bonus opportunità)",
@@ -101,6 +119,9 @@ _LEGEND_MARKET = [
             "cumulabile fino a <strong>max +1.5</strong>. Gli acquisti insider sono tra "
             "i segnali più forti perché chi conosce l'azienda mette soldi veri sul "
             "titolo. Fonte: OpenInsider (Form 4 SEC, lag 2 giorni)."
+        ),
+        "strategy": (
+            'Acquisti dei dirigenti sul proprio titolo = voto di fiducia concreto → <strong>rafforza il caso acquisto</strong> su quel titolo (bonus alla matrice opportunità). Nessun acquisto insider = nessun bonus, né pro né contro.'
         ),
     },
 ]
@@ -117,6 +138,9 @@ _LEGEND_STOCK = [
             "(possibile rimbalzo). Se molti titoli di un settore hanno RSI alto, il "
             "settore nel suo insieme appare 'caldo'."
         ),
+        "strategy": (
+            'RSI &lt;30 = ipervenduto → <strong>candidato acquisto</strong> (con altre conferme). RSI &gt;70 = ipercomprato → se detenuto in profitto, momento tipico per <strong>presa di profitto</strong>; se non detenuto, evitare di inseguire.'
+        ),
     },
     {
         "name": "MFI",
@@ -127,6 +151,9 @@ _LEGEND_STOCK = [
             "pressione di acquisto/vendita. Valori estremi indicano eccessi che spesso "
             "precedono inversioni. Un MFI in salita con prezzi in salita conferma il "
             "trend; divergenze (prezzi che salgono, MFI che scende) segnalano debolezza."
+        ),
+        "strategy": (
+            "Come RSI ma pesa i volumi: &lt;20 = ipervenduto (possibile <strong>acquisto</strong>), &gt;80 = ipercomprato (possibile <strong>presa di profitto</strong>). Conferma i segnali dell'RSI."
         ),
     },
     {
@@ -139,6 +166,9 @@ _LEGEND_STOCK = [
             "tendenza con i prezzi conferma il movimento; un OBV che diverge dai prezzi "
             "può anticipare un'inversione. Utile come conferma, non come segnale isolato."
         ),
+        "strategy": (
+            'Conferma la direzione del prezzo: prezzo in calo ma OBV che tiene = venditori deboli → buon segno per <strong>comprare</strong>. Divergenze evidenti = <strong>attendere conferme</strong> prima di agire.'
+        ),
     },
     {
         "name": "SMA50 / SMA200",
@@ -150,6 +180,9 @@ _LEGEND_STOCK = [
             "lungo termine positivo. L'incrocio prezzo/SMA o SMA50/SMA200 è usato come "
             "segnale di cambio trend (golden cross / death cross)."
         ),
+        "strategy": (
+            'Prezzo sopra SMA50/SMA200 = tendenza positiva → si <strong>tiene</strong> la posizione. Prezzo sotto entrambe = debolezza → solo <strong>osservazione</strong> finché non rientra sopra le medie.'
+        ),
     },
     {
         "name": "Drawdown",
@@ -160,6 +193,9 @@ _LEGEND_STOCK = [
             "Un drawdown lieve (fino a -5%) è fisiologico; tra -5% e -15% la correzione "
             "è più marcata; oltre -15% la situazione è critica. Valuta la debolezza "
             "relativa del titolo rispetto al suo stesso recente massimo."
+        ),
+        "strategy": (
+            'Calo ampio dal massimo (-15% o più) = possibile <strong>sconto</strong> per il buy-the-dip, ma verificane la causa. Drawdown contenuto = titolo in salute → nessuna azione urgente.'
         ),
     },
     {
@@ -248,11 +284,18 @@ _GUIDE = (
 
 def _legend_item(item: dict[str, str]) -> str:
     """Render one expandable legend item using native <details>/<summary>."""
+    strategy_html = ""
+    if item.get("strategy"):
+        strategy_html = (
+            "<p class='legend-strategy'>💡 <strong>In pratica "
+            "(compra / osserva / vendi):</strong> "
+            f"{item['strategy']}</p>"
+        )
     return (
         "<details class='legend-card'>"
         f"<summary>{item['name']} <span class='legend-range'>({item['range']})</span></summary>"
         f"<div class='legend-detail'><p>{item['short']}</p>"
-        f"<p>{item['detail']}</p></div>"
+        f"<p>{item['detail']}</p>{strategy_html}</div>"
         "</details>"
     )
 
