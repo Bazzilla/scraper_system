@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import json
 import tempfile
+import threading
 import unittest
+import urllib.error
+import urllib.request
+from http.server import ThreadingHTTPServer
 from pathlib import Path
 from unittest import mock
 
 from overrides_page import render_overrides_page
-from overrides_server import SUPPORTED_KEYS, rebuild_report
+from overrides_server import OverridesHandler, SUPPORTED_KEYS, rebuild_report
 
 
 class TestOverridesPageNav(unittest.TestCase):
@@ -66,3 +70,24 @@ class TestOverridesHandler(unittest.TestCase):
             SUPPORTED_KEYS,
             frozenset({"aaii", "fgi", "naaim", "vix_term_structure", "pct_sma"}),
         )
+
+    def test_root_redirects_to_dashboard(self):
+        # La landing page di default è la dashboard: / → 302 /report.html
+        server = ThreadingHTTPServer(("127.0.0.1", 0), OverridesHandler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            port = server.server_address[1]
+
+            class _NoRedirect(urllib.request.HTTPRedirectHandler):
+                def redirect_request(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                    return None
+
+            opener = urllib.request.build_opener(_NoRedirect())
+            with self.assertRaises(urllib.error.HTTPError) as ctx:
+                opener.open(f"http://127.0.0.1:{port}/", timeout=5)
+            self.assertEqual(ctx.exception.status, 302)
+            self.assertEqual(ctx.exception.headers["Location"], "/report.html")
+        finally:
+            server.shutdown()
+            server.server_close()

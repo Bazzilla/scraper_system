@@ -415,9 +415,15 @@ da qualsiasi directory):
 ./bin/scraper-run                 # pipeline completa (scraping + report)
 ./bin/scraper-run --override-only # applica manual overrides senza scraping
 ./bin/scraper-report              # SOLO report HTML dall'output esistente
-./bin/scraper-websrv              # mini-server locale (default porta 8900)
+./bin/scraper-websrv              # mini-server locale (default porta 8900, solo localhost)
 ./bin/scraper-websrv -p 9000      # stessa cosa su altra porta
+./bin/scraper-websrv --lan        # accessibile dagli altri dispositivi della LAN
 ```
+
+Il server espone `/report.html` (dashboard), `/overrides.html` (immissione
+manuale) e `/tickers.html` (editor liste ticker); la root `/` redirige alla
+dashboard. Con `--lan` il bind è su `0.0.0.0`: gli endpoint di scrittura NON
+sono autenticati — usare solo su rete fidata.
 
 ### Immessione manuale di un valore (es. NAAIM)
 

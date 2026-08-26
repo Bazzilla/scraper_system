@@ -1,7 +1,8 @@
 """Local mini-server for editing manual overrides, ticker lists and re-rendering.
 
 Serves:
-    GET  /                → the overrides entry page (overrides_page.render_overrides_page)
+    GET  /                → redirect to the dashboard (/report.html)
+    GET  /overrides.html  → the overrides entry page (overrides_page.render_overrides_page)
     GET  /api/data        → JSON of the current manual_overrides.yaml
     POST /api/save        → validate + save one override, then rebuild output + report
     GET  /report.html     → the existing output/report.html
@@ -10,13 +11,17 @@ Serves:
     POST /api/tickers/save → validate + backup + rewrite the tickers section,
                              then rebuild output + report
 
-Binds to 127.0.0.1 only (single-user, local use). No external dependencies.
+Binds to 127.0.0.1 by default (single-user, local use). ``--lan`` binds to
+0.0.0.0 so other devices on the same network can reach the pages — note that
+the editor endpoints are UNAUTHENTICATED: enable only on a trusted LAN.
+No external dependencies.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import socket
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -103,7 +108,13 @@ class OverridesHandler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_GET(self) -> None:  # noqa: N802 (http.server API)
-        if self.path == "/" or self.path == "/overrides.html":
+        if self.path == "/":
+            # Landing page di default: la dashboard (report.html).
+            self.send_response(302)
+            self.send_header("Location", "/report.html")
+            self.end_headers()
+            return
+        if self.path == "/overrides.html":
             self._send_html(200, render_overrides_page(load_overrides()))
             return
         if self.path == "/api/data":
@@ -233,13 +244,36 @@ def _field_specs(key: str) -> dict[str, Any]:
     return INDICATOR_FIELDS[key]["fields"]
 
 
+def _lan_urls(port: int) -> list[str]:
+    """Best-effort URLs to reach this server from other LAN devices."""
+    urls: list[str] = []
+    try:
+        # UDP connect: non invia pacchetti, sceglie solo la route primaria.
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("8.8.8.8", 80))
+            urls.append(f"http://{sock.getsockname()[0]}:{port}/")
+    except OSError:
+        pass
+    return urls
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Manual overrides entry server")
+    parser = argparse.ArgumentParser(description="Dashboard/overrides/tickers local server")
     parser.add_argument("-p", "--port", type=int, default=8000)
     parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument(
+        "--lan",
+        action="store_true",
+        help="accessibile dagli altri dispositivi della LAN (bind 0.0.0.0); "
+        "gli endpoint di scrittura NON sono autenticati: usare solo su rete fidata",
+    )
     args = parser.parse_args()
-    server = ThreadingHTTPServer((args.host, args.port), OverridesHandler)
-    print(f"Serving overrides on http://{args.host}:{args.port}/ (Ctrl+C per fermare)")
+    host = "0.0.0.0" if args.lan else args.host
+    server = ThreadingHTTPServer((host, args.port), OverridesHandler)
+    print(f"Serving on http://{args.host}:{args.port}/ (Ctrl+C per fermare)")
+    if args.lan:
+        for url in _lan_urls(args.port):
+            print(f"  LAN: {url}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
