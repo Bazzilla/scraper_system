@@ -835,10 +835,17 @@ class TestRenderSections(unittest.TestCase):
 
     def test_build_page_has_table_script(self):
         html = build_page(_sample_data())
-        # JS di sort/filter presente
+        # JS di sort/filter presente (filtri a popup da icona sulla testata)
         self.assertIn("table.ticker-table", html)
         self.assertIn("Azzera filtri e ordine", html)
-        self.assertIn("num-filter", html)
+        self.assertIn("filter-icon", html)
+        self.assertIn("filter-popup", html)
+        self.assertIn("popup-apply", html)
+        self.assertIn("popup-clear", html)
+        # Niente riga filtri dentro la tabella (le colonne non si allargano)
+        self.assertNotIn("filter-row", html)
+        # Icona attiva con colore diverso quando c'è un filtro
+        self.assertIn('classList.toggle("active"', html)
 
     def test_legend_has_strategy_explanations(self):
         html = render_legend()

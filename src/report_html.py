@@ -198,13 +198,31 @@ button#sections-toggle { background: var(--card); color: var(--text);
 /* Sort & filter tabelle ticker */
 table.ticker-table th.sortable { cursor: pointer; user-select: none; }
 table.ticker-table th.sorted { color: var(--neutral); }
-.filter-row td { padding: 4px 6px; background: var(--bg); }
-.filter-row input, .filter-row select { width: 100%; min-width: 70px;
-        background: var(--card); color: var(--text);
-        border: 1px solid var(--border); border-radius: 6px;
-        padding: 4px 6px; font-size: 0.78rem; box-sizing: border-box; }
-.num-filter { display: flex; gap: 4px; }
+.sort-ind { white-space: pre; }
+.filter-icon { cursor: pointer; margin-left: 5px; display: inline-flex;
+        color: var(--muted); opacity: 0.55; vertical-align: middle;
+        border-radius: 4px; padding: 1px; }
+.filter-icon:hover { opacity: 1; background: rgba(88, 166, 255, 0.15); }
+.filter-icon.active { color: var(--neutral); opacity: 1;
+        background: rgba(88, 166, 255, 0.2); }
+.filter-popup { position: absolute; z-index: 1000; background: var(--card);
+        border: 1px solid var(--border); border-radius: 10px; padding: 12px;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35); display: flex;
+        flex-direction: column; gap: 10px; min-width: 190px; }
+.filter-popup .popup-title { font-size: 0.78rem; color: var(--muted);
+        text-transform: uppercase; letter-spacing: 0.05em; }
+.filter-popup input, .filter-popup select { background: var(--bg);
+        color: var(--text); border: 1px solid var(--border);
+        border-radius: 6px; padding: 6px 8px; font-size: 0.85rem; width: 100%;
+        box-sizing: border-box; }
+.num-filter { display: flex; gap: 6px; }
 .num-filter select { width: auto; flex: 0 0 auto; }
+.popup-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.popup-actions button { cursor: pointer; border: none; border-radius: 8px;
+        padding: 6px 14px; font-size: 0.82rem; font-weight: 600; }
+.popup-apply { background: var(--green); color: #fff; }
+.popup-clear { background: var(--bg); color: var(--text);
+        border: 1px solid var(--border) !important; }
 .table-tools { display: flex; justify-content: flex-end; margin-bottom: 6px; }
 .table-reset { background: var(--card); color: var(--text);
         border: 1px solid var(--border); border-radius: 8px;
@@ -322,18 +340,42 @@ _SCRIPT = """\
 _TABLE_SCRIPT = """\
 <script>
 // --- Sort & filter per le tabelle ticker -------------------------------
-// Sort ciclico per colonna: click → asc, click → desc, click → nessuno.
-// Un solo ordinamento alla volta. Filtri: testo (contiene), numerici con
-// operatori (> ≥ = ≤ <) e date semantiche (oggi/ieri/ultimi 7gg/più vecchio).
+// Sort ciclico per colonna: click → asc, click → desc, click → nessuno
+// (un solo ordinamento alla volta). Filtri in POPUP: icona imbuto sulla
+// testata apre il pannello; applicare/pulire lo chiude. L'icona cambia
+// colore quando la colonna ha un filtro attivo. Nessun input nelle
+// intestazioni → le colonne non si allargano.
 (function () {
   var NUM_OPS = [">", "≥", "=", "≤", "<"];
   var DATE_OPTS = [
-    ["", "(qualsiasi data)"],
     ["today", "oggi"],
     ["yesterday", "ieri"],
     ["7d", "ultimi 7 giorni"],
     ["older", "più vecchio di 7 giorni"]
   ];
+  var FUNNEL =
+    '<svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true">' +
+    '<path d="M1.5 2h13L9.5 8.2v4.6l-3 1.7V8.2z" fill="currentColor"/></svg>';
+
+  // Popup unico condiviso tra tutte le tabelle
+  var popup = null;
+  function ensurePopup() {
+    if (!popup) {
+      popup = document.createElement("div");
+      popup.className = "filter-popup";
+      popup.style.display = "none";
+      document.body.appendChild(popup);
+      document.addEventListener("mousedown", function (ev) {
+        if (popup.style.display === "none") return;
+        if (!popup.contains(ev.target)) hidePopup();
+      });
+      document.addEventListener("keydown", function (ev) {
+        if (ev.key === "Escape") hidePopup();
+      });
+    }
+    return popup;
+  }
+  function hidePopup() { if (popup) popup.style.display = "none"; }
 
   function cellValue(row, idx, type) {
     var td = row.cells[idx];
@@ -355,42 +397,16 @@ _TABLE_SCRIPT = """\
     return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   }
 
-  function passes(row, headCells, filters) {
-    for (var idx = 0; idx < headCells.length; idx++) {
-      var f = filters[idx] && filters[idx]();
-      if (!f) continue;
-      var type = headCells[idx].getAttribute("data-type") || "text";
-      var val = cellValue(row, idx, type);
-      if (type === "num") {
-        if (val === null) return false;
-        if (f.op === ">" && !(val > f.num)) return false;
-        if (f.op === "≥" && !(val >= f.num)) return false;
-        if (f.op === "=" && !(val === f.num)) return false;
-        if (f.op === "≤" && !(val <= f.num)) return false;
-        if (f.op === "<" && !(val < f.num)) return false;
-      } else if (type === "date") {
-        if (val === null) return false;
-        var s0 = startOfToday(), day = 86400000;
-        if (f === "today" && val < s0) return false;
-        if (f === "yesterday" && !(val >= s0 - day && val < s0)) return false;
-        if (f === "7d" && val < s0 - 7 * day) return false;
-        if (f === "older" && val >= s0 - 7 * day) return false;
-      } else {
-        if (val.indexOf(f) === -1) return false;
-      }
-    }
-    return true;
-  }
-
   function setupTable(table) {
     var thead = table.tHead;
     var headCells = thead.rows[0].cells;
     var tbody = table.tBodies[0];
     var dataRows = Array.prototype.slice.call(tbody.rows);
-    var sortCol = -1, sortDir = 0;   // 0 = nessun ordinamento
+    var sortCol = -1, sortDir = 0;          // 0 = nessun ordinamento
+    var filterStates = [];                  // per colonna: null | stato
     dataRows.forEach(function (r, i) { r.setAttribute("data-orig-index", i); });
 
-    // Toolbar con reset (filtri + ordinamento)
+    // Toolbar con reset totale (filtri + ordinamento)
     var tools = document.createElement("div");
     tools.className = "table-tools";
     var resetBtn = document.createElement("button");
@@ -400,15 +416,89 @@ _TABLE_SCRIPT = """\
     tools.appendChild(resetBtn);
     table.parentNode.insertBefore(tools, table);
 
-    // Riga filtri sotto l'intestazione
-    var filterRow = thead.insertRow(1);
-    filterRow.className = "filter-row";
-    var filters = [];
+    function passes(row) {
+      for (var idx = 0; idx < headCells.length; idx++) {
+        var f = filterStates[idx];
+        if (!f) continue;
+        var type = headCells[idx].getAttribute("data-type") || "text";
+        var val = cellValue(row, idx, type);
+        if (type === "num") {
+          if (val === null) return false;
+          if (f.op === ">" && !(val > f.num)) return false;
+          if (f.op === "≥" && !(val >= f.num)) return false;
+          if (f.op === "=" && !(val === f.num)) return false;
+          if (f.op === "≤" && !(val <= f.num)) return false;
+          if (f.op === "<" && !(val < f.num)) return false;
+        } else if (type === "date") {
+          if (val === null) return false;
+          var s0 = startOfToday(), day = 86400000;
+          if (f === "today" && val < s0) return false;
+          if (f === "yesterday" && !(val >= s0 - day && val < s0)) return false;
+          if (f === "7d" && val < s0 - 7 * day) return false;
+          if (f === "older" && val >= s0 - 7 * day) return false;
+        } else {
+          if (val.indexOf(f) === -1) return false;
+        }
+      }
+      return true;
+    }
 
-    Array.prototype.forEach.call(headCells, function (th, idx) {
-      var type = th.getAttribute("data-type") || "text";
-      var cell = filterRow.insertCell(idx);
-      cell.className = "filter-cell";
+    function apply() {
+      var visible = [];
+      dataRows.forEach(function (row) {
+        var ok = passes(row);
+        row.style.display = ok ? "" : "none";
+        if (ok) visible.push(row);
+      });
+      if (sortCol >= 0 && sortDir !== 0) {
+        var type = headCells[sortCol].getAttribute("data-type") || "text";
+        visible.sort(function (a, b) {
+          var va = cellValue(a, sortCol, type), vb = cellValue(b, sortCol, type);
+          if (va === null && vb === null) return 0;
+          if (va === null) return 1;        // valori mancanti sempre in fondo
+          if (vb === null) return -1;
+          var cmp = (type === "text")
+            ? va.localeCompare(vb)
+            : (va < vb ? -1 : va > vb ? 1 : 0);
+          return cmp * sortDir;
+        });
+      } else {
+        visible.sort(function (a, b) {
+          return (+a.getAttribute("data-orig-index")) -
+                 (+b.getAttribute("data-orig-index"));
+        });
+      }
+      visible.forEach(function (row) { tbody.appendChild(row); });
+    }
+
+    function updateIndicators() {
+      Array.prototype.forEach.call(headCells, function (th, idx) {
+        var ind = th.querySelector(".sort-ind");
+        if (ind) ind.textContent =
+          idx === sortCol && sortDir !== 0 ? (sortDir === 1 ? " ▲" : " ▼") : "";
+        th.classList.toggle("sorted", idx === sortCol && sortDir !== 0);
+      });
+    }
+
+    function updateIcons() {
+      Array.prototype.forEach.call(headCells, function (th, idx) {
+        var icon = th.querySelector(".filter-icon");
+        if (icon) icon.classList.toggle("active", !!filterStates[idx]);
+      });
+    }
+
+    function openFilterPopup(idx, type, icon) {
+      var p = ensurePopup();
+      p.innerHTML = "";
+      var st = filterStates[idx];
+
+      var title = document.createElement("div");
+      title.className = "popup-title";
+      title.textContent = "Filtra: " +
+        headCells[idx].textContent.replace(/[▲▼]/g, "").trim();
+      p.appendChild(title);
+
+      var readControl;   // legge i controlli → aggiorna filterStates[idx]
       if (type === "num") {
         var wrap = document.createElement("div");
         wrap.className = "num-filter";
@@ -419,40 +509,96 @@ _TABLE_SCRIPT = """\
         });
         var inp = document.createElement("input");
         inp.type = "text"; inp.inputMode = "decimal"; inp.placeholder = "valore";
+        if (st) { sel.value = st.op; inp.value = String(st.num).replace(".", ","); }
         wrap.appendChild(sel); wrap.appendChild(inp);
-        cell.appendChild(wrap);
-        filters[idx] = function () {
+        p.appendChild(wrap);
+        readControl = function () {
           var v = inp.value.trim().replace(",", ".");
-          return v ? { op: sel.value, num: parseFloat(v) } : null;
+          filterStates[idx] = v ? { op: sel.value, num: parseFloat(v) } : null;
         };
-        inp.addEventListener("input", apply);
-        sel.addEventListener("change", apply);
+        inp.addEventListener("keydown", function (ev) {
+          if (ev.key === "Enter") { readControl(); closeAndApply(); }
+        });
+        setTimeout(function () { inp.focus(); }, 0);
       } else if (type === "date") {
         var selD = document.createElement("select");
+        var none = document.createElement("option");
+        none.value = ""; none.textContent = "(qualsiasi data)";
+        selD.appendChild(none);
         DATE_OPTS.forEach(function (pair) {
           var o = document.createElement("option");
           o.value = pair[0]; o.textContent = pair[1]; selD.appendChild(o);
         });
-        cell.appendChild(selD);
-        filters[idx] = function () { return selD.value || null; };
-        selD.addEventListener("change", apply);
+        if (st) selD.value = st;
+        p.appendChild(selD);
+        readControl = function () { filterStates[idx] = selD.value || null; };
+        selD.addEventListener("change", function () { readControl(); closeAndApply(); });
       } else {
         var inpT = document.createElement("input");
         inpT.type = "text"; inpT.placeholder = "contiene…";
-        cell.appendChild(inpT);
-        filters[idx] = function () { return inpT.value.trim().toLowerCase() || null; };
-        inpT.addEventListener("input", apply);
+        if (st) inpT.value = st;
+        p.appendChild(inpT);
+        readControl = function () {
+          filterStates[idx] = inpT.value.trim().toLowerCase() || null;
+        };
+        inpT.addEventListener("keydown", function (ev) {
+          if (ev.key === "Enter") { readControl(); closeAndApply(); }
+        });
+        setTimeout(function () { inpT.focus(); }, 0);
       }
-    });
 
-    // Ordinamento ciclico: asc → desc → nessuno (un solo sort alla volta)
+      var actions = document.createElement("div");
+      actions.className = "popup-actions";
+      var clearBtn = document.createElement("button");
+      clearBtn.type = "button"; clearBtn.className = "popup-clear";
+      clearBtn.textContent = "Pulisci";
+      var applyBtn = document.createElement("button");
+      applyBtn.type = "button"; applyBtn.className = "popup-apply";
+      applyBtn.textContent = "Applica";
+      actions.appendChild(clearBtn); actions.appendChild(applyBtn);
+      p.appendChild(actions);
+
+      function closeAndApply() { hidePopup(); updateIcons(); apply(); }
+      applyBtn.addEventListener("click", function () {
+        readControl(); closeAndApply();
+      });
+      clearBtn.addEventListener("click", function () {
+        filterStates[idx] = null; closeAndApply();
+      });
+
+      // Posizionamento sotto l'icona (clamp ai bordi della finestra)
+      p.style.display = "block";
+      var r = icon.getBoundingClientRect();
+      var left = r.left + window.scrollX - 70;
+      left = Math.max(window.scrollX + 8,
+        Math.min(left, window.scrollX + document.documentElement.clientWidth - p.offsetWidth - 12));
+      p.style.top = (r.bottom + window.scrollY + 6) + "px";
+      p.style.left = left + "px";
+    }
+
     Array.prototype.forEach.call(headCells, function (th, idx) {
+      var type = th.getAttribute("data-type") || "text";
+      filterStates[idx] = null;
+
+      // Icona filtro (il click NON deve innescare l'ordinamento)
+      var icon = document.createElement("span");
+      icon.className = "filter-icon";
+      icon.innerHTML = FUNNEL;
+      icon.title = "Filtra colonna";
+      icon.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        openFilterPopup(idx, type, icon);
+      });
+
+      // Ordinamento ciclico sul th: asc → desc → nessuno
       th.classList.add("sortable");
       th.title = "Clicca: ordina ↑ / ↓ / ripristina";
       var ind = document.createElement("span");
       ind.className = "sort-ind";
       th.appendChild(ind);
-      th.addEventListener("click", function () {
+      th.appendChild(icon);
+      th.addEventListener("click", function (ev) {
+        if (ev.target.closest && ev.target.closest(".filter-icon")) return;
         if (sortCol !== idx) { sortCol = idx; sortDir = 1; }
         else if (sortDir === 1) { sortDir = -1; }
         else { sortCol = -1; sortDir = 0; }
@@ -461,46 +607,11 @@ _TABLE_SCRIPT = """\
       });
     });
 
-    function updateIndicators() {
-      Array.prototype.forEach.call(headCells, function (th, idx) {
-        th.querySelector(".sort-ind").textContent =
-          idx === sortCol && sortDir !== 0 ? (sortDir === 1 ? " ▲" : " ▼") : "";
-        th.classList.toggle("sorted", idx === sortCol && sortDir !== 0);
-      });
-    }
-
-    function apply() {
-      var visible = [];
-      dataRows.forEach(function (row) {
-        var ok = passes(row, headCells, filters);
-        row.style.display = ok ? "" : "none";
-        if (ok) visible.push(row);
-      });
-      if (sortCol >= 0 && sortDir !== 0) {
-        var type = headCells[sortCol].getAttribute("data-type") || "text";
-        visible.sort(function (a, b) {
-          var va = cellValue(a, sortCol, type), vb = cellValue(b, sortCol, type);
-          if (va === null && vb === null) return 0;
-          if (va === null) return 1;   // valori mancanti sempre in fondo
-          if (vb === null) return -1;
-          var cmp = (type === "text")
-            ? va.localeCompare(vb)
-            : (va < vb ? -1 : va > vb ? 1 : 0);
-          return cmp * sortDir;
-        });
-      } else {
-        visible.sort(function (a, b) {
-          return (+a.getAttribute("data-orig-index")) - (+b.getAttribute("data-orig-index"));
-        });
-      }
-      visible.forEach(function (row) { tbody.appendChild(row); });
-    }
-
     resetBtn.addEventListener("click", function () {
       sortCol = -1; sortDir = 0;
+      filterStates = headCells.length ? new Array(headCells.length).fill(null) : [];
       updateIndicators();
-      filterRow.querySelectorAll("input").forEach(function (i) { i.value = ""; });
-      filterRow.querySelectorAll("select").forEach(function (s) { s.selectedIndex = 0; });
+      updateIcons();
       apply();
     });
   }
