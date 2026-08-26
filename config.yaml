@@ -145,6 +145,7 @@ scrapers:
     output_key: valuation
     schedule: daily
     config:
+      history_path: output/valuation_history.db
       timeout: 20
       retries: 3
       backoff: 2.0

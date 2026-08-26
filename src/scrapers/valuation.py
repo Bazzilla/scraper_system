@@ -24,6 +24,8 @@ from typing import Any
 
 import yfinance as yf
 
+from valuation_store import append_snapshots, bucket_for, bucket_label
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_TIMEOUT = 20
@@ -66,6 +68,8 @@ def extract_valuation(info: dict[str, Any]) -> dict[str, Any]:
         out["upside_pct"] = round((target - price) / price * 100, 2)
     else:
         out["upside_pct"] = None
+    # Bucket descrittivo automatico (validation-mode, display-only)
+    out["bucket"] = bucket_for(out["upside_pct"])
     return out
 
 
@@ -155,16 +159,31 @@ def build_result(
 def run(config: dict[str, Any] | None = None) -> dict[str, Any]:
     """Fetch valuation snapshots for all configured tickers.
 
+    Validation-mode: quando è presente ``history_path`` (risolto
+    dall'orchestrator), ogni run APPEND uno snapshot giornaliero per ticker
+    su SQLite (dedup per giorno) — solo raccolta, mai segnale.
+
     Args:
-        config: Overrides + injected ``tickers`` (from the orchestrator).
+        config: Overrides + injected ``tickers`` and ``history_path``.
     """
     config = config or {}
     tickers = config.get("tickers", {})
 
     fetched = _fetch_all(tickers, config)
 
-    return build_result(
+    result = build_result(
         tickers,
         fetched,
         stale_after_hours=config.get("stale_after_hours", DEFAULT_STALE_AFTER_HOURS),
     )
+
+    history_path = config.get("history_path")
+    if history_path:
+        try:
+            written = append_snapshots(str(history_path), result)
+            logger.info("Valuation history: %d snapshot scritti su %s",
+                        written, history_path)
+        except Exception as error:  # noqa: BLE001 - la storia non blocca il run
+            logger.error("Valuation history write failed: %s", error)
+
+    return result

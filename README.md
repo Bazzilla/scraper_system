@@ -117,7 +117,7 @@ contratto: una funzione `run(config: dict) -> dict` che ritorna un dict struttur
 | `vix_scraper.py` | CBOE | VIX spot (close) | giornaliera |
 | `ohlcv_fetcher.py` | Yahoo (yfinance) | OHLCV per ticker (cache) | giornaliera |
 | `indicators.py` | — | RSI, OBV, MFI, SMA50/200, drawdown | giornaliera |
-| `valuation.py` | Yahoo Finance (yfinance) | Fair value: upside vs target analisti + multipli (P/E, P/B, EV/EBITDA, PEG) — display-only | giornaliera |
+| `valuation.py` | Yahoo Finance (yfinance) | Fair value: upside vs target analisti + multipli (P/E, P/B, EV/EBITDA, PEG) — validation-mode, display-only | giornaliera |
 | `pcr_scraper.py` | CBOE | Equity Put/Call Ratio | giornaliera (lag 1gg) |
 | `nh_nl_scraper.py` | Barchart (browser headers) | NYSE 52-week new highs/lows | giornaliera (end-of-day) |
 | `insider_scraper.py` | OpenInsider (HTTP) | Bonus insider (acquisti dirigenti/CEO/CFO) | giornaliera |

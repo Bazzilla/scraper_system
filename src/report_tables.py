@@ -16,6 +16,7 @@ from report_helpers import (
     format_iso_dt,
     market_regime,
 )
+from valuation_store import bucket_label
 
 
 _TIER_ORDER = {"core": 0, "secondary": 1, "opportunistic": 2}
@@ -35,6 +36,15 @@ def _merge_valuation(merged: dict[str, Any], val_entries: dict[str, Any]) -> Non
         for key, value in entry.items():
             if key not in _VALUATION_META_KEYS:
                 merged[symbol][key] = value
+
+
+def _bucket_title(ind: dict[str, Any]) -> str:
+    """Tooltip con il bucket descrittivo del fair value (validation-mode)."""
+    bucket = ind.get("bucket")
+    label = bucket_label(bucket)
+    if not label:
+        return ""
+    return f' title="Fair value: {html_mod.escape(label)}"'
 
 
 def _tier_sort_key(symbol: str, meta: dict[str, Any] | None) -> tuple[int, str]:
@@ -108,7 +118,8 @@ def render_ticker_table(
             f"<td data-value=\"{_dv(ind.get('sma_50'))}\">{fmt(ind.get('sma_50'))}</td>"
             f"<td data-value=\"{_dv(ind.get('sma_200'))}\">{fmt(ind.get('sma_200'))}</td>"
             f"<td data-value=\"{_dv(ind.get('drawdown_52w'))}\">{_sema(ind.get('drawdown_52w'), 'drawdown')}</td>"
-            f"<td data-value=\"{_dv(ind.get('upside_pct'))}\">{_sema(ind.get('upside_pct'), 'upside')}</td>"
+            f"<td data-value=\"{_dv(ind.get('upside_pct'))}\""
+            f"{_bucket_title(ind)}>{_sema(ind.get('upside_pct'), 'upside')}</td>"
             f'<td data-value="{signal}">{_signal_badge(signal)}</td>'
             f'<td data-value="{_dv(ind.get("fetched_at"))}">{format_iso_dt(ind.get("fetched_at"))}</td>'
             "</tr>"

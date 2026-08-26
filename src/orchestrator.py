@@ -42,19 +42,20 @@ def _run_scraper_safely(
 ) -> tuple[dict[str, Any] | None, str, str | None]:
     """Run one scraper, returning (result, status, error).
 
-    Injects the top-level ``tickers`` section and resolves ``cache_path``
-    (relative to the project root) into the scraper config.
+    Injects the top-level ``tickers`` section and resolves ``cache_path`` /
+    ``history_path`` (relative to the project root) into the scraper config.
     """
     scraper_config = dict(scraper.get("config", {}))
     scraper_config["tickers"] = tickers
     try:
-        if "cache_path" in scraper_config:
-            cache_path = scraper_config["cache_path"]
-            if not isinstance(cache_path, str):
-                raise TypeError(
-                    f"cache_path must be a string, got {type(cache_path).__name__}"
-                )
-            scraper_config["cache_path"] = str(base_dir / cache_path)
+        for path_key in ("cache_path", "history_path"):
+            if path_key in scraper_config:
+                path_value = scraper_config[path_key]
+                if not isinstance(path_value, str):
+                    raise TypeError(
+                        f"{path_key} must be a string, got {type(path_value).__name__}"
+                    )
+                scraper_config[path_key] = str(base_dir / path_value)
         run = get_scraper(scraper["module"])
         result = run(scraper_config)
         return result, "success", None
