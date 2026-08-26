@@ -195,7 +195,27 @@ _LEGEND_STOCK = [
             "relativa del titolo rispetto al suo stesso recente massimo."
         ),
         "strategy": (
-            'Calo ampio dal massimo (-15% o più) = possibile <strong>sconto</strong> per il buy-the-dip, ma verificane la causa. Drawdown contenuto = titolo in salute → nessuna azione urgente.'
+            "Calo ampio dal massimo (-15% o più) = possibile <strong>sconto</strong> "
+            "per il buy-the-dip, ma verificane la causa. Drawdown contenuto = titolo "
+            "in salute → nessuna azione urgente."
+        ),
+    },
+    {
+        "name": "Upside FV (fair value)",
+        "range": "%",
+        "short": "Distanza del prezzo dal target mediano degli analisti (informativo).",
+        "detail": (
+            "Stima di margine di sicurezza: quanto il prezzo attuale è sotto (+) o "
+            "sopra (-) il fair value inteso come target mediano degli analisti, con "
+            "multipli di supporto (P/E, P/B, EV/EBITDA, PEG) da Yahoo Finance. "
+            "<strong>Artefatto informativo</strong>: non entra nel punteggio della "
+            "strategia. I target sono stime — vanno letti come indicazione, non verità."
+        ),
+        "strategy": (
+            "Drawdown ampio + upside alto (≥ +20%) = lo sconto è reale → "
+            "<strong>rafforza il caso acquisto</strong>. Upside negativo (≤ -10%) = "
+            "titolo caro nonostante il calo → <strong>osservare/evitare</strong>, "
+            "possibile trappola da valore."
         ),
     },
     {

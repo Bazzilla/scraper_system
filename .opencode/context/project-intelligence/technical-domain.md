@@ -106,6 +106,7 @@ deploy/systemd/scraper-scheduler.timer → service (--once) [daily]
 **Scraper VIX**: `src/scrapers/vix_scraper.py` — VIX spot da CSV CBOE (scope cambiato da term structure; proxy dichiarato)
 **Scraper OHLCV**: `src/scrapers/ohlcv_fetcher.py` — yfinance → cache su disco, multi_level_index=False, request_delay
 **Scraper Indicators**: `src/scrapers/indicators.py` — legge cache, normalizza TitleCase, calcola con `ta`
+**Scraper Valuation**: `src/scrapers/valuation.py` — fair value per-ticker da yfinance.info (P/E fwd/trailing, P/B, EV/EBITDA, PEG, target analisti → `upside_pct` vs mediano); artefatto DISPLAY-ONLY (registry: coverage=false come vix_spot, mai nello score); colonna "Upside FV" nelle tabelle ticker (semaforo ≥+20% ok / ≤-10% critical); rate limiting request_delay come ohlcv
 **Scraper PCR**: `src/scrapers/pcr_scraper.py` — Equity PCR da CBOE (JSON escapato), fonte ufficiale
 **Scraper NH-NL**: `src/scrapers/nh_nl_scraper.py` — NYSE 52-week new highs/lows da Barchart (`/stocks/highs-lows/summary`, header browser User-Agent+Referer; WAF 404 superato), tabella desktop, copia mobile skippata, `trade_date` end-of-day
 **Scraper PCT SMA**: *(rimosso 2026-08-17)* — `% sopra SMA50/200` mercato USA (F3/#13-14) → `manual_supported` via `manual_overrides.yaml` (pct_sma50/pct_sma200); il proxy sui 29 ticker non esiste più

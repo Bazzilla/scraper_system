@@ -149,6 +149,17 @@ indicators:
     semantic_coherent: false
     notes: "GAP DICHIARATO. Richiede dati tick/intraday storici non disponibili dal fetch daily di yfinance. Non implementato."
 
+  valuation:
+    name: "Fair value / multipli (upside vs target analisti)"
+    strategy_ref: "artefatto informativo (non strategico)"
+    coverage: false
+    implementation_status: proxy
+    primary_source: "yfinance (info: P/E, P/B, EV/EBITDA, PEG, target analisti)"
+    fallbacks: []
+    semantic_coherent: false
+    output_key: valuation
+    notes: "Artefatto DISPLAY-ONLY (come vix_spot): margine di sicurezza = upside% vs target mediano analisti + multipli. Non entra mai nello score strategico (coverage false) finché la strategia non lo cita esplicitamente."
+
   insider:
     name: "Insider Transactions bonus (H5)"
     strategy_ref: "H5"

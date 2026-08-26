@@ -140,6 +140,17 @@ scrapers:
       drawdown_window: 252
       stale_after_hours: 24
 
+  valuation:
+    module: scrapers.valuation
+    output_key: valuation
+    schedule: daily
+    config:
+      timeout: 20
+      retries: 3
+      backoff: 2.0
+      request_delay: 1.0
+      stale_after_hours: 24
+
   insider:
     module: scrapers.insider_scraper
     output_key: insider

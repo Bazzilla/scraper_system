@@ -850,7 +850,7 @@ class TestRenderSections(unittest.TestCase):
     def test_legend_has_strategy_explanations(self):
         html = render_legend()
         # Spiegazione semplice buy/osserva/vendi per gli indicatori
-        self.assertEqual(html.count("legend-strategy"), 12)
+        self.assertEqual(html.count("legend-strategy"), 13)
         self.assertIn("In pratica", html)
         self.assertIn("<strong>comprare</strong>", html)
 

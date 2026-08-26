@@ -20,6 +20,22 @@ from report_helpers import (
 
 _TIER_ORDER = {"core": 0, "secondary": 1, "opportunistic": 2}
 
+# Chiavi meta del modulo valuation da NON fondere nella riga ticker:
+# fetched_at/stale_after_hours/status della riga devono restare quelli degli
+# indicatori tecnici (badge di età), non quelli dello snapshot valutazione.
+_VALUATION_META_KEYS = {"symbol", "name", "fetched_at", "frequency",
+                        "stale_after_hours", "status"}
+
+
+def _merge_valuation(merged: dict[str, Any], val_entries: dict[str, Any]) -> None:
+    """Merge valuation fields (upside, multiples) into the merged rows."""
+    for symbol, entry in val_entries.items():
+        if not isinstance(entry, dict) or symbol not in merged:
+            continue
+        for key, value in entry.items():
+            if key not in _VALUATION_META_KEYS:
+                merged[symbol][key] = value
+
 
 def _tier_sort_key(symbol: str, meta: dict[str, Any] | None) -> tuple[int, str]:
     """Sort key: quality_tier first (core < secondary < opportunistic), then symbol."""
@@ -92,6 +108,7 @@ def render_ticker_table(
             f"<td data-value=\"{_dv(ind.get('sma_50'))}\">{fmt(ind.get('sma_50'))}</td>"
             f"<td data-value=\"{_dv(ind.get('sma_200'))}\">{fmt(ind.get('sma_200'))}</td>"
             f"<td data-value=\"{_dv(ind.get('drawdown_52w'))}\">{_sema(ind.get('drawdown_52w'), 'drawdown')}</td>"
+            f"<td data-value=\"{_dv(ind.get('upside_pct'))}\">{_sema(ind.get('upside_pct'), 'upside')}</td>"
             f'<td data-value="{signal}">{_signal_badge(signal)}</td>'
             f'<td data-value="{_dv(ind.get("fetched_at"))}">{format_iso_dt(ind.get("fetched_at"))}</td>'
             "</tr>"
@@ -106,6 +123,7 @@ def render_ticker_table(
         '<th data-type="num">SMA50</th>'
         '<th data-type="num">SMA200</th>'
         '<th data-type="num">Drawdown</th>'
+        '<th data-type="num" title="Upside vs target mediano analisti (fair value, informativo)">Upside FV</th>'
         '<th data-type="text">Segnale</th>'
         '<th data-type="date">Aggiornato</th>'
         "</tr></thead>"
@@ -215,6 +233,7 @@ def _ticker_sections(data: dict[str, Any], tickers_config: dict[str, Any] | None
     """
     indicators = data.get("indicators", {})
     ohlcv = data.get("ohlcv", {})
+    valuation = data.get("valuation", {})
     if not indicators and not ohlcv:
         return ""
     sections: list[str] = []
@@ -239,10 +258,13 @@ def _ticker_sections(data: dict[str, Any], tickers_config: dict[str, Any] | None
         # (esclude la chiave "status" a livello modulo).
         return {k for k, v in mapping.items() if isinstance(v, dict)}
 
-    all_categories = sorted(_categories(indicators) | _categories(ohlcv))
+    all_categories = sorted(
+        _categories(indicators) | _categories(ohlcv) | _categories(valuation)
+    )
     for category in all_categories:
         ind_entries = indicators.get(category, {})
         ohlcv_entries = ohlcv.get(category, {})
+        val_entries = valuation.get(category, {})
         # merge: last_close da ohlcv, indicatori da indicators.
         # Solo le voci che sono dict rappresentano ticker (esclude "status").
         # NB: .get() senza default — se "status" esiste in una sola mappa,
@@ -260,6 +282,9 @@ def _ticker_sections(data: dict[str, Any], tickers_config: dict[str, Any] | None
             if isinstance(ind, dict):
                 base.update(ind)
             merged[symbol] = base
+        # Valuation (display-only): solo i campi di valutazione, senza
+        # toccare fetched_at/status della riga (badge età = indicatori).
+        _merge_valuation(merged, val_entries)
         if not merged:
             continue
         display = category.upper()

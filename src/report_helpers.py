@@ -46,6 +46,14 @@ def semaphore_class(value: float | None, metric: str) -> str:
         if value >= -15:
             return "warning"
         return "critical"
+    if metric == "upside":
+        # Upside vs target mediano analisti (fair value, display-only):
+        # ≥ +20% = sconto interessante (ok), ≤ -10% = titolo caro (critical).
+        if value >= 20:
+            return "ok"
+        if value <= -10:
+            return "critical"
+        return "neutral"
     return "neutral"
 
 
