@@ -1,10 +1,14 @@
-"""Local mini-server for editing manual overrides and re-rendering the report.
+"""Local mini-server for editing manual overrides, ticker lists and re-rendering.
 
 Serves:
-    GET  /            → the overrides entry page (overrides_page.render_overrides_page)
-    GET  /api/data    → JSON of the current manual_overrides.yaml
-    POST /api/save    → validate + save one override, then rebuild output + report
-    GET  /report.html → the existing output/report.html
+    GET  /                → the overrides entry page (overrides_page.render_overrides_page)
+    GET  /api/data        → JSON of the current manual_overrides.yaml
+    POST /api/save        → validate + save one override, then rebuild output + report
+    GET  /report.html     → the existing output/report.html
+    GET  /tickers.html    → ticker lists editor page (tickers_page.render_tickers_page)
+    GET  /api/tickers     → JSON of the current tickers section of config.yaml
+    POST /api/tickers/save → validate + backup + rewrite the tickers section,
+                             then rebuild output + report
 
 Binds to 127.0.0.1 only (single-user, local use). No external dependencies.
 """
@@ -31,6 +35,8 @@ from manual_overrides import (
 from orchestrator import _build_strategy_indicators
 from overrides_page import render_overrides_page
 from report_html import render as render_report
+from tickers_page import render_tickers_page
+from tickers_store import load_tickers, save_tickers
 
 # Path del config: risolto rispetto alla root del progetto (src/..).
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -103,6 +109,12 @@ class OverridesHandler(BaseHTTPRequestHandler):
         if self.path == "/api/data":
             self._send_json(200, {"ok": True, "overrides": load_overrides()})
             return
+        if self.path == "/tickers.html":
+            self._send_html(200, render_tickers_page(load_tickers(DEFAULT_CONFIG)))
+            return
+        if self.path == "/api/tickers":
+            self._send_json(200, {"ok": True, "tickers": load_tickers(DEFAULT_CONFIG)})
+            return
         if self.path == "/report.html":
             report_path = PROJECT_ROOT / "output" / "report.html"
             if not report_path.exists():
@@ -113,6 +125,9 @@ class OverridesHandler(BaseHTTPRequestHandler):
         self._send_html(404, "<h1>404</h1>")
 
     def do_POST(self) -> None:  # noqa: N802 (http.server API)
+        if self.path == "/api/tickers/save":
+            self._handle_tickers_save()
+            return
         if self.path != "/api/save":
             self._send_json(404, {"ok": False, "message": "not found"})
             return
@@ -172,6 +187,37 @@ class OverridesHandler(BaseHTTPRequestHandler):
             self._send_json(500, {"ok": False, "message": f"errore: {error}"})
             return
         self._send_json(200, {"ok": True, "message": "Valore salvato e report rigenerato"})
+
+    def _handle_tickers_save(self) -> None:
+        """Validate + backup + persist the tickers section, then re-render."""
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            payload = json.loads(self.rfile.read(length).decode("utf-8"))
+        except (ValueError, json.JSONDecodeError):
+            self._send_json(400, {"ok": False, "message": "JSON malformato"})
+            return
+
+        tickers = payload.get("tickers") if isinstance(payload, dict) else None
+        if not isinstance(tickers, dict):
+            self._send_json(400, {"ok": False,
+                                  "message": "body deve contenere 'tickers' (mapping)"})
+            return
+
+        try:
+            backup_path = save_tickers(DEFAULT_CONFIG, tickers)
+            rebuild_report(DEFAULT_CONFIG)
+        except ValueError as error:
+            # Validazione fallita: nessuna scrittura, nessun backup.
+            self._send_json(400, {"ok": False, "message": str(error)})
+            return
+        except Exception as error:  # noqa: BLE001 - errori mostrati all'utente
+            self._send_json(500, {"ok": False, "message": f"errore: {error}"})
+            return
+        self._send_json(200, {
+            "ok": True,
+            "message": f"Ticker salvati e report rigenerato (backup: {backup_path.name})",
+            "backup": str(backup_path),
+        })
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
         print(f"[overrides] {self.address_string()} - {format % args}")

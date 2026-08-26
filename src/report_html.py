@@ -310,6 +310,7 @@ def build_page(data: dict[str, Any], tickers_config: dict[str, Any] | None = Non
         f"<div><h1>📊 {title}</h1>"
         f'<div class="sub">Generato: {format_iso_dt(data.get("generated_at"))}</div></div>'
         f'<div><span class="badge {overall}">{overall}</span> '
+        '<a href="/tickers.html" class="badge fresh">📋 Ticker</a> '
         '<a href="/overrides.html" class="badge fresh">✍️ Immissione manuale</a> '
         '<button id="theme-toggle" type="button">☀️ Light</button></div>'
         "</header>"
