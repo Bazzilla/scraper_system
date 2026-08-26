@@ -7,6 +7,7 @@ from typing import Any
 
 from report_helpers import (
     _age_attrs,
+    _collapsible,
     _sema,
     _signal_badge,
     _status_badge,
@@ -143,20 +144,22 @@ def render_indicator_matrix(indicators_data: dict[str, Any] | None) -> str:
         "<th>Fonte primaria</th><th>Note</th>"
         "</tr></thead>"
     )
-    return (
-        "<div class='indicator-matrix'>"
-        "<h2>Stato indicatori strategia</h2>"
-        "<p class='sub'>"
-        "<strong>Coverage</strong> = l'indicatore APPARTIENE alla strategia "
-        "(statico, dalle specifiche — true anche se non implementato).<br>"
-        "<strong>Implementation</strong> = implemented · proxy · missing · "
-        "manual_supported (statico).<br>"
-        "<strong>Availability</strong> = disponibile davvero a runtime · "
-        "<strong>Usabile nello score</strong> = coverage E disponibile E "
-        "implementabile (o proxy esplicitamente accettato) · "
-        "<strong>Provenienza</strong> = scraped | manual | missing.</p>"
-        f"<table>{header}<tbody>{''.join(rows)}</tbody></table>"
-        "</div>"
+    return _collapsible(
+        "Stato indicatori strategia",
+        (
+            "<div class='indicator-matrix'>"
+            "<p class='sub'>"
+            "<strong>Coverage</strong> = l'indicatore APPARTIENE alla strategia "
+            "(statico, dalle specifiche — true anche se non implementato).<br>"
+            "<strong>Implementation</strong> = implemented · proxy · missing · "
+            "manual_supported (statico).<br>"
+            "<strong>Availability</strong> = disponibile davvero a runtime · "
+            "<strong>Usabile nello score</strong> = coverage E disponibile E "
+            "implementabile (o proxy esplicitamente accettato) · "
+            "<strong>Provenienza</strong> = scraped | manual | missing.</p>"
+            f"<table>{header}<tbody>{''.join(rows)}</tbody></table>"
+            "</div>"
+        ),
     )
 
 
@@ -242,9 +245,11 @@ def _ticker_sections(data: dict[str, Any], tickers_config: dict[str, Any] | None
         if not merged:
             continue
         display = category.upper()
-        sections.append(f"<h2>{html_mod.escape(display)} ({len(merged)})</h2>")
-        sections.append(render_ticker_table(
-            category, merged, regime=regime, fgi_score=fgi_score,
-            tickers_meta=tickers_meta,
+        sections.append(_collapsible(
+            f"{html_mod.escape(display)} ({len(merged)})",
+            render_ticker_table(
+                category, merged, regime=regime, fgi_score=fgi_score,
+                tickers_meta=tickers_meta,
+            ),
         ))
     return "".join(sections)

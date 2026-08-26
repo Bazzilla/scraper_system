@@ -36,6 +36,7 @@ from report_helpers import (  # noqa: F401
     _ITALIAN_MONTHS,
     _age_attrs,
     _badge,
+    _collapsible,
     _fgi_rating_badge,
     _now_iso,
     _sema,
@@ -171,6 +172,20 @@ footer { margin-top: 32px; color: var(--muted); font-size: 0.85rem;
 .indicator-matrix table { width: 100%; }
 .indicator-matrix td { text-align: left; vertical-align: top; }
 .indicator-matrix th { text-align: left; }
+details.section { margin: 28px 0 12px; background: var(--card);
+        border: 1px solid var(--border); border-radius: 12px; }
+details.section > summary { cursor: pointer; list-style: none; padding: 12px 16px;
+        display: flex; align-items: center; justify-content: space-between; }
+details.section > summary::-webkit-details-marker { display: none; }
+details.section > summary h2 { margin: 0; font-size: 1.15rem; }
+details.section > summary::after { content: "▾"; font-size: 1rem; color: var(--muted);
+        transition: transform 0.15s ease; }
+details.section[open] > summary::after { transform: rotate(180deg); }
+details.section > .section-body { padding: 0 16px 16px; }
+button#sections-toggle { background: var(--card); color: var(--text);
+        border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px;
+        cursor: pointer; font-size: 0.9rem; }
+.sections-toolbar { display: flex; justify-content: flex-end; margin-bottom: 8px; }
 """
 
 _SCRIPT = """\
@@ -243,6 +258,34 @@ _SCRIPT = """\
       if (lastCell) lastCell.appendChild(age);
     }
   }
+
+  // Collapsible sections: global "Apri tutte / Chiudi tutte" toggle.
+  var sections = document.querySelectorAll("details.section");
+  var sectionsBtn = document.getElementById("sections-toggle");
+  function allOpen() {
+    for (var i = 0; i < sections.length; i++) {
+      if (!sections[i].open) return false;
+    }
+    return true;
+  }
+  function updateSectionsLabel() {
+    if (sectionsBtn) {
+      sectionsBtn.textContent = allOpen() ? "🗂️ Chiudi tutte" : "🗂️ Apri tutte";
+    }
+  }
+  if (sectionsBtn) {
+    sectionsBtn.addEventListener("click", function () {
+      var open = !allOpen();
+      for (var i = 0; i < sections.length; i++) {
+        sections[i].open = open;
+      }
+      updateSectionsLabel();
+    });
+    for (var i = 0; i < sections.length; i++) {
+      sections[i].addEventListener("toggle", updateSectionsLabel);
+    }
+    updateSectionsLabel();
+  }
 })();
 </script>
 """
@@ -270,10 +313,12 @@ def build_page(data: dict[str, Any], tickers_config: dict[str, Any] | None = Non
         '<a href="/overrides.html" class="badge fresh">✍️ Immissione manuale</a> '
         '<button id="theme-toggle" type="button">☀️ Light</button></div>'
         "</header>"
-        f"<h2>Indicatori di mercato</h2>"
-        f"{render_market_cards(data)}"
-        f"{render_indicator_matrix(data.get('strategy_indicators', {}))}"
+        '<div class="sections-toolbar">'
+        '<button id="sections-toggle" type="button">🗂️ Chiudi tutte</button>'
+        "</div>"
+        f"{_collapsible('Indicatori di mercato', render_market_cards(data))}"
         f"{_ticker_sections(data, tickers_config)}"
+        f"{render_indicator_matrix(data.get('strategy_indicators', {}))}"
         f"{render_stale_summary(stale)}"
         f"{render_legend()}"
         "</div>"

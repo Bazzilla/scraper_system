@@ -314,3 +314,19 @@ def _status_badge(status: str) -> str:
     else:
         cls, label = "sema critical", status
     return f'<span class="sema {cls}">{html_mod.escape(label)}</span>'
+
+
+def _collapsible(title: str, content: str) -> str:
+    """Wrap a report section in a collapsible <details> (open by default).
+
+    The section title is rendered as an <h2> inside the <summary>, so every
+    H2-headed section of the report becomes toggleable. The global
+    "Apri tutte/Chiudi tutte" control (see report_html) targets these
+    ``details.section`` elements.
+    """
+    return (
+        '<details class="section" open>'
+        f"<summary><h2>{title}</h2></summary>"
+        f'<div class="section-body">{content}</div>'
+        "</details>"
+    )

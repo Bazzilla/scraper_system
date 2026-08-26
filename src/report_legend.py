@@ -5,6 +5,8 @@ from __future__ import annotations
 import html as html_mod
 from typing import Any
 
+from report_helpers import _collapsible
+
 _LEGEND_MARKET = [
     {
         "name": "Fear &amp; Greed (FGI)",
@@ -260,14 +262,16 @@ def render_legend() -> str:
     market = "".join(_legend_item(item) for item in _LEGEND_MARKET)
     stock = "".join(_legend_item(item) for item in _LEGEND_STOCK)
     sema = "".join(_legend_item(item) for item in _LEGEND_SEMAPHORES)
-    return (
-        "<div class='legend'>"
-        "<h2>Legenda indicatori</h2>"
-        "<div class='legend-grid'>"
-        f"<div><h3>Indicatori di mercato</h3>{market}</div>"
-        f"<div><h3>Indicatori azionari</h3>{stock}</div>"
-        "</div>"
-        f"<h3>Semafori</h3>{sema}"
-        f"{_GUIDE}"
-        "</div>"
+    return _collapsible(
+        "Legenda indicatori",
+        (
+            "<div class='legend'>"
+            "<div class='legend-grid'>"
+            f"<div><h3>Indicatori di mercato</h3>{market}</div>"
+            f"<div><h3>Indicatori azionari</h3>{stock}</div>"
+            "</div>"
+            f"<h3>Semafori</h3>{sema}"
+            f"{_GUIDE}"
+            "</div>"
+        ),
     )

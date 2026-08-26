@@ -60,6 +60,18 @@ def _sample_data() -> dict:
         },
         "stale_summary": {"total_sources": 5, "fresh": 5, "stale": 0,
                           "stale_details": [], "signal_reliability": "high"},
+        "strategy_indicators": {
+            "fgi": {"name": "Fear & Greed Index", "strategy_ref": "F1 (Regola 0)",
+                    "implementation_status": "implemented", "coverage": True,
+                    "availability": True, "usable_in_strategy_score": True,
+                    "semantic_coherent": True, "source": "scraped",
+                    "primary_source": "CNN API", "notes": ""},
+            "nyse_nh_nl": {"name": "NYSE New Highs/New Lows", "strategy_ref": "F3/#12",
+                           "implementation_status": "implemented", "coverage": True,
+                           "availability": True, "usable_in_strategy_score": True,
+                           "semantic_coherent": True, "source": "scraped",
+                           "primary_source": "Barchart", "notes": ""},
+        },
     }
 
 
@@ -767,6 +779,26 @@ class TestRenderSections(unittest.TestCase):
         self.assertIn("Stato sorgenti", html)
         self.assertIn("dark", html)  # classe tema presente
         self.assertIn("localStorage", html)  # toggle JS presente
+
+    def test_build_page_sections_collapsible_and_ordered(self):
+        html = build_page(_sample_data())
+        # Ogni sezione con H2 è un <details class="section" open> (aperta di default)
+        self.assertGreaterEqual(html.count('<details class="section" open>'), 3)
+        # Ordine: mercato → ticker → matrice indicatori → legenda
+        idx_market = html.find("Indicatori di mercato")
+        idx_ticker = html.find("SEMICONDUCTORS")
+        idx_matrix = html.find("Stato indicatori strategia")
+        idx_legend = html.find("Legenda indicatori")
+        self.assertLess(idx_market, idx_ticker)
+        self.assertLess(idx_ticker, idx_matrix)
+        self.assertLess(idx_matrix, idx_legend)
+
+    def test_build_page_has_global_sections_toggle(self):
+        html = build_page(_sample_data())
+        self.assertIn('id="sections-toggle"', html)
+        self.assertIn("Chiudi tutte", html)  # tutte aperte di default
+        self.assertIn("allOpen", html)  # JS del toggle globale presente
+        self.assertIn("sections[i].open = open", html)
 
     def test_ticker_sections_ignores_category_status_key(self):
         # La categoria ha una chiave "status" (stringa) che NON è un ticker

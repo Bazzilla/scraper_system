@@ -1,9 +1,9 @@
-<!-- Context: project-intelligence/report-html | Priority: high | Version: 1.3 | Updated: 2026-08-19 -->
+<!-- Context: project-intelligence/report-html | Priority: high | Version: 1.4 | Updated: 2026-08-20 -->
 
 # Report HTML (Market Dashboard)
 
 **Purpose**: Pattern del generatore di pagina HTML statica di scraper-system — come il segnale di trading viene sintetizzato dagli indicatori e dal clima di mercato. Deep dive del technical-domain.md.
-**Last Updated**: 2026-08-12
+**Last Updated**: 2026-08-20
 
 ## Quick Reference
 **Update Triggers**: Nuovi moduli scraper (aggiornare render) | Modifiche alla strategia di trading | Nuovi indicatori nel segnale
@@ -11,6 +11,8 @@
 
 ## Concept
 `src/report_html.py` (orchestratore) legge `output/output.json` e genera `output/report.html` (pagina self-contained, dark+light toggle, semafori, tabelle per categoria, legenda interattiva, guida operativa). Funzioni pure per ogni sezione, distribuite in `report_helpers.py`/`report_cards.py`/`report_tables.py`/`report_legend.py` e ri-esportate da `report_html.py`. CLI: `render(config_path)`.
+
+**Ordine sezioni** (2026-08-20): Indicatori di mercato → tabelle ticker per categoria → Stato indicatori strategia → Legenda indicatori. Ogni sezione con H2 è un `<details class="section" open>` (aperta di default) con `<summary><h2>…</h2></summary>`; in cima alla pagina un toggle globale `#sections-toggle` "Apri tutte/Chiudi tutte" (label dinamica via JS `allOpen()`). Helper: `_collapsible(title, content)` in `report_helpers.py`.
 
 **Card FGI**: può includere una mini-griglia dei 7 sub-indicatori da `fgi.fgi_components` (score + rating per componente, badge via `_fgi_rating_badge`). `fgi_components` è DISPLAY-ONLY: non entra mai nello score di segnale.
 
@@ -42,11 +44,16 @@ Badge (non-operativi, segnali da VALUTARE): 🟢 VALUTA INGRESSO / 🟠 OSSERVA 
 Ogni cella mostra **sempre il valore numerico** + badge colorato. Valori None → "—". Date italiane (hardcoded, indipendenti dal locale).
 
 ## Legenda e guida
-- **Legenda indicatori**: card espandibili (`<details>/<summary>` nativo, toggle per-riga) con spiegazione in italiano di ogni indicatore (mercato: FGI/VIX/AAII; azionari: RSI/MFI/OBV/SMA/drawdown/Segnale; semafori).
+- **Legenda indicatori**: card espandibili (`<details>/<summary>` nativo, toggle per-riga) con spiegazione in italiano di ogni indicatore (mercato: FGI/VIX/AAII; azionari: RSI/MFI/OBV/SMA/drawdown/Segnale; semafori). L'intera sezione è a sua volta un `details.section` collassabile.
 - **Guida operativa**: quando comprare (convergenza ipervenduto+inversione+clima fear), quando vendere se in profitto (ipercomprato/indebolimento+clima greed), cautela su segnali misti. Disclaimer.
 
+## Sezioni collassabili (toggle globale)
+- Ogni sezione con titolo H2 è avvolta da `_collapsible(title, content)` → `<details class="section" open>` (aperta di default). Il titolo vive nel `<summary>` come `<h2>`.
+- Toggle globale in cima (`#sections-toggle`): "🗂️ Chiudi tutte" quando tutte aperte, "🗂️ Apri tutte" altrimenti. JS: `allOpen()` verifica lo stato, `toggle` event su ogni `details.section` aggiorna la label.
+- `render_stale_summary` NON è una sezione collassabile (usa `<footer>`, non H2).
+
 ## 📂 Codebase References
-**Report HTML**: `src/report_html.py` (orchestratore, ri-esporta) — `render(config_path)`, `build_page`; moduli: `report_helpers.py` (`compute_signal`, `market_regime`, `semaphore_class`, `format_iso_dt`, badge), `report_cards.py` (`render_market_cards`), `report_tables.py` (`render_ticker_table`, `render_indicator_matrix`, `render_stale_summary`), `report_legend.py` (`render_legend`)
+**Report HTML**: `src/report_html.py` (orchestratore, ri-esporta) — `render(config_path)`, `build_page`; moduli: `report_helpers.py` (`compute_signal`, `market_regime`, `semaphore_class`, `format_iso_dt`, badge, `_collapsible`), `report_cards.py` (`render_market_cards`), `report_tables.py` (`render_ticker_table`, `render_indicator_matrix`, `render_stale_summary`), `report_legend.py` (`render_legend`)
 **Test**: `src/tests/test_report_html.py` — test (semafori, format, segnale, gate, legenda, render)
 **Output**: `output/report.html` (pagina generata), `output/output.json` (fonte)
 **Spec**: `docs/superpowers/specs/2026-08-12-report-html-design.md`
