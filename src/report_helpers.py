@@ -339,6 +339,20 @@ _NAV_ITEMS = [
     ("tickers", "/tickers.html", "📋 Ticker"),
 ]
 
+# Favicon condivisa da tutte le pagine: mini grafico a barre con i colori dei
+# semafori della dashboard (verde/giallo/rosso su card scura). SVG inline
+# data-URI → nessun file binario da servire.
+FAVICON_SVG = (
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' "
+    "viewBox='0 0 32 32'%3E"
+    "%3Crect width='32' height='32' rx='7' fill='%231a212b'/%3E"
+    "%3Crect x='6' y='17' width='5' height='9' rx='1' fill='%232ea043'/%3E"
+    "%3Crect x='13.5' y='11' width='5' height='15' rx='1' fill='%23d29922'/%3E"
+    "%3Crect x='21' y='6' width='5' height='20' rx='1' fill='%23f85149'/%3E"
+    "%3C/svg%3E"
+)
+FAVICON_LINK = f'<link rel="icon" type="image/svg+xml" href="{FAVICON_SVG}">'
+
 
 def render_nav(active: str) -> str:
     """Render the horizontal page-navigation menu shared by all HTML pages.

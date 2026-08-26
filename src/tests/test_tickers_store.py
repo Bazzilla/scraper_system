@@ -168,6 +168,11 @@ class TestTickersPage(unittest.TestCase):
         self.assertIn('href="/overrides.html"', html)
         self.assertIn('class="nav-link active">📋 Ticker</a>', html)
 
+    def test_page_has_favicon(self):
+        html = render_tickers_page(NEW_TICKERS)
+        self.assertIn('rel="icon"', html)
+        self.assertIn("data:image/svg+xml", html)
+
     def test_page_escapes_script_closing_sequence(self):
         html = render_tickers_page({"c": [{"symbol": "X", "name": "</script>"}]})
         self.assertNotIn("</script>\"}", html.replace("</script>", "", 1))

@@ -71,6 +71,8 @@ class TestRenderOverridesPage(unittest.TestCase):
         # Input decimali come text+inputmode (per accettare '.' e ',')
         self.assertIn('inputmode="decimal"', html)
         self.assertNotIn('type="number"', html)
+        # Il campo Nota va sempre a capo e occupa tutta la larghezza
+        self.assertIn(".field.wide { flex: 1 1 100%; }", html)
         # Footer: WRITE prima della data → date allineate a destra del tasto
         footer = html.split('class="card-footer"')[1]
         self.assertLess(footer.find(">WRITE</button>"), footer.find("Ultimo:"))
@@ -83,3 +85,8 @@ class TestRenderOverridesPage(unittest.TestCase):
         self.assertLess(idx_enabled, idx_refs)
         self.assertLess(idx_refs, idx_grid)
         self.assertLess(idx_grid, idx_footer)
+
+    def test_page_has_favicon(self):
+        html = render_overrides_page({})
+        self.assertIn('rel="icon"', html)
+        self.assertIn("data:image/svg+xml", html)

@@ -52,6 +52,7 @@ from report_helpers import (  # noqa: F401
     semaphore_class,
     technical_signal,
 )
+from report_helpers import FAVICON_LINK  # noqa: F401
 from report_cards import render_market_cards  # noqa: F401
 from report_legend import render_legend  # noqa: F401
 from report_tables import (  # noqa: F401
@@ -311,6 +312,7 @@ def build_page(data: dict[str, Any], tickers_config: dict[str, Any] | None = Non
     html_doc = (
         "<!DOCTYPE html>\n<html lang=\"it\" data-theme=\"dark\">\n<head>"
         "<meta charset=\"utf-8\">"
+        f"{FAVICON_LINK}"
         f"<title>{title}</title>"
         f"<style>{_CSS}</style>"
         "</head>\n<body><div class=\"container\">"

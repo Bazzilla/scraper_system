@@ -20,7 +20,7 @@ import json
 from typing import Any
 
 from report_html import _CSS, _SCRIPT
-from report_helpers import render_nav
+from report_helpers import FAVICON_LINK, render_nav
 
 _PAGE_CSS = _CSS + """\
 .category-card { background: var(--card); border: 1px solid var(--border);
@@ -237,6 +237,7 @@ def render_tickers_page(tickers: dict[str, Any]) -> str:
     return (
         "<!DOCTYPE html>\n<html lang=\"it\" data-theme=\"dark\">\n<head>"
         "<meta charset=\"utf-8\">"
+        f"{FAVICON_LINK}"
         "<title>Gestione ticker</title>"
         f"<style>{_PAGE_CSS}</style>"
         "</head>\n<body><div class=\"container\">"

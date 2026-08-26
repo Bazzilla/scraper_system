@@ -17,7 +17,7 @@ import html as html_mod
 from typing import Any
 
 from report_html import _CSS, _SCRIPT, format_iso_dt
-from report_helpers import render_nav
+from report_helpers import FAVICON_LINK, render_nav
 from indicator_fields import INDICATOR_FIELDS
 
 _PAGE_CSS = _CSS + """\
@@ -34,7 +34,7 @@ _PAGE_CSS = _CSS + """\
 .field-grid { display: flex; flex-wrap: wrap; gap: 12px 20px;
         margin-bottom: 14px; }
 .field { display: flex; flex-direction: column; gap: 4px; }
-.field.wide { flex: 1 1 260px; }
+.field.wide { flex: 1 1 100%; }
 .field > label { color: var(--muted); font-size: 0.75rem; text-transform: uppercase;
         letter-spacing: 0.05em; }
 .field input { background: var(--bg); color: var(--text);
@@ -179,6 +179,7 @@ def render_overrides_page(overrides: dict[str, Any]) -> str:
     return (
         "<!DOCTYPE html>\n<html lang=\"it\" data-theme=\"dark\">\n<head>"
         "<meta charset=\"utf-8\">"
+        f"{FAVICON_LINK}"
         "<title>Immissione manuale indicatori</title>"
         f"<style>{_PAGE_CSS}</style>"
         "</head>\n<body><div class=\"container\">"
