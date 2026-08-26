@@ -187,6 +187,20 @@ _EDITOR_SCRIPT = """\
     if (symInput) symInput.focus();
   });
 
+  // POST JSON con retry su 401: al primo 401 il browser mostra il prompt di
+  // Basic Auth e memorizza le credenziali; la richiesta originale NON viene
+  // ritentata automaticamente, quindi ritentiamo qui (max 2 tentativi).
+  function postJSON(url, payload, attempt) {
+    return fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }).then(function (resp) {
+      if (resp.status === 401 && attempt < 2) return postJSON(url, payload, attempt + 1);
+      return resp.json();
+    });
+  }
+
   document.getElementById("save-btn").addEventListener("click", function () {
     for (var cat in model) {
       if (!model[cat].length) {
@@ -198,19 +212,17 @@ _EDITOR_SCRIPT = """\
     btn.disabled = true;
     msgEl.className = "msg";
     msgEl.textContent = "Salvataggio in corso...";
-    fetch("/api/tickers/save", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tickers: model })
-    }).then(function (resp) { return resp.json(); }).then(function (data) {
-      msgEl.className = "msg " + (data.ok ? "ok" : "err");
-      msgEl.textContent = data.message || (data.ok ? "Salvato" : "Errore");
-      btn.disabled = false;
-    }).catch(function () {
-      msgEl.className = "msg err";
-      msgEl.textContent = "Errore di rete";
-      btn.disabled = false;
-    });
+    postJSON("/api/tickers/save", { tickers: model }, 1)
+      .then(function (data) {
+        msgEl.className = "msg " + (data.ok ? "ok" : "err");
+        msgEl.textContent = data.message || (data.ok ? "Salvato" : "Errore");
+        btn.disabled = false;
+      })
+      .catch(function () {
+        msgEl.className = "msg err";
+        msgEl.textContent = "Errore di rete";
+        btn.disabled = false;
+      });
   });
 
   render();

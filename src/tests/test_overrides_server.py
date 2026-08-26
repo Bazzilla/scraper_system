@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import tempfile
 import threading
@@ -13,7 +14,21 @@ from pathlib import Path
 from unittest import mock
 
 from overrides_page import render_overrides_page
-from overrides_server import OverridesHandler, SUPPORTED_KEYS, rebuild_report
+from overrides_server import (
+    DEFAULT_CREDENTIALS,
+    OverridesHandler,
+    SUPPORTED_KEYS,
+    is_authorized,
+    load_credentials,
+    rebuild_report,
+)
+
+
+def _auth_header(user: str = "", password: str = "") -> str:
+    user = user or DEFAULT_CREDENTIALS[0]
+    password = password or DEFAULT_CREDENTIALS[1]
+    raw = base64.b64encode(f"{user}:{password}".encode("utf-8")).decode()
+    return f"Basic {raw}"
 
 
 class TestOverridesPageNav(unittest.TestCase):
@@ -64,6 +79,41 @@ class TestRebuildReport(unittest.TestCase):
             self.assertEqual(data["naaim"]["exposure"], 85.0)
 
 
+class TestBasicAuth(unittest.TestCase):
+    def test_default_credentials(self):
+        self.assertEqual(DEFAULT_CREDENTIALS, ("admin", "so€uri€€€"))
+
+    def test_is_authorized_valid_credentials(self):
+        self.assertTrue(is_authorized(_auth_header()))
+
+    def test_is_authorized_rejects_missing_header(self):
+        self.assertFalse(is_authorized(None))
+        self.assertFalse(is_authorized(""))
+
+    def test_is_authorized_rejects_wrong_password(self):
+        self.assertFalse(is_authorized(_auth_header(password="sbagliata")))
+
+    def test_is_authorized_rejects_wrong_user(self):
+        self.assertFalse(is_authorized(_auth_header(user="altro")))
+
+    def test_is_authorized_rejects_malformed_header(self):
+        self.assertFalse(is_authorized("Basic !!!non-base64!!!"))
+        self.assertFalse(is_authorized("Bearer abc123"))
+
+    def test_load_credentials_from_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            auth_file = Path(tmp) / ".server-auth"
+            auth_file.write_text("pippo:pluto €\n", encoding="utf-8")
+            self.assertEqual(load_credentials(auth_file), ("pippo", "pluto €"))
+
+    def test_load_credentials_falls_back_to_default_when_file_invalid(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            auth_file = Path(tmp) / ".server-auth"
+            auth_file.write_text("senza-separatore\n", encoding="utf-8")
+            self.assertEqual(load_credentials(auth_file), DEFAULT_CREDENTIALS)
+            self.assertEqual(load_credentials(Path(tmp) / "inesistente"), DEFAULT_CREDENTIALS)
+
+
 class TestOverridesHandler(unittest.TestCase):
     def test_supported_keys_whitelist(self):
         self.assertEqual(
@@ -71,23 +121,60 @@ class TestOverridesHandler(unittest.TestCase):
             frozenset({"aaii", "fgi", "naaim", "vix_term_structure", "pct_sma"}),
         )
 
-    def test_root_redirects_to_dashboard(self):
-        # La landing page di default è la dashboard: / → 302 /report.html
+    def _start_server(self) -> tuple[ThreadingHTTPServer, threading.Thread, int]:
         server = ThreadingHTTPServer(("127.0.0.1", 0), OverridesHandler)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
+        return server, thread, server.server_address[1]
+
+    @staticmethod
+    def _open_no_redirect(url: str, headers: dict[str, str] | None = None):
+        class _NoRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                return None
+
+        opener = urllib.request.build_opener(_NoRedirect())
+        request = urllib.request.Request(url, headers=headers or {})
+        return opener.open(request, timeout=5)
+
+    def test_unauthenticated_request_gets_401_with_challenge(self):
+        server, thread, port = self._start_server()
         try:
-            port = server.server_address[1]
-
-            class _NoRedirect(urllib.request.HTTPRedirectHandler):
-                def redirect_request(self, *args, **kwargs):  # noqa: ANN002, ANN003
-                    return None
-
-            opener = urllib.request.build_opener(_NoRedirect())
             with self.assertRaises(urllib.error.HTTPError) as ctx:
-                opener.open(f"http://127.0.0.1:{port}/", timeout=5)
+                self._open_no_redirect(f"http://127.0.0.1:{port}/report.html")
+            self.assertEqual(ctx.exception.status, 401)
+            self.assertIn("Basic", ctx.exception.headers["WWW-Authenticate"])
+        finally:
+            server.shutdown()
+            server.server_close()
+
+    def test_root_redirects_to_dashboard_when_authenticated(self):
+        # La landing page di default è la dashboard: / → 302 /report.html
+        server, thread, port = self._start_server()
+        try:
+            with self.assertRaises(urllib.error.HTTPError) as ctx:
+                self._open_no_redirect(
+                    f"http://127.0.0.1:{port}/",
+                    headers={"Authorization": _auth_header()},
+                )
             self.assertEqual(ctx.exception.status, 302)
             self.assertEqual(ctx.exception.headers["Location"], "/report.html")
+        finally:
+            server.shutdown()
+            server.server_close()
+
+    def test_api_data_accessible_when_authenticated(self):
+        server, thread, port = self._start_server()
+        try:
+            response = urllib.request.urlopen(
+                urllib.request.Request(
+                    f"http://127.0.0.1:{port}/api/data",
+                    headers={"Authorization": _auth_header()},
+                ),
+                timeout=5,
+            )
+            payload = json.loads(response.read().decode("utf-8"))
+            self.assertTrue(payload["ok"])
         finally:
             server.shutdown()
             server.server_close()

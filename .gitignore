@@ -223,6 +223,8 @@ __marimo__/
 output/
 # Config backups (epoch-named copies created by the tickers editor)
 backups/
+# Web server credentials (overrides_server Basic Auth override)
+.server-auth
 # Python
 __pycache__/
 *.py[cod]

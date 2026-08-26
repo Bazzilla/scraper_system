@@ -80,17 +80,26 @@ def _render_card(indicator: str, spec: dict[str, Any], entry: dict[str, Any]) ->
 
 _OVERRIDES_SCRIPT = _SCRIPT + """\
 <script>
+// POST JSON con retry su 401: al primo 401 il browser mostra il prompt di
+// Basic Auth e memorizza le credenziali; la richiesta originale NON viene
+// ritentata automaticamente, quindi ritentiamo qui (max 2 tentativi).
+function postJSON(url, payload, attempt) {
+  return fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  }).then(function (resp) {
+    if (resp.status === 401 && attempt < 2) return postJSON(url, payload, attempt + 1);
+    return resp.json();
+  });
+}
 function saveOverride(key) {
   var card = document.querySelector('[data-key="' + key + '"]');
   var payload = { key: key, enabled: card.querySelector('[name="enabled"]').checked };
   card.querySelectorAll("input[name]").forEach(function (input) {
     if (input.name !== "enabled") payload[input.name] = input.value;
   });
-  fetch("/api/save", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  }).then(function (resp) { return resp.json(); }).then(function (data) {
+  postJSON("/api/save", payload, 1).then(function (data) {
     var msg = document.createElement("div");
     msg.className = "msg " + (data.ok ? "ok" : "err");
     msg.textContent = data.message || (data.ok ? "Salvato" : "Errore");

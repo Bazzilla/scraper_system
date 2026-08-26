@@ -20,6 +20,8 @@ No external dependencies.
 from __future__ import annotations
 
 import argparse
+import base64
+import hmac
 import json
 import socket
 from datetime import datetime, timezone
@@ -46,6 +48,38 @@ from tickers_store import load_tickers, save_tickers
 # Path del config: risolto rispetto alla root del progetto (src/..).
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG = str(PROJECT_ROOT / "config.yaml")
+
+# --- Basic Auth (tutte le pagine e le API) ---------------------------------
+# Credenziali di default; per cambiarle creare un file `.server-auth` nella
+# root del progetto con una riga "user:password" (git-ignored). Il realm
+# dichiara charset UTF-8 (RFC 7617) perché la password può contenere non-ASCII.
+DEFAULT_CREDENTIALS = ("admin", "so€uri€€€")
+AUTH_REALM = "scraper-system"
+AUTH_FILE = ".server-auth"
+
+
+def load_credentials(path: str | Path | None = None) -> tuple[str, str]:
+    """Resolve the server credentials: `.server-auth` file if present, else default."""
+    auth_path = Path(path) if path else PROJECT_ROOT / AUTH_FILE
+    if auth_path.exists():
+        line = auth_path.read_text(encoding="utf-8").strip()
+        user, sep, password = line.partition(":")
+        if sep and user.strip() and password:
+            return user.strip(), password
+    return DEFAULT_CREDENTIALS
+
+
+def is_authorized(header_value: str | None, credentials: tuple[str, str] | None = None) -> bool:
+    """Timing-safe check of the `Authorization: Basic ...` header."""
+    user, password = credentials or load_credentials()
+    expected = f"{user}:{password}".encode("utf-8")
+    if not header_value or not header_value.startswith("Basic "):
+        return False
+    try:
+        provided = base64.b64decode(header_value[len("Basic "):].strip(), validate=True)
+    except ValueError:  # binascii.Error è sottoclasse di ValueError
+        return False
+    return hmac.compare_digest(provided, expected)
 
 
 def rebuild_report(config_path: str) -> None:
@@ -107,7 +141,26 @@ class OverridesHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _require_auth(self) -> bool:
+        """Gate unico di autenticazione: True se autorizzato, altrimenti 401.
+
+        Applicato a OGNI richiesta (pagine e API, GET e POST): le rotte
+        future sono protette per default.
+        """
+        if is_authorized(self.headers.get("Authorization")):
+            return True
+        self.send_response(401)
+        self.send_header(
+            "WWW-Authenticate", f'Basic realm="{AUTH_REALM}", charset="UTF-8"'
+        )
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+        return False
+
     def do_GET(self) -> None:  # noqa: N802 (http.server API)
+        if not self._require_auth():
+            return
         if self.path == "/":
             # Landing page di default: la dashboard (report.html).
             self.send_response(302)
@@ -136,6 +189,8 @@ class OverridesHandler(BaseHTTPRequestHandler):
         self._send_html(404, "<h1>404</h1>")
 
     def do_POST(self) -> None:  # noqa: N802 (http.server API)
+        if not self._require_auth():
+            return
         if self.path == "/api/tickers/save":
             self._handle_tickers_save()
             return

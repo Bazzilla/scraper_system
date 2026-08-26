@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # scraper-websrv — mini-server locale per dashboard, immissione manuale ed editor ticker.
 # Pagina iniziale di default: la dashboard (/ → redirect a /report.html).
+# AUTENTICAZIONE: tutte le pagine e le API richiedono Basic Auth
+# (default: admin / so€uri€€€ — personalizzabile con un file `.server-auth`
+# nella root del progetto contenente "user:password"; git-ignored).
 # Porta default 8900; usa -p/--port per cambiarla (anche forma --port=N).
 # Esempi: scraper-websrv              → porta 8900, solo localhost
 #         scraper-websrv -p 9000      → porta 9000, solo localhost
 #         scraper-websrv --lan        → accessibile dalla LAN (bind 0.0.0.0;
-#                                       endpoint di scrittura NON autenticati:
-#                                       usare solo su rete fidata)
+#                                       protetto da Basic Auth)
 set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 port_given=false
