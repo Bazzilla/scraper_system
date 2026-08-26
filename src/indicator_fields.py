@@ -15,6 +15,7 @@ from typing import Any
 #   frequency   — output frequency (manual_overrides build)
 #   fields      — {field: {"label", "type", "step"}} (page + server validation)
 #   required    — list of required value fields (manual_overrides validation)
+#   reference_links — [{label, url}] pagine da cui leggere manualmente il dato
 INDICATOR_FIELDS: dict[str, dict[str, Any]] = {
     "aaii": {
         "label": "AAII Investor Sentiment Survey",
@@ -26,6 +27,9 @@ INDICATOR_FIELDS: dict[str, dict[str, Any]] = {
             "bearish": {"label": "Bearish %", "type": "number", "step": "0.1"},
         },
         "required": ["bullish", "neutral", "bearish"],
+        "reference_links": [
+            {"label": "AAII Survey", "url": "https://www.aaii.com/sentimentsurvey"},
+        ],
     },
     "fgi": {
         "label": "Fear & Greed Index",
@@ -45,6 +49,12 @@ INDICATOR_FIELDS: dict[str, dict[str, Any]] = {
             "exposure": {"label": "Exposure", "type": "number", "step": "0.1"},
         },
         "required": ["exposure"],
+        "reference_links": [
+            {
+                "label": "NAAIM Exposure Index",
+                "url": "https://naaim.org/programs/naaim-exposure-index/",
+            },
+        ],
     },
     "vix_term_structure": {
         "label": "VIX Term Structure",
@@ -55,6 +65,9 @@ INDICATOR_FIELDS: dict[str, dict[str, Any]] = {
             "m2": {"label": "M2 (futures 2 mesi)", "type": "number", "step": "0.01"},
         },
         "required": ["m1", "m2"],
+        "reference_links": [
+            {"label": "VolChart (M1/M2)", "url": "https://volchart.io/"},
+        ],
     },
     "pct_sma": {
         "label": "% sopra SMA50/SMA200 (mercato USA)",
@@ -65,6 +78,16 @@ INDICATOR_FIELDS: dict[str, dict[str, Any]] = {
             "pct_sma200": {"label": "% sopra SMA200", "type": "number", "step": "0.1"},
         },
         "required": ["pct_sma50", "pct_sma200"],
+        "reference_links": [
+            {
+                "label": "% sopra SMA50 (TradingView MMFI)",
+                "url": "https://it.tradingview.com/symbols/INDEX-MMFI/",
+            },
+            {
+                "label": "% sopra SMA200 (TradingView MMTH)",
+                "url": "https://www.tradingview.com/symbols/INDEX-MMTH/ideas/",
+            },
+        ],
     },
 }
 

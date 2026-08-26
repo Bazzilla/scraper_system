@@ -46,3 +46,19 @@ class TestRenderOverridesPage(unittest.TestCase):
         card = html.split('data-key="naaim"')[1]
         checkbox = card.split('name="enabled"')[1][:200]
         self.assertIn("checked", checkbox)
+
+    def test_renders_reference_links(self):
+        html = render_overrides_page({})
+        # Link fonte per la lettura manuale del dato
+        self.assertIn("https://www.aaii.com/sentimentsurvey", html)
+        self.assertIn("https://naaim.org/programs/naaim-exposure-index/", html)
+        self.assertIn("https://volchart.io/", html)
+        self.assertIn("INDEX-MMFI", html)
+        self.assertIn("INDEX-MMTH", html)
+        # I link si aprono in nuova scheda
+        self.assertIn('target="_blank"', html)
+
+    def test_fgi_has_no_reference_links(self):
+        # Nessun URL fornito per FGI → nessun link nella sua card
+        card = render_overrides_page({}).split('data-key="fgi"')[1]
+        self.assertNotIn("ref-link", card.split('data-key="naaim"')[0])

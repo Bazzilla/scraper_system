@@ -38,6 +38,9 @@ _PAGE_CSS = _CSS + """\
 .msg { padding: 8px 12px; border-radius: 8px; margin: 8px 0; font-size: 0.9rem; }
 .msg.ok { background: var(--green); color: #fff; }
 .msg.err { background: var(--red); color: #fff; }
+.ref-links { font-size: 0.85rem; }
+.ref-link { color: var(--neutral); text-decoration: none; }
+.ref-link:hover { text-decoration: underline; }
 """
 
 
@@ -50,6 +53,20 @@ def _render_field(key: str, spec: dict[str, Any], value: Any) -> str:
         f'<label>{html_mod.escape(spec["label"])}'
         f'<input type="{ftype}" name="{key}" value="{html_mod.escape(val)}"{step_attr}></label>'
     )
+
+
+def _reference_links_html(spec: dict[str, Any]) -> str:
+    """Render the 'read the value here' links for a manual indicator."""
+    links = spec.get("reference_links") or []
+    if not links:
+        return ""
+    items = " · ".join(
+        f'<a class="ref-link" href="{html_mod.escape(link["url"])}" '
+        f'target="_blank" rel="noopener noreferrer">'
+        f"📖 {html_mod.escape(link['label'])}</a>"
+        for link in links
+    )
+    return f'<span class="ref-links">{items}</span>'
 
 
 def _render_card(indicator: str, spec: dict[str, Any], entry: dict[str, Any]) -> str:
@@ -67,6 +84,7 @@ def _render_card(indicator: str, spec: dict[str, Any], entry: dict[str, Any]) ->
         f'<div class="override-card" data-key="{indicator}">'
         f'<div class="row"><strong>{html_mod.escape(spec["label"])}</strong>'
         f' <span class="sema {badge_cls}">{spec["badge"]}</span>'
+        f'{_reference_links_html(spec)}'
         f'<label><input type="checkbox" name="enabled"{checked}> abilitato</label></div>'
         f'<div class="row">{fields_html}</div>'
         f'<div class="row"><label>Validità (h) '

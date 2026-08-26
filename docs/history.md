@@ -30,6 +30,19 @@ scrapabile). Il proxy locale sui 29 ticker è stato **rimosso (2026-08-17)**;
 l'indicatore si alimenta manualmente via `manual_overrides.yaml`
 (pct_sma50/pct_sma200) con i valori del mercato USA.
 
+### TradingView MMFI/MMTH (% sopra SMA50/SMA200) — non scrapabile (2026-08-26)
+
+Analizzati gli URL suggeriti come fonte per la lettura manuale
+(`it.tradingview.com/symbols/INDEX-MMFI/` = % sopra SMA50,
+`tradingview.com/symbols/INDEX-MMTH/` = % sopra SMA200): le pagine rispondono
+200 ma **non contengono il valore** nell'HTML statico (`window.initData = {}`,
+JSON-LD solo metadata) — tutto il dato arriva via websocket proprietario
+TradingView. Anche l'API `scanner.tradingview.com/{market}/scan` NON espone
+questi indici (ricerca per ticker e per nome: 0 risultati pertinenti).
+L'unica via sarebbe il protocollo websocket non documentato: scartato
+(complesso e fragile). Restano fonti per la lettura manuale — link diretti
+nelle card della pagina override (`reference_links` in indicator_fields.py).
+
 ### NYSE New Highs/New Lows — implementato (2026-08-19)
 
 `nh_nl_scraper.py` (indicatore #12 della strategia) è stato implementato:

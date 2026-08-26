@@ -100,7 +100,7 @@ deploy/systemd/scraper-scheduler.timer → service (--once) [daily]
 ## 📂 Codebase References
 **Fetch Utils**: `src/fetch_utils.py` — fallback generico (`fetch_first_success` + `try_parsers`); usato da FGI (catena 3 sorgenti) e AAII (2 parser); il vincitore è registrato nel campo `source` e mostrato nelle card del report HTML
 **Indicator Registry**: `src/indicator_registry.py` + `indicator_registry.yaml` — matrice indicatori; `build_availability()` mappa output_key→stato runtime; `usable_for()` applica fail-closed sui proxy
-**Manual Overrides**: `src/manual_overrides.py` + `manual_overrides.yaml` — `load_validated_overrides()`, `apply_overrides()` (priorità scraping>manual>missing), `is_fresh()` (scadenza)
+**Manual Overrides**: `src/manual_overrides.py` + `manual_overrides.yaml` — `load_validated_overrides()`, `apply_overrides()` (priorità scraping>manual>missing), `is_fresh()` (scadenza); `indicator_fields.py` include anche `reference_links` (URL fonte per la lettura manuale, resi come link 📖 nella pagina override)
 **Scraper FGI**: `src/scrapers/fgi_scraper.py` — catena fallback CNN → feargreedmeter → feargreedindex, header browser, retry; validatore content-aware (rifiuta body senza "Stock Market")
 **Scraper AAII**: `src/scrapers/aaii_scraper.py` — html_bars primario, dataChart5 legacy (rimosso da AAII)
 **Scraper VIX**: `src/scrapers/vix_scraper.py` — VIX spot da CSV CBOE (scope cambiato da term structure; proxy dichiarato)
