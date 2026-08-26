@@ -17,6 +17,7 @@ import html as html_mod
 from typing import Any
 
 from report_html import _CSS, _SCRIPT, format_iso_dt
+from report_helpers import render_nav
 from indicator_fields import INDICATOR_FIELDS
 
 _PAGE_CSS = _CSS + """\
@@ -116,7 +117,7 @@ def render_overrides_page(overrides: dict[str, Any]) -> str:
         "<header>"
         "<div><h1>✍️ Immissione manuale indicatori</h1>"
         '<div class="sub">Valori per gli indicatori non scrapabili</div></div>'
-        '<div><a href="/report.html" class="badge fresh">Vai al report →</a> '
+        f'<div>{render_nav("overrides")} '
         '<button id="theme-toggle" type="button">☀️ Light</button></div>'
         "</header>"
         f'<div class="override-form">{cards}</div>'

@@ -11,7 +11,10 @@ class TestRenderOverridesPage(unittest.TestCase):
     def test_renders_header_with_links_and_toggle(self):
         html = render_overrides_page({})
         self.assertIn("Immissione manuale", html)
-        self.assertIn("Vai al report", html)
+        # Menù di navigazione condiviso (link a tutte le pagine)
+        self.assertIn('class="page-nav"', html)
+        self.assertIn('href="/report.html"', html)
+        self.assertIn('href="/tickers.html"', html)
         self.assertIn("theme-toggle", html)
 
     def test_renders_card_per_indicator(self):

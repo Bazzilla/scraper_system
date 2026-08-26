@@ -161,6 +161,13 @@ class TestTickersPage(unittest.TestCase):
         self.assertIn('data-action="add-ticker"', html)
         self.assertIn('id="add-category-btn"', html)
 
+    def test_page_has_nav_menu(self):
+        html = render_tickers_page(NEW_TICKERS)
+        self.assertIn('class="page-nav"', html)
+        self.assertIn('href="/report.html"', html)
+        self.assertIn('href="/overrides.html"', html)
+        self.assertIn('class="nav-link active">📋 Ticker</a>', html)
+
     def test_page_escapes_script_closing_sequence(self):
         html = render_tickers_page({"c": [{"symbol": "X", "name": "</script>"}]})
         self.assertNotIn("</script>\"}", html.replace("</script>", "", 1))

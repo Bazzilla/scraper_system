@@ -221,6 +221,8 @@ __marimo__/
 # Project-specific (scraper-system)
 # Output artifacts (JSON + SQLite)
 output/
+# Config backups (epoch-named copies created by the tickers editor)
+backups/
 # Python
 __pycache__/
 *.py[cod]

@@ -20,6 +20,7 @@ import json
 from typing import Any
 
 from report_html import _CSS, _SCRIPT
+from report_helpers import render_nav
 
 _PAGE_CSS = _CSS + """\
 .category-card { background: var(--card); border: 1px solid var(--border);
@@ -231,8 +232,7 @@ def render_tickers_page(tickers: dict[str, Any]) -> str:
         "<div><h1>📋 Gestione ticker</h1>"
         '<div class="sub">Categorie e liste persistenti su config.yaml '
         "(ogni salvataggio crea un backup datato in backups/)</div></div>"
-        '<div><a href="/report.html" class="badge fresh">Vai al report →</a> '
-        '<a href="/overrides.html" class="badge fresh">✍️ Indicatori</a> '
+        f'<div>{render_nav("tickers")} '
         '<button id="theme-toggle" type="button">☀️ Light</button></div>'
         "</header>"
         '<div class="toolbar">'

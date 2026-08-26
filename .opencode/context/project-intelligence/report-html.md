@@ -14,6 +14,8 @@
 
 **Ordine sezioni** (2026-08-20): Indicatori di mercato → tabelle ticker per categoria → Stato indicatori strategia → Legenda indicatori. Ogni sezione con H2 è un `<details class="section" open>` (aperta di default) con `<summary><h2>…</h2></summary>`; in cima alla pagina un toggle globale `#sections-toggle` "Apri tutte/Chiudi tutte" (label dinamica via JS `allOpen()`). Helper: `_collapsible(title, content)` in `report_helpers.py`.
 
+**Menù di navigazione condiviso**: `render_nav(active)` in `report_helpers.py` — gruppo orizzontale di pulsanti (`nav.page-nav`, stile badge pill) con i link a tutte le pagine (Report / Immissione manuale / Ticker), presente nell'header di ogni pagina con la voce corrente evidenziata (`active`). Le pagine sono servite da overrides_server (`/report.html`, `/overrides.html`, `/tickers.html`). I backup dell'editor ticker finiscono in `backups/` (git-ignored).
+
 **Card FGI**: può includere una mini-griglia dei 7 sub-indicatori da `fgi.fgi_components` (score + rating per componente, badge via `_fgi_rating_badge`). `fgi_components` è DISPLAY-ONLY: non entra mai nello score di segnale.
 
 ## Segnale VALUTA INGRESSO / OSSERVA / ATTENDI (pipeline)

@@ -8,7 +8,17 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from overrides_page import render_overrides_page
 from overrides_server import SUPPORTED_KEYS, rebuild_report
+
+
+class TestOverridesPageNav(unittest.TestCase):
+    def test_overrides_page_has_nav_menu(self):
+        html = render_overrides_page({})
+        self.assertIn('class="page-nav"', html)
+        self.assertIn('href="/report.html"', html)
+        self.assertIn('href="/tickers.html"', html)
+        self.assertIn('class="nav-link active">✍️ Immissione manuale</a>', html)
 
 
 class TestRebuildReport(unittest.TestCase):

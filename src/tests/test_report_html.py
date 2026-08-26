@@ -800,6 +800,16 @@ class TestRenderSections(unittest.TestCase):
         self.assertIn("allOpen", html)  # JS del toggle globale presente
         self.assertIn("sections[i].open = open", html)
 
+    def test_build_page_has_nav_menu(self):
+        html = build_page(_sample_data())
+        self.assertIn('class="page-nav"', html)
+        # Tutti i link delle pagine disponibili
+        self.assertIn('href="/report.html"', html)
+        self.assertIn('href="/overrides.html"', html)
+        self.assertIn('href="/tickers.html"', html)
+        # La pagina corrente è evidenziata
+        self.assertIn('class="nav-link active">📊 Report</a>', html)
+
     def test_ticker_sections_ignores_category_status_key(self):
         # La categoria ha una chiave "status" (stringa) che NON è un ticker
         data = _sample_data()

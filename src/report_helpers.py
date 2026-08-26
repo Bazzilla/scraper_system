@@ -330,3 +330,26 @@ def _collapsible(title: str, content: str) -> str:
         f'<div class="section-body">{content}</div>'
         "</details>"
     )
+
+
+# Pagina → (href, label). Ordine = ordine di visualizzazione nel menù.
+_NAV_ITEMS = [
+    ("report", "/report.html", "📊 Report"),
+    ("overrides", "/overrides.html", "✍️ Immissione manuale"),
+    ("tickers", "/tickers.html", "📋 Ticker"),
+]
+
+
+def render_nav(active: str) -> str:
+    """Render the horizontal page-navigation menu shared by all HTML pages.
+
+    ``active`` is the key of the current page ("report" | "overrides" |
+    "tickers"); the matching link gets the ``active`` highlight. Compact
+    horizontal button group — no vertical space cost.
+    """
+    links = "".join(
+        f'<a href="{href}" class="{"nav-link active" if key == active else "nav-link"}">'
+        f"{label}</a>"
+        for key, href, label in _NAV_ITEMS
+    )
+    return f'<nav class="page-nav">{links}</nav>'

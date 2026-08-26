@@ -48,6 +48,7 @@ from report_helpers import (  # noqa: F401
     fmt,
     format_iso_dt,
     market_regime,
+    render_nav,
     semaphore_class,
     technical_signal,
 )
@@ -186,6 +187,13 @@ button#sections-toggle { background: var(--card); color: var(--text);
         border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px;
         cursor: pointer; font-size: 0.9rem; }
 .sections-toolbar { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+.page-nav { display: inline-flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.page-nav a { padding: 4px 12px; border-radius: 999px; font-size: 0.85rem;
+        font-weight: 600; text-decoration: none; background: var(--card);
+        color: var(--text); border: 1px solid var(--border); }
+.page-nav a.active { background: var(--green); color: #fff;
+        border-color: var(--green); }
+.page-nav a:hover { opacity: 0.85; }
 """
 
 _SCRIPT = """\
@@ -310,8 +318,7 @@ def build_page(data: dict[str, Any], tickers_config: dict[str, Any] | None = Non
         f"<div><h1>📊 {title}</h1>"
         f'<div class="sub">Generato: {format_iso_dt(data.get("generated_at"))}</div></div>'
         f'<div><span class="badge {overall}">{overall}</span> '
-        '<a href="/tickers.html" class="badge fresh">📋 Ticker</a> '
-        '<a href="/overrides.html" class="badge fresh">✍️ Immissione manuale</a> '
+        f'{render_nav("report")} '
         '<button id="theme-toggle" type="button">☀️ Light</button></div>'
         "</header>"
         '<div class="sections-toolbar">'
