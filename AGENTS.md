@@ -26,6 +26,7 @@ cd src && ../.venv/bin/python scheduler.py --config ../config.yaml --once
 ## Struttura
 
 - **`run.py`** (radice) — entry point unico, 3 modalità (full / `--report-only` / `--override-only`); risolve i path dalla propria posizione, funziona da qualsiasi directory
+- **`bin/`** — script eseguibili (`scraper-run`, `scraper-report`, `scraper-websrv`): wrapper a run.py e overrides_server.py, project root risolto dallo script
 - **`src/`** — `orchestrator.py` (entry point), `scheduler.py`, `config_loader.py`, `registry.py`, `consolidator.py`, `audit.py`, `report_html.py` (orchestratore report, ri-esporta dai moduli), `report_helpers.py`, `report_cards.py`, `report_tables.py`, `report_legend.py`, `fetch_utils.py`, `indicator_registry.py`, `manual_overrides.py`, `indicator_fields.py`, `overrides_page.py`, `overrides_server.py`, `tickers_store.py` (lettura/scrittura sezione `tickers` di config.yaml + backup epoch), `tickers_page.py` (editor liste ticker)
 - **`src/scrapers/`** — i moduli scraper (7): `fgi_scraper.py`, `aaii_scraper.py`, `vix_scraper.py`, `pcr_scraper.py`, `ohlcv_fetcher.py`, `indicators.py`, `insider_scraper.py`
 - **`src/tests/`** — test unitari `unittest` (funzioni pure, mock, nessuna rete)

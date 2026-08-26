@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# scraper-websrv — mini-server locale per immissione manuale ed editor ticker.
+# Pagine: /report.html · /overrides.html · /tickers.html
+# Porta default 8900; usa -p/--port per cambiarla (anche forma --port=N).
+# Esempi: scraper-websrv            → porta 8900
+#         scraper-websrv -p 9000    → porta 9000
+set -euo pipefail
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+port_given=false
+for arg in "$@"; do
+    case "$arg" in
+        -p|--port|--port=*) port_given=true ;;
+    esac
+done
+if [ "$port_given" = true ]; then
+    exec "$PROJECT_ROOT/.venv/bin/python" "$PROJECT_ROOT/src/overrides_server.py" "$@"
+else
+    exec "$PROJECT_ROOT/.venv/bin/python" "$PROJECT_ROOT/src/overrides_server.py" --port 8900 "$@"
+fi

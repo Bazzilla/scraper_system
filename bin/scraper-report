@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# scraper-report — render SOLO del report HTML dall'output esistente (nessuno scraping).
+# Equivale a: scraper-run --report-only
+set -euo pipefail
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+exec "$PROJECT_ROOT/.venv/bin/python" "$PROJECT_ROOT/run.py" --report-only "$@"

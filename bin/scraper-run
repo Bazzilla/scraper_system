@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# scraper-run — orchestrazione completa + report HTML in un comando (run.py).
+# Uso: scraper-run                 → pipeline completa (scraping + consolidamento + report)
+#      scraper-run --override-only → rilegge manual_overrides.yaml e rigenera il report
+# Risolve i path dalla propria posizione: funziona da qualsiasi directory.
+set -euo pipefail
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+exec "$PROJECT_ROOT/.venv/bin/python" "$PROJECT_ROOT/run.py" "$@"

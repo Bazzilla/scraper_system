@@ -1,4 +1,4 @@
-<!-- Context: project-intelligence/navigation | Priority: critical | Version: 1.16 | Updated: 2026-08-19 -->
+<!-- Context: project-intelligence/navigation | Priority: critical | Version: 1.17 | Updated: 2026-08-26 -->
 
 # Project Intelligence
 
@@ -37,3 +37,4 @@
 - **2026-08-16**: run.py 3 modalità (full/--report-only/--override-only), fix persisted manual non blocca override, aliases fish scraper-run/scraper-report — technical-domain.md v1.16, navigation.md v1.14
 - **2026-08-17**: rimosso proxy pct_sma (breadth settoriale 29 ticker) → `% sopra SMA50/200` mercato USA manual_supported via manual_overrides.yaml — technical-domain.md v1.17, navigation.md v1.15, scraping-patterns.md v1.6
 - **2026-08-19**: label segnale non-operative (VALUTA INGRESSO/OSSERVA/ATTENDI, niente COMPRA) + pipeline technical_signal/buy_the_dip_gate/final_action — report-html.md v1.3, technical-domain.md v1.19, navigation.md v1.16
+- **2026-08-26**: script `bin/` (scraper-run/scraper-report/scraper-websrv) sostituiscono gli alias fish (rimossi da config.fish); editor ticker `/tickers.html` (tickers_store.py + tickers_page.py, backup epoch in backups/ git-ignored); menù nav condiviso su tutte le pagine — technical-domain.md v1.20, navigation.md v1.17

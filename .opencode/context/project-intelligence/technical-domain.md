@@ -1,4 +1,4 @@
-<!-- Context: project-intelligence/technical | Priority: critical | Version: 1.19 | Updated: 2026-08-19 -->
+<!-- Context: project-intelligence/technical | Priority: critical | Version: 1.20 | Updated: 2026-08-26 -->
 
 # Technical Domain
 
@@ -56,7 +56,7 @@ deploy/systemd/scraper-scheduler.timer → service (--once) [daily]
   - `strategy.force_manual_overrides` forza il manuale su scraper fresh — **disabilitato di default**
   - un override **non altera `coverage`** (statico) — es. NAAIM e VIX Term Structure restano `coverage: true, implementation_status: manual_supported` anche quando non alimentati; la VIX term structure (M1/M2) è leggibile manualmente da https://vixcentral.com/
   - **"scraping wins" vale SOLO per origin=scraped**: un override manuale persistito nell'output (origin=manual, es. da un run `--override-only` precedente) NON blocca un override più recente dal file YAML
-- **`run.py`** (radice) — 3 modalità in un comando: full (orchestrazione + report), `--report-only` (solo HTML dall'output esistente, nessuno scraping), `--override-only` (rilegge `manual_overrides.yaml`, riapplica al JSON esistente, ricostruisce matrice e report — nessuno scraping). Alias fish: `scraper-run` (full/override-only), `scraper-report` (report-only), scoped al progetto.
+- **`run.py`** (radice) — 3 modalità in un comando: full (orchestrazione + report), `--report-only` (solo HTML dall'output esistente, nessuno scraping), `--override-only` (rilegge `manual_overrides.yaml`, riapplica al JSON esistente, ricostruisce matrice e report — nessuno scraping). Script `bin/`: `bin/scraper-run` (full/--override-only), `bin/scraper-report` (report-only), `bin/scraper-websrv` (server override+tickers, porta default 8900) — risolvono il project root dalla propria posizione, funzionano da qualsiasi directory.
 
 ## Naming Conventions
 | Type | Convention | Example |

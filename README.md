@@ -408,16 +408,15 @@ Modalità senza scraping:
                                              # (senza scraping) e rigenera report
 ```
 
-Alias comodi (fish):
+Script eseguibili (`bin/`, risolvono i path dalla propria posizione — funzionano
+da qualsiasi directory):
 
-```fish
-function scraper-run
-    /percorso/del/progetto/.venv/bin/python /percorso/del/progetto/run.py $argv
-end
-
-function scraper-report
-    /percorso/del/progetto/.venv/bin/python /percorso/del/progetto/run.py --report-only $argv
-end
+```bash
+./bin/scraper-run                 # pipeline completa (scraping + report)
+./bin/scraper-run --override-only # applica manual overrides senza scraping
+./bin/scraper-report              # SOLO report HTML dall'output esistente
+./bin/scraper-websrv              # mini-server locale (default porta 8900)
+./bin/scraper-websrv -p 9000      # stessa cosa su altra porta
 ```
 
 ### Immessione manuale di un valore (es. NAAIM)
@@ -435,7 +434,7 @@ corrente non è disponibile):
 3. Applica senza rilanciare gli scraper:
 
 ```bash
-./.venv/bin/python run.py --override-only    # oppure: scraper-run --override-only
+./.venv/bin/python run.py --override-only    # oppure: ./bin/scraper-run --override-only
 ```
 
 Il valore manuale compare nell'output come `source: manual`, `origin: manual`;
