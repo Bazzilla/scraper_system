@@ -23,6 +23,7 @@ Portfolio endpoints (output/portfolio.db):
     DELETE /api/transactions/{id} → delete transaction
     GET    /api/positions         → list open positions (derived from transactions)
     GET    /api/positions/{ticker} → get position for one ticker
+    GET    /api/portfolio/evaluate → SELL strategy evaluation for all positions
 
 Binds to 127.0.0.1 by default (single-user, local use). ``--lan`` binds to
 0.0.0.0 so other devices on the same network can reach the pages — note that
@@ -72,6 +73,7 @@ from portfolio_db import (
 )
 from portfolio import calculate_positions
 from portfolio_page import render_portfolio_page
+from sell_strategy import evaluate_all, load_rules
 
 # Path del config: risolto rispetto alla root del progetto (src/..).
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -262,6 +264,9 @@ class OverridesHandler(BaseHTTPRequestHandler):
             return
         if self.path.startswith("/api/positions/"):
             self._handle_get_position_ticker()
+            return
+        if self.path == "/api/portfolio/evaluate":
+            self._handle_portfolio_evaluate()
             return
         self._send_html(404, "<h1>404</h1>")
 
@@ -591,6 +596,41 @@ class OverridesHandler(BaseHTTPRequestHandler):
             self._send_json(404, {"ok": False, "message": f"no open position for {ticker}"})
             return
         self._send_json(200, {"ok": True, "position": _pos_to_dict(pos)})
+
+    # ── Portfolio: SELL evaluation ────────────────────────────────────────
+
+    def _handle_portfolio_evaluate(self) -> None:
+        """GET /api/portfolio/evaluate — SELL strategy evaluation for all positions."""
+        output_path = PROJECT_ROOT / "output" / "output.json"
+        if not output_path.exists():
+            self._send_json(200, {
+                "ok": True,
+                "evaluations": [],
+                "message": "output.json not found — run scraper first",
+            })
+            return
+        try:
+            with output_path.open("r", encoding="utf-8") as fh:
+                output_data = json.load(fh)
+        except (json.JSONDecodeError, OSError):
+            self._send_json(500, {"ok": False, "message": "failed to read output.json"})
+            return
+
+        conn = _portfolio_conn()
+        try:
+            txs = get_transactions(conn)
+        finally:
+            conn.close()
+        prices = self._load_prices()
+        result = calculate_positions(txs, prices=prices)
+        positions = [_pos_to_dict(pos) for pos in result.positions.values()]
+
+        rules = load_rules()
+        evaluations = evaluate_all(positions, output_data, rules=rules)
+        self._send_json(200, {
+            "ok": True,
+            "evaluations": [ev.__dict__ for ev in evaluations],
+        })
 
     # ── Helpers ──────────────────────────────────────────────────────────
 

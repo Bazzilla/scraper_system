@@ -1,7 +1,8 @@
 """Portfolio page generator.
 
-Builds a static HTML page for viewing positions, transactions and adding
-new trades.  All data comes from the API — zero client-side calculations.
+Builds a static HTML page for viewing positions, SELL signals,
+transactions and adding new trades.  All data comes from the API —
+zero client-side calculations.
 """
 
 from __future__ import annotations
@@ -28,6 +29,15 @@ tr:hover td { background: var(--bg); }
 .pnl-pos { color: var(--green); font-weight: 600; }
 .pnl-neg { color: var(--red); font-weight: 600; }
 .empty-msg { color: var(--muted); font-style: italic; padding: 16px 0; }
+.sell-badge { display: inline-block; padding: 2px 8px; border-radius: 6px;
+              font-size: 0.75rem; font-weight: 600; }
+.sell-NESSUNA { background: var(--bg); color: var(--muted); }
+.sell-MANTIENI { background: #1a3a1a; color: #4ade80; }
+.sell-PRENDI { background: #3a2a0a; color: #fbbf24; }
+.sell-RIDUCI { background: #3a1a1a; color: #f87171; }
+.sell-ATTENZIONE { background: #2a1a3a; color: #c084fc; }
+.sell-reasons { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+.sell-note { font-size: 0.78rem; color: var(--text); margin-top: 2px; font-style: italic; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .form-grid label { display: flex; flex-direction: column; font-size: 0.85rem;
         color: var(--muted); }
@@ -141,6 +151,15 @@ def render_portfolio_page() -> str:
       </div>
     </div>
 
+    <!-- SELL signals -->
+    <div class="card">
+      <h2>Segnali SELL</h2>
+      <div id="sell-body">
+        <div id="sell-list"></div>
+        <div class="empty-msg" id="sell-empty">Nessun segnale disponibile.</div>
+      </div>
+    </div>
+
     <!-- Transactions -->
     <div class="card">
       <h2>Transazioni</h2>
@@ -196,6 +215,7 @@ _PAGE_SCRIPT = """\
   function loadAll() {
     loadPositions();
     loadTransactions();
+    loadSellSignals();
   }
 
   function loadPositions() {
@@ -213,6 +233,34 @@ _PAGE_SCRIPT = """\
       if (!d.ok) return;
       renderTransactions(d.transactions || []);
     });
+  }
+
+  function loadSellSignals() {
+    api('GET', '/api/portfolio/evaluate').then(function (r) {
+      var d = r.data;
+      if (!d.ok) return;
+      renderSellSignals(d.evaluations || []);
+    });
+  }
+
+  function renderSellSignals(list) {
+    var container = $('sell-list');
+    var empty = $('sell-empty');
+    if (!list.length) { container.innerHTML = ''; empty.style.display = ''; return; }
+    empty.style.display = 'none';
+    container.innerHTML = list.map(function (ev) {
+      var badgeClass = 'sell-' + ev.sell_signal.split(' ')[0];
+      var reasons = (ev.reasons || []).map(function (r) { return '• ' + r; }).join('<br>');
+      return '<div style="margin-bottom:12px;padding:10px;border:1px solid var(--border);border-radius:8px;">'
+        + '<div style="display:flex;align-items:center;gap:10px;">'
+        + '<strong>' + ev.ticker + '</strong> '
+        + '<span class="sell-badge ' + badgeClass + '">' + ev.sell_signal + '</span>'
+        + '<span style="font-size:0.75rem;color:var(--muted);">confidenza: ' + ev.confidence + '</span>'
+        + '</div>'
+        + (reasons ? '<div class="sell-reasons">' + reasons + '</div>' : '')
+        + (ev.suggested_action_note ? '<div class="sell-note">→ ' + ev.suggested_action_note + '</div>' : '')
+        + '</div>';
+    }).join('');
   }
 
   /* ── Render summary ─────────────────────────────────────────────── */

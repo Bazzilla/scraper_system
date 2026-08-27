@@ -256,6 +256,41 @@ class TestPositionsAPI(unittest.TestCase):
         self.assertAlmostEqual(data["position"]["realized_pnl_usd"], 100.0)
 
 
+class TestPortfolioEvaluate(unittest.TestCase):
+    def setUp(self):
+        self.server, self.thread, self.port, self.tmp = _start_server()
+
+    def tearDown(self):
+        _stop_server(self.server, self.tmp)
+
+    def test_evaluate_no_positions(self):
+        status, data = _req(self.port, "GET", "/api/portfolio/evaluate")
+        self.assertEqual(status, 200)
+        self.assertTrue(data["ok"])
+        self.assertIsInstance(data["evaluations"], list)
+
+    def test_evaluate_with_positions(self):
+        _seed_transactions_static(self.port)
+        status, data = _req(self.port, "GET", "/api/portfolio/evaluate")
+        self.assertEqual(status, 200)
+        self.assertTrue(data["ok"])
+        self.assertIsInstance(data["evaluations"], list)
+
+    def test_evaluate_without_output_json(self):
+        """Evaluate works even without output.json (returns empty list)."""
+        status, data = _req(self.port, "GET", "/api/portfolio/evaluate")
+        self.assertEqual(status, 200)
+        self.assertTrue(data["ok"])
+
+
+def _seed_transactions_static(port: int) -> None:
+    """Seed transactions for evaluate tests."""
+    _req(port, "POST", "/api/transactions", {
+        "trade_date": "2026-08-01", "ticker": "NVDA", "action": "BUY",
+        "quantity": 10, "price_usd": 100.0, "commission_usd": 1.0,
+    })
+
+
 class TestAuthRequired(unittest.TestCase):
     def setUp(self):
         self.server, self.thread, self.port, self.tmp = _start_server()

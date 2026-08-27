@@ -52,6 +52,27 @@ class TestPortfolioPage(unittest.TestCase):
         html = render_portfolio_page()
         self.assertIn('/api/positions', html)
         self.assertIn('/api/transactions', html)
+        self.assertIn('/api/portfolio/evaluate', html)
+
+    def test_page_has_sell_signals_section(self):
+        html = render_portfolio_page()
+        self.assertIn('id="sell-body"', html)
+        self.assertIn('id="sell-list"', html)
+        self.assertIn('id="sell-empty"', html)
+        self.assertIn('Segnali SELL', html)
+
+    def test_page_has_sell_css(self):
+        html = render_portfolio_page()
+        self.assertIn('sell-badge', html)
+        self.assertIn('sell-MANTIENI', html)
+        self.assertIn('sell-PRENDI', html)
+        self.assertIn('sell-RIDUCI', html)
+        self.assertIn('sell-ATTENZIONE', html)
+
+    def test_page_has_sell_js_functions(self):
+        html = render_portfolio_page()
+        self.assertIn('loadSellSignals', html)
+        self.assertIn('renderSellSignals', html)
 
     def test_no_client_side_calculations(self):
         """The page must NOT contain any P/L or average-cost calculation logic."""
