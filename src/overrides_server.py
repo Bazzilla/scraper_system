@@ -13,6 +13,7 @@ Serves:
     GET  /scraper-run.html → scraper-run launch page (mode selector + live output)
     GET  /api/scraper-run?mode=... → SSE stream of ``run.py`` output
                                      (full | report_only | override_only)
+    GET  /api/scraper-run/status → JSON with running state, pid, exit_code
 
 Binds to 127.0.0.1 by default (single-user, local use). ``--lan`` binds to
 0.0.0.0 so other devices on the same network can reach the pages — note that
@@ -55,6 +56,11 @@ from tickers_store import load_tickers, save_tickers
 # Path del config: risolto rispetto alla root del progetto (src/..).
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG = str(PROJECT_ROOT / "config.yaml")
+
+# --- Scraper-run state (in-memory, single-user) ----------------------------
+_scrape_state: dict[str, Any] = {
+    "running": False, "pid": None, "exit_code": None, "started_at": None,
+}
 
 # --- Basic Auth (tutte le pagine e le API) ---------------------------------
 # Credenziali di default; per cambiarle creare un file `.server-auth` nella
@@ -190,7 +196,10 @@ class OverridesHandler(BaseHTTPRequestHandler):
             self._send_html(200, render_scraper_run_page())
             return
         if self.path.startswith("/api/scraper-run"):
-            self._handle_scraper_run_sse()
+            if "status" in self.path:
+                self._send_json(200, _scrape_state)
+            else:
+                self._handle_scraper_run_sse()
             return
         if self.path == "/report.html":
             report_path = PROJECT_ROOT / "output" / "report.html"
@@ -300,6 +309,15 @@ class OverridesHandler(BaseHTTPRequestHandler):
 
     def _handle_scraper_run_sse(self) -> None:
         """Run ``run.py`` with the selected mode and stream output via SSE."""
+        if _scrape_state["running"]:
+            try:
+                msg = "event: error\ndata: Scrape gia' in corso\nevent: done\ndata: -1\n\n"
+                self.wfile.write(msg.encode("utf-8"))
+                self.wfile.flush()
+            except BrokenPipeError:
+                pass
+            return
+
         parsed = urlparse(self.path)
         params = parse_qs(parsed.query)
         mode = params.get("mode", ["full"])[0]
@@ -312,6 +330,9 @@ class OverridesHandler(BaseHTTPRequestHandler):
 
         cmd = [sys.executable, str(PROJECT_ROOT / "run.py"), DEFAULT_CONFIG] + flags
 
+        _scrape_state.update(running=True, pid=None, exit_code=None,
+                            started_at=datetime.now(timezone.utc).isoformat())
+
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Cache-Control", "no-cache")
@@ -323,6 +344,7 @@ class OverridesHandler(BaseHTTPRequestHandler):
                 cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 text=True, bufsize=1,
             )
+            _scrape_state["pid"] = proc.pid
             for line in proc.stdout:
                 try:
                     self.wfile.write(f"data: {line.rstrip()}\n\n".encode("utf-8"))
@@ -330,6 +352,7 @@ class OverridesHandler(BaseHTTPRequestHandler):
                 except BrokenPipeError:
                     break
             proc.wait()
+            _scrape_state["exit_code"] = proc.returncode
             try:
                 self.wfile.write(
                     f"event: done\ndata: {proc.returncode}\n\n".encode("utf-8")
@@ -338,11 +361,14 @@ class OverridesHandler(BaseHTTPRequestHandler):
             except BrokenPipeError:
                 pass
         except Exception as exc:  # noqa: BLE001
+            _scrape_state["exit_code"] = -1
             try:
                 self.wfile.write(f"event: error\ndata: {exc}\n\n".encode("utf-8"))
                 self.wfile.flush()
             except BrokenPipeError:
                 pass
+        finally:
+            _scrape_state["running"] = False
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
         print(f"[overrides] {self.address_string()} - {format % args}")

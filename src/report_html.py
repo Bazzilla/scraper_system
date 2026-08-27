@@ -78,6 +78,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
 .container { max-width: 1100px; margin: 0 auto; }
 header { display: flex; justify-content: space-between; align-items: center;
         flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+header > div:first-child { min-width: 0; }
+header > div:last-child { flex-shrink: 0; }
 h1 { font-size: 1.5rem; }
 .sub { color: var(--muted); font-size: 0.9rem; }
 .badge { padding: 2px 10px; border-radius: 999px; font-size: 0.8rem;

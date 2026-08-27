@@ -26,10 +26,19 @@ _PAGE_CSS = _CSS + """\
         padding: 10px 20px; cursor: pointer; font-size: 1rem; font-weight: 600; }
 .run-btn:hover { opacity: 0.9; }
 .run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.status-bar { padding: 8px 16px; border-radius: 8px; margin-top: 12px;
+        font-size: 0.9rem; font-weight: 600; display: none; }
+.status-bar.running { display: block; background: var(--yellow); color: #000; }
+.status-bar.done { display: block; background: var(--green); color: #fff; }
+.status-bar.error { display: block; background: var(--red); color: #fff; }
 .output-card { background: var(--card); border: 1px solid var(--border);
         border-radius: 12px; margin-top: 20px; overflow: hidden; }
 .output-header { padding: 10px 16px; border-bottom: 1px solid var(--border);
-        font-weight: 600; font-size: 0.9rem; }
+        font-weight: 600; font-size: 0.9rem; display: flex;
+        align-items: center; justify-content: space-between; }
+.clear-btn { background: none; border: 1px solid var(--border); color: var(--muted);
+        border-radius: 6px; padding: 2px 8px; font-size: 0.8rem; cursor: pointer; }
+.clear-btn:hover { color: var(--text); border-color: var(--text); }
 #output { margin: 0; padding: 16px; font-family: monospace; font-size: 0.85rem;
         max-height: 500px; overflow-y: auto; white-space: pre-wrap;
         word-break: break-word; background: var(--bg); min-height: 200px; }
@@ -63,12 +72,57 @@ _RUN_SCRIPT = """\
 (function () {
   var btn = document.getElementById("run-btn");
   var output = document.getElementById("output");
+  var statusBar = document.getElementById("status-bar");
+  var pollTimer = null;
 
+  function setStatus(cls, text) {
+    statusBar.className = "status-bar " + cls;
+    statusBar.textContent = text;
+  }
+
+  function clearOutput() { output.textContent = ""; }
+
+  document.getElementById("clear-btn").addEventListener("click", clearOutput);
+
+  /* --- Check state on load --- */
+  fetch("/api/scraper-run/status").then(function (r) { return r.json(); }).then(function (s) {
+    if (s.running) {
+      btn.disabled = true;
+      btn.textContent = "⏳ In corso...";
+      setStatus("running", "Scraping in corso (pid " + s.pid + ")...");
+      startPoll();
+    } else if (s.exit_code !== null) {
+      var ok = s.exit_code === 0;
+      setStatus(ok ? "done" : "error",
+        ok ? "Ultimo scrape completato" : "Ultimo scrape fallito (exit " + s.exit_code + ")");
+    }
+  });
+
+  /* --- Polling --- */
+  function startPoll() {
+    if (pollTimer) return;
+    pollTimer = setInterval(function () {
+      fetch("/api/scraper-run/status").then(function (r) { return r.json(); }).then(function (s) {
+        if (!s.running) {
+          clearInterval(pollTimer);
+          pollTimer = null;
+          btn.disabled = false;
+          btn.textContent = "▶ Avvia";
+          var ok = s.exit_code === 0;
+          setStatus(ok ? "done" : "error",
+            ok ? "Scrape completato" : "Scrape fallito (exit " + s.exit_code + ")");
+        }
+      });
+    }, 2000);
+  }
+
+  /* --- Run button --- */
   btn.addEventListener("click", function () {
     var mode = document.querySelector('input[name="mode"]:checked').value;
     btn.disabled = true;
     btn.textContent = "⏳ In corso...";
     output.textContent = "";
+    setStatus("running", "Scraping in corso...");
 
     var evtSource = new EventSource("/api/scraper-run?mode=" + encodeURIComponent(mode));
     evtSource.onmessage = function (e) {
@@ -80,8 +134,9 @@ _RUN_SCRIPT = """\
       btn.disabled = false;
       btn.textContent = "▶ Avvia";
       var code = parseInt(e.data, 10);
-      output.textContent += "\\n" + (code === 0
-        ? "✅ Completato" : "❌ Fallito (exit " + code + ")");
+      var ok = code === 0;
+      setStatus(ok ? "done" : "error",
+        ok ? "Scrape completato" : "Scrape fallito (exit " + code + ")");
       output.scrollTop = output.scrollHeight;
     });
     evtSource.onerror = function () {
@@ -111,8 +166,10 @@ def render_scraper_run_page() -> str:
         '<button id="theme-toggle" type="button">☀️ Light</button></div>'
         "</header>"
         f'<div class="run-card">{_MODE_OPTIONS}</div>'
+        '<div id="status-bar" class="status-bar"></div>'
         '<div class="output-card">'
-        '<div class="output-header">Output</div>'
+        '<div class="output-header"><span>Output</span>'
+        '<button id="clear-btn" class="clear-btn" type="button">✕ Pulisci</button></div>'
         '<pre id="output"></pre>'
         "</div>"
         "</div>"

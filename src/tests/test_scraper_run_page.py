@@ -47,6 +47,21 @@ class TestScraperRunPage(unittest.TestCase):
         self.assertIn("Solo report", html)
         self.assertIn("Solo override", html)
 
+    def test_render_has_status_bar(self):
+        html = render_scraper_run_page()
+        self.assertIn('id="status-bar"', html)
+        self.assertIn("status-bar", html)
+
+    def test_render_has_clear_button(self):
+        html = render_scraper_run_page()
+        self.assertIn("clear-btn", html)
+        self.assertIn("Pulisci", html)
+
+    def test_render_polls_status(self):
+        html = render_scraper_run_page()
+        self.assertIn("/api/scraper-run/status", html)
+        self.assertIn("setInterval", html)
+
 
 if __name__ == "__main__":
     unittest.main()
