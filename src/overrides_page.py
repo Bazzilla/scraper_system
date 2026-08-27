@@ -184,10 +184,10 @@ def render_overrides_page(overrides: dict[str, Any]) -> str:
         f"<style>{_PAGE_CSS}</style>"
         "</head>\n<body><div class=\"container\">"
         "<header>"
-        "<div><h1>✍️ Immissione manuale indicatori</h1>"
-        '<div class="sub">Valori per gli indicatori non scrapabili</div></div>'
         f'<div>{render_nav("overrides")} '
         '<button id="theme-toggle" type="button">☀️ Light</button></div>'
+        "<div><h1>✍️ Immissione manuale indicatori</h1>"
+        '<div class="sub">Valori per gli indicatori non scrapabili</div></div>'
         "</header>"
         f'<div class="override-form">{cards}</div>'
         "</div>"

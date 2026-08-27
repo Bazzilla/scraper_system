@@ -749,11 +749,11 @@ def build_page(data: dict[str, Any], tickers_config: dict[str, Any] | None = Non
         f"<style>{_CSS}</style>"
         "</head>\n<body><div class=\"container\">"
         "<header>"
-        f"<div><h1>📊 {title}</h1>"
-        f'<div class="sub">Generato: {format_iso_dt(data.get("generated_at"))}</div></div>'
         f'<div><span class="badge {overall}">{overall}</span> '
         f'{render_nav("report")} '
         '<button id="theme-toggle" type="button">☀️ Light</button></div>'
+        f"<div><h1>📊 {title}</h1>"
+        f'<div class="sub">Generato: {format_iso_dt(data.get("generated_at"))}</div></div>'
         "</header>"
         '<div class="sections-toolbar">'
         '<button id="sections-toggle" type="button">🗂️ Chiudi tutte</button>'

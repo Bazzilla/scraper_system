@@ -272,10 +272,10 @@ def render_scraper_run_page() -> str:
         f"<style>{_PAGE_CSS}</style>"
         "</head>\n<body><div class=\"container\">"
         "<header>"
-        "<div><h1>🚀 Esecuzione scraping</h1>"
-        '<div class="sub">Lancia la pipeline di scraping dal browser</div></div>'
         f'<div>{render_nav("scraper-run")} '
         '<button id="theme-toggle" type="button">☀️ Light</button></div>'
+        "<div><h1>🚀 Esecuzione scraping</h1>"
+        '<div class="sub">Lancia la pipeline di scraping dal browser</div></div>'
         "</header>"
         f'<div class="run-card">{_MODE_OPTIONS}</div>'
         '<div id="status-bar" class="status-bar"></div>'

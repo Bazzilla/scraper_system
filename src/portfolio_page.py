@@ -7,7 +7,7 @@ zero client-side calculations.
 
 from __future__ import annotations
 
-from report_html import _CSS
+from report_html import _CSS, _SCRIPT
 from report_helpers import FAVICON_LINK, render_nav
 
 _PAGE_CSS = _CSS + """\
@@ -100,7 +100,7 @@ def render_portfolio_page() -> str:
     """Return the full HTML for the portfolio page."""
     return f"""\
 <!DOCTYPE html>
-<html lang="it">
+<html lang="it" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -111,9 +111,10 @@ def render_portfolio_page() -> str:
 <body>
   <div class="container">
   <header>
-    <div>{render_nav("portfolio")} </div>
-    <h1>Portfolio</h1>
-    <p class="subtitle">Transazioni, posizioni e P/L</p>
+    <div>{render_nav("portfolio")}
+      <button id="theme-toggle" type="button">☀️ Light</button></div>
+    <div><h1>💼 Portfolio</h1>
+      <div class="sub">Transazioni, posizioni e P/L</div></div>
   </header>
 
   <main>
@@ -182,6 +183,7 @@ def render_portfolio_page() -> str:
   </main>
   </div>
 
+  {_SCRIPT}
   <script>{_PAGE_SCRIPT}</script>
 </body>
 </html>"""

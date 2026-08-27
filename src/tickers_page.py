@@ -242,11 +242,11 @@ def render_tickers_page(tickers: dict[str, Any]) -> str:
         f"<style>{_PAGE_CSS}</style>"
         "</head>\n<body><div class=\"container\">"
         "<header>"
+        f'<div>{render_nav("tickers")} '
+        '<button id="theme-toggle" type="button">☀️ Light</button></div>'
         "<div><h1>📋 Gestione ticker</h1>"
         '<div class="sub">Categorie e liste persistenti su config.yaml '
         "(ogni salvataggio crea un backup datato in backups/)</div></div>"
-        f'<div>{render_nav("tickers")} '
-        '<button id="theme-toggle" type="button">☀️ Light</button></div>'
         "</header>"
         '<div class="toolbar">'
         '<button id="save-btn" type="button" class="primary">💾 Salva su config.yaml</button>'
