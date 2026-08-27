@@ -847,6 +847,21 @@ class TestRenderSections(unittest.TestCase):
         # Icona attiva con colore diverso quando c'è un filtro
         self.assertIn('classList.toggle("active"', html)
 
+    def test_build_page_portfolio_summary_no_db(self):
+        """Portfolio summary gracefully returns empty when no portfolio.db."""
+        html = build_page(_sample_data())
+        # Without portfolio.db, the section should not appear
+        self.assertNotIn("💼 Portafoglio", html)
+
+    def test_build_page_has_sell_signal_css(self):
+        """Report CSS includes sell signal badge styles."""
+        from report_html import _CSS
+        self.assertIn("sell-signal", _CSS)
+        self.assertIn("sell-MANTIENI", _CSS)
+        self.assertIn("sell-PRENDI", _CSS)
+        self.assertIn("sell-RIDUCI", _CSS)
+        self.assertIn("sell-ATTENZIONE", _CSS)
+
     def test_legend_has_strategy_explanations(self):
         html = render_legend()
         # Spiegazione semplice buy/osserva/vendi per gli indicatori

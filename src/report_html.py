@@ -232,6 +232,15 @@ table.ticker-table th.sorted { color: var(--neutral); }
         background: rgba(88, 166, 255, 0.08);
         border-left: 3px solid var(--neutral); padding: 6px 10px;
         border-radius: 6px; }
+.sell-signal { display: inline-block; padding: 2px 8px; border-radius: 6px;
+        font-size: 0.75rem; font-weight: 600; }
+.sell-NESSUNA { background: var(--card); color: var(--muted); }
+.sell-MANTIENI { background: #1a3a1a; color: #4ade80; }
+.sell-PRENDI { background: #3a2a0a; color: #fbbf24; }
+.sell-RIDUCI { background: #3a1a1a; color: #f87171; }
+.sell-ATTENZIONE { background: #2a1a3a; color: #c084fc; }
+.portfolio-summary .pnl-pos { color: var(--green); font-weight: 600; }
+.portfolio-summary .pnl-neg { color: var(--red); font-weight: 600; }
 """
 
 _SCRIPT = """\
@@ -621,6 +630,108 @@ _TABLE_SCRIPT = """\
 </script>
 """
 
+
+def _report_pos_dict(pos) -> dict[str, Any]:
+    """Convert a Position dataclass to a minimal dict for the report."""
+    return {
+        "ticker": pos.ticker,
+        "quantity": pos.quantity,
+        "avg_price": pos.average_entry_price,
+        "last_price": pos.market_price,
+        "unrealized_pnl_pct": pos.unrealized_pnl_pct,
+    }
+
+
+def render_portfolio_summary(data: dict[str, Any]) -> str:
+    """Render a lightweight portfolio summary section for the main report.
+
+    Shows a compact table with open positions and SELL signals.
+    Links to the full portfolio page for details.
+    """
+    try:
+        import sqlite3
+        from portfolio import calculate_positions
+        from portfolio_db import get_transactions, init_db
+        from sell_strategy import evaluate_all, load_rules
+    except ImportError:
+        return ""
+
+    project_root = Path(__file__).resolve().parent.parent
+    db_path = str(project_root / "output" / "portfolio.db")
+    try:
+        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        init_db(conn)
+        txs = get_transactions(conn)
+        conn.close()
+    except Exception:
+        return ""
+    if not txs:
+        return ""
+
+    # Build prices from output.json ohlcv section
+    prices: dict[str, float] = {}
+    ohlcv = data.get("ohlcv", {})
+    for category in ohlcv.values():
+        if not isinstance(category, dict):
+            continue
+        for ticker, entry in category.items():
+            if isinstance(entry, dict) and "last_close" in entry:
+                try:
+                    prices[ticker] = float(entry["last_close"])
+                except (TypeError, ValueError):
+                    pass
+
+    result = calculate_positions(txs, prices=prices)
+    positions = [_report_pos_dict(pos) for pos in result.positions.values()]
+    if not positions:
+        return ""
+
+    rules = load_rules()
+    evaluations = evaluate_all(
+        [{"ticker": p["ticker"], "quantity": p["quantity"],
+          "unrealized_pnl_pct": p["unrealized_pnl_pct"]}
+         for p in positions],
+        data,
+        rules=rules,
+    )
+    eval_map = {ev.ticker: ev for ev in evaluations}
+
+    rows = ""
+    for p in positions:
+        ev = eval_map.get(p["ticker"])
+        signal = ev.sell_signal if ev else "—"
+        signal_class = signal.split(" ")[0] if ev else ""
+        gain_pct = p.get("unrealized_pnl_pct")
+        gain_cls = "pnl-pos" if (gain_pct or 0) > 0 else "pnl-neg" if (gain_pct or 0) < 0 else ""
+        gain_str = f"{gain_pct:.1f}%" if gain_pct is not None else "—"
+        last_price_str = f"${p['last_price']:.2f}" if p.get('last_price') else "—"
+        rows += (
+            f"<tr><td><strong>{html_mod.escape(p['ticker'])}</strong></td>"
+            f"<td>{p['quantity']}</td>"
+            f"<td>${p['avg_price']:.2f}</td>"
+            f"<td>{last_price_str}</td>"
+            f'<td class="{gain_cls}">{gain_str}</td>'
+            f'<td><span class="sell-signal sell-{signal_class}">{html_mod.escape(signal)}</span></td>'
+            "</tr>"
+        )
+
+    return _collapsible(
+        "💼 Portafoglio",
+        '<div class="portfolio-summary">'
+        f'<p style="font-size:0.85rem;color:var(--muted);">'
+        f'{len(positions)} posizioni aperte — '
+        '<a href="/portfolio.html" style="color:var(--green);">dettagli completa →</a></p>'
+        '<table class="ticker-table"><thead><tr>'
+        "<th>Ticker</th><th>Qtà</th><th>Prezzo medio</th>"
+        "<th>Ultimo prezzo</th><th>Gain/Loss %</th><th>Segnale SELL</th>"
+        "</tr></thead><tbody>"
+        f"{rows}"
+        "</tbody></table></div>"
+    )
+
+
 def build_page(data: dict[str, Any], tickers_config: dict[str, Any] | None = None) -> str:
     """Assemble the complete HTML document.
 
@@ -649,6 +760,7 @@ def build_page(data: dict[str, Any], tickers_config: dict[str, Any] | None = Non
         "</div>"
         f"{_collapsible('Indicatori di mercato', render_market_cards(data))}"
         f"{_ticker_sections(data, tickers_config)}"
+        f"{render_portfolio_summary(data)}"
         f"{render_indicator_matrix(data.get('strategy_indicators', {}))}"
         f"{render_stale_summary(stale)}"
         f"{render_legend()}"
