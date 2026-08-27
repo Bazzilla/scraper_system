@@ -10,6 +10,9 @@ Serves:
     GET  /api/tickers     → JSON of the current tickers section of config.yaml
     POST /api/tickers/save → validate + backup + rewrite the tickers section,
                              then rebuild output + report
+    GET  /scraper-run.html → scraper-run launch page (mode selector + live output)
+    GET  /api/scraper-run?mode=... → SSE stream of ``run.py`` output
+                                     (full | report_only | override_only)
 
 Binds to 127.0.0.1 by default (single-user, local use). ``--lan`` binds to
 0.0.0.0 so other devices on the same network can reach the pages — note that
@@ -24,10 +27,13 @@ import base64
 import hmac
 import json
 import socket
+import subprocess
+import sys
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
+from urllib.parse import parse_qs, urlparse
 
 from config_loader import load_config
 from consolidator import consolidate
@@ -43,6 +49,7 @@ from orchestrator import _build_strategy_indicators
 from overrides_page import render_overrides_page
 from report_html import render as render_report
 from tickers_page import render_tickers_page
+from scraper_run_page import render_scraper_run_page
 from tickers_store import load_tickers, save_tickers
 
 # Path del config: risolto rispetto alla root del progetto (src/..).
@@ -179,6 +186,12 @@ class OverridesHandler(BaseHTTPRequestHandler):
         if self.path == "/api/tickers":
             self._send_json(200, {"ok": True, "tickers": load_tickers(DEFAULT_CONFIG)})
             return
+        if self.path == "/scraper-run.html":
+            self._send_html(200, render_scraper_run_page())
+            return
+        if self.path.startswith("/api/scraper-run"):
+            self._handle_scraper_run_sse()
+            return
         if self.path == "/report.html":
             report_path = PROJECT_ROOT / "output" / "report.html"
             if not report_path.exists():
@@ -284,6 +297,52 @@ class OverridesHandler(BaseHTTPRequestHandler):
             "message": f"Ticker salvati e report rigenerato (backup: {backup_path.name})",
             "backup": str(backup_path),
         })
+
+    def _handle_scraper_run_sse(self) -> None:
+        """Run ``run.py`` with the selected mode and stream output via SSE."""
+        parsed = urlparse(self.path)
+        params = parse_qs(parsed.query)
+        mode = params.get("mode", ["full"])[0]
+
+        flags = []
+        if mode == "report_only":
+            flags = ["--report-only"]
+        elif mode == "override_only":
+            flags = ["--override-only"]
+
+        cmd = [sys.executable, str(PROJECT_ROOT / "run.py"), DEFAULT_CONFIG] + flags
+
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("X-Accel-Buffering", "no")
+        self.end_headers()
+
+        try:
+            proc = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                text=True, bufsize=1,
+            )
+            for line in proc.stdout:
+                try:
+                    self.wfile.write(f"data: {line.rstrip()}\n\n".encode("utf-8"))
+                    self.wfile.flush()
+                except BrokenPipeError:
+                    break
+            proc.wait()
+            try:
+                self.wfile.write(
+                    f"event: done\ndata: {proc.returncode}\n\n".encode("utf-8")
+                )
+                self.wfile.flush()
+            except BrokenPipeError:
+                pass
+        except Exception as exc:  # noqa: BLE001
+            try:
+                self.wfile.write(f"event: error\ndata: {exc}\n\n".encode("utf-8"))
+                self.wfile.flush()
+            except BrokenPipeError:
+                pass
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
         print(f"[overrides] {self.address_string()} - {format % args}")

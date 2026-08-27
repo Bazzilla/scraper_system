@@ -345,6 +345,7 @@ _NAV_ITEMS = [
     ("report", "/report.html", "📊 Report"),
     ("overrides", "/overrides.html", "✍️ Immissione manuale"),
     ("tickers", "/tickers.html", "📋 Ticker"),
+    ("scraper-run", "/scraper-run.html", "🚀 Scraping"),
 ]
 
 # Favicon condivisa da tutte le pagine: mini grafico a barre con i colori dei
