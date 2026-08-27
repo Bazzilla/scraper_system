@@ -332,13 +332,13 @@ class OverridesHandler(BaseHTTPRequestHandler):
             if not cat:
                 self._send_json(400, {"ok": False, "message": "missing ?category= param"})
                 return
-            flags = ["--category", cat]
+            flags = ["--category", cat, "--merge"]
         elif mode == "ticker":
             sym = params.get("ticker", [None])[0]
             if not sym:
                 self._send_json(400, {"ok": False, "message": "missing ?ticker= param"})
                 return
-            flags = ["--ticker", sym]
+            flags = ["--ticker", sym, "--merge"]
 
         cmd = [sys.executable, str(PROJECT_ROOT / "run.py"), DEFAULT_CONFIG] + flags
 

@@ -10,6 +10,12 @@ Modes:
     ./.venv/bin/python run.py --category semiconductors  # scrape only one category
     ./.venv/bin/python run.py --ticker NVDA              # scrape only one ticker
 
+Merge mode (--category or --ticker + --merge):
+
+    When scraping a single category or ticker, --merge preserves the existing
+    output.json data for all other tickers/categories.  Without --merge the
+    single scrape would overwrite the entire output, losing previous results.
+
 The script works from any directory: it resolves paths relative to the
 project root (the directory containing this file). The config path is
 optional and defaults to ``config.yaml``.
@@ -50,6 +56,60 @@ def _render_report(config_path: str) -> str:
     return path
 
 
+# ── Merge helpers (used by --category / --ticker to preserve other data) ──
+
+def _deep_merge(old: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:
+    """Deep-merge *new* into *old* — nested dicts are merged recursively."""
+    merged = dict(old)
+    for key, new_val in new.items():
+        old_val = merged.get(key)
+        if isinstance(old_val, dict) and isinstance(new_val, dict):
+            merged[key] = _deep_merge(old_val, new_val)
+        else:
+            merged[key] = new_val
+    return merged
+
+
+def _merge_output(old: dict[str, Any], new: dict[str, Any],
+                  config_path: str) -> dict[str, Any]:
+    """Merge new scrape results into existing output, preserving other data.
+
+    Strategy: only successful results (status != "error") are merged in.
+    Error results from the new run are skipped so previous data is kept.
+    ``strategy_indicators`` is rebuilt from the merged results.
+    """
+    old_results: dict[str, Any] = {}
+    for key, value in old.items():
+        if key not in ("generated_at", "stale_summary", "strategy_indicators"):
+            old_results[key] = value
+
+    new_results: dict[str, Any] = {}
+    for key, value in new.items():
+        if key not in ("generated_at", "stale_summary", "strategy_indicators"):
+            new_results[key] = value
+
+    merged = dict(old_results)
+    for key, new_val in new_results.items():
+        if isinstance(new_val, dict) and new_val.get("status") == "error":
+            # Skip errors — keep previous data for this scraper.
+            continue
+        old_val = merged.get(key)
+        if isinstance(old_val, dict) and isinstance(new_val, dict):
+            merged[key] = _deep_merge(old_val, new_val)
+        else:
+            merged[key] = new_val
+
+    config = _load_config(config_path)
+    base_dir = Path(config_path).resolve().parent
+    from orchestrator import _build_strategy_indicators
+
+    output = new.copy()
+    output.update(merged)
+    output["generated_at"] = new.get("generated_at", old.get("generated_at"))
+    output["strategy_indicators"] = _build_strategy_indicators(config, base_dir, merged)
+    return output
+
+
 def _filter_tickers(
     config: dict[str, Any], category: str | None, ticker: str | None
 ) -> dict[str, Any]:
@@ -73,7 +133,12 @@ def _filter_tickers(
     return filtered
 
 
-def mode_full(config_path: str, category: str | None = None, ticker: str | None = None) -> int:
+def mode_full(
+    config_path: str,
+    category: str | None = None,
+    ticker: str | None = None,
+    merge: bool = False,
+) -> int:
     from orchestrator import run as run_orchestrator
 
     config = _load_config(config_path)
@@ -83,9 +148,27 @@ def mode_full(config_path: str, category: str | None = None, ticker: str | None 
         print(str(exc), file=sys.stderr)
         return 1
 
+    base_dir = Path(config_path).resolve().parent
+    output_path = _resolve(config, base_dir, "json_path", "output/output.json")
+
+    # When merging, snapshot the existing output BEFORE running the pipeline.
+    old_output: dict[str, Any] | None = None
+    if merge and output_path.exists():
+        with output_path.open("r", encoding="utf-8") as fh:
+            old_output = json.load(fh)
+        print(f"[merge] Loaded existing output: {output_path}")
+
     label = category or ticker or "all"
     print(f"[1/2] Orchestration with {config_path} (tickers: {label}) ...")
     output = run_orchestrator(config_path, config=config)
+
+    if merge and old_output is not None:
+        print("[merge] Merging new results with existing data ...")
+        output = _merge_output(old_output, output, config_path)
+        with output_path.open("w", encoding="utf-8") as fh:
+            json.dump(output, fh, indent=2)
+        print(f"[merge] Output written: {output_path}")
+
     summary = output.get("stale_summary", {})
     print(
         f"      sources: {summary.get('fresh', 0)}/{summary.get('total_sources', 0)} "
@@ -190,6 +273,11 @@ def main() -> int:
         "--ticker",
         help="Scrape only the specified ticker symbol (e.g. NVDA)",
     )
+    parser.add_argument(
+        "--merge",
+        action="store_true",
+        help="Merge new scrape results into existing output.json (preserves other tickers/categories)",
+    )
     args = parser.parse_args()
 
     config_path = str(PROJECT_ROOT / args.config)
@@ -201,7 +289,12 @@ def main() -> int:
         return mode_report_only(config_path)
     if args.override_only:
         return mode_override_only(config_path)
-    return mode_full(config_path, category=args.category, ticker=args.ticker)
+    return mode_full(
+        config_path,
+        category=args.category,
+        ticker=args.ticker,
+        merge=args.merge,
+    )
 
 
 if __name__ == "__main__":
