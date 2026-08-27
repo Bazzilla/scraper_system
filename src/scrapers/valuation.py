@@ -111,6 +111,7 @@ def _fetch_all(tickers: dict[str, Any], config: dict[str, Any]) -> dict[str, dic
         fetched[category] = {}
         for entry in entries:
             symbol = entry.get("symbol", "?")
+            logger.info("    → %s", symbol)
             try:
                 info = _fetch_with_retry(symbol, retries, backoff)
                 fetched[category][symbol] = extract_valuation(info)

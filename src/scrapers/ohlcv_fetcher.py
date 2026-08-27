@@ -128,6 +128,7 @@ def _fetch_all(tickers: dict[str, Any], config: dict[str, Any]) -> dict[str, dic
         cache[category] = {}
         for entry in entries:
             symbol = entry.get("symbol", "?")
+            logger.info("    → %s", symbol)
             try:
                 df = _fetch_ticker_with_retry(symbol, period, interval, timeout, retries, backoff)
                 cache[category][symbol] = frame_to_records(df)
