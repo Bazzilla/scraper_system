@@ -1,0 +1,27 @@
+# Sell strategy rules — thresholds and signal parameters
+#
+# This file drives the SELL evaluation logic. Change values here
+# without touching code to tune the strategy or test scenarios.
+
+thresholds:
+  # unrealized gain % thresholds for take-profit signals
+  tp1_pct: 15        # PRENDI PROFITTO PARZIALE (base)
+  tp2_pct: 25        # PRENDI PROFITTO PARZIALE (rafforzato)
+  tp3_pct: 30        # RIDUCI ESPOSIZIONE
+
+  # minimum number of overheating signals required for RIDUCI ESPOSIZIONE
+  overheating_min_signals: 2
+
+  # minimum number of negative technical signals for ATTENZIONE
+  attention_min_negative_signals: 2
+
+signals:
+  # overheating thresholds (used by TP3 / RIDUCI ESPOSIZIONE)
+  fgi_overheating: 60
+  rsi_overheating: 70
+  mfi_overheating: 80
+  sma50_overheat_pct: 10     # price > SMA50 * (1 + pct/100)
+
+  # attention thresholds (used by ATTENZIONE rule)
+  rsi_weak: 45
+  mfi_weak: 40

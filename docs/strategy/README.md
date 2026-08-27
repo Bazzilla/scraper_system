@@ -5,6 +5,8 @@ Questa cartella contiene **copia** dei file strategici che guidano il progetto
 
 - `strategia_trading.md` — il prompt operativo originale (Regola 0-4, casi storici, formato report)
 - `specifiche_strategia.md` — il "contratto" cristallizzato (51 specifiche A-K)
+- `specifica_sell_strategy.md` — strategia SELL per gestione posizioni aperte (10 sezioni A-J)
+- `specifica_portfolio_sell_strategy.md` — specifica di sviluppo completa (7 step)
 
 ## Perché questa copia nel progetto
 
