@@ -71,6 +71,7 @@ from portfolio_db import (
     update_transaction,
 )
 from portfolio import calculate_positions
+from portfolio_page import render_portfolio_page
 
 # Path del config: risolto rispetto alla root del progetto (src/..).
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -232,6 +233,9 @@ class OverridesHandler(BaseHTTPRequestHandler):
             return
         if self.path == "/scraper-run.html":
             self._send_html(200, render_scraper_run_page())
+            return
+        if self.path == "/portfolio.html":
+            self._send_html(200, render_portfolio_page())
             return
         if self.path.startswith("/api/scraper-run"):
             if "status" in self.path:

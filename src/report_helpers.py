@@ -345,6 +345,7 @@ _NAV_ITEMS = [
     ("report", "/report.html", "📊 Report"),
     ("overrides", "/overrides.html", "✍️ Immissione manuale"),
     ("tickers", "/tickers.html", "📋 Ticker"),
+    ("portfolio", "/portfolio.html", "💼 Portfolio"),
     ("scraper-run", "/scraper-run.html", "🚀 Scraping"),
 ]
 
