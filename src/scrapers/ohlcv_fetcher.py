@@ -19,6 +19,8 @@ from typing import Any
 import pandas as pd
 import yfinance as yf
 
+from fetch_utils import log_scrape
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_PERIOD = "1y"
@@ -183,6 +185,7 @@ def _save_cache(cache_path: str, cache: dict[str, dict[str, list[dict[str, Any]]
     path.write_text(serialize_cache(cache), encoding="utf-8")
 
 
+@log_scrape("OHLCV (Yahoo Finance)")
 def run(config: dict[str, Any] | None = None) -> dict[str, Any]:
     """Fetch OHLCV for all configured tickers and save to cache.
 
@@ -191,6 +194,8 @@ def run(config: dict[str, Any] | None = None) -> dict[str, Any]:
     """
     config = config or {}
     tickers = config.get("tickers", {})
+    total = sum(len(v) for v in tickers.values()) if isinstance(tickers, dict) else 0
+    logger.info("  tickers: %d", total)
     cache_path = config.get("cache_path")
 
     cache = _fetch_all(tickers, config)

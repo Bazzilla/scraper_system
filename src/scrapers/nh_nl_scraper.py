@@ -23,6 +23,8 @@ from typing import Any
 
 import requests
 
+from fetch_utils import log_scrape
+
 logger = logging.getLogger(__name__)
 
 BARCHART_URL = "https://www.barchart.com/stocks/highs-lows/summary"
@@ -141,6 +143,7 @@ def _fetch_with_retry(
     raise RuntimeError(f"NH-NL fetch failed after {retries} attempts: {last_error}")
 
 
+@log_scrape("NYSE New Highs/Lows (Barchart)")
 def run(config: dict[str, Any] | None = None) -> dict[str, Any]:
     """Fetch and return the NYSE 52-week new highs/lows as a structured dict.
 
@@ -149,6 +152,7 @@ def run(config: dict[str, Any] | None = None) -> dict[str, Any]:
     """
     config = config or {}
     url = config.get("url", BARCHART_URL)
+    logger.info("  url: %s", url)
     timeout = config.get("timeout", DEFAULT_TIMEOUT)
     retries = config.get("retries", DEFAULT_RETRIES)
     backoff = config.get("backoff", DEFAULT_BACKOFF)

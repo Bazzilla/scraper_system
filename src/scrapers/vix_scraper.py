@@ -20,6 +20,8 @@ from typing import Any
 
 import requests
 
+from fetch_utils import log_scrape
+
 logger = logging.getLogger(__name__)
 
 CBOE_VIX_URL = "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv"
@@ -106,6 +108,7 @@ def _fetch_with_retry(
     raise RuntimeError(f"VIX fetch failed after {retries} attempts: {last_error}")
 
 
+@log_scrape("VIX spot (CBOE)")
 def run(config: dict[str, Any] | None = None) -> dict[str, Any]:
     """Fetch and return the VIX spot result as a structured dict.
 
@@ -114,6 +117,7 @@ def run(config: dict[str, Any] | None = None) -> dict[str, Any]:
     """
     config = config or {}
     url = config.get("url", CBOE_VIX_URL)
+    logger.info("  url: %s", url)
     timeout = config.get("timeout", DEFAULT_TIMEOUT)
     retries = config.get("retries", DEFAULT_RETRIES)
     backoff = config.get("backoff", DEFAULT_BACKOFF)

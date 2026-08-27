@@ -24,6 +24,7 @@ from typing import Any
 
 import yfinance as yf
 
+from fetch_utils import log_scrape
 from valuation_store import append_snapshots, bucket_for, bucket_label
 
 logger = logging.getLogger(__name__)
@@ -156,6 +157,7 @@ def build_result(
     return result
 
 
+@log_scrape("Valuation (fair value)")
 def run(config: dict[str, Any] | None = None) -> dict[str, Any]:
     """Fetch valuation snapshots for all configured tickers.
 
@@ -168,6 +170,8 @@ def run(config: dict[str, Any] | None = None) -> dict[str, Any]:
     """
     config = config or {}
     tickers = config.get("tickers", {})
+    total = sum(len(v) for v in tickers.values()) if isinstance(tickers, dict) else 0
+    logger.info("  tickers: %d (yfinance info)", total)
 
     fetched = _fetch_all(tickers, config)
 

@@ -12,6 +12,7 @@ Entry point: ``run(config) -> dict`` (config-driven, per technical-domain.md).
 from __future__ import annotations
 
 import json
+import logging
 import re
 from datetime import datetime, timezone
 from typing import Any
@@ -19,7 +20,9 @@ from typing import Any
 import requests
 from bs4 import BeautifulSoup
 
-from fetch_utils import fetch_first_success, try_parsers
+from fetch_utils import fetch_first_success, log_scrape, try_parsers
+
+logger = logging.getLogger(__name__)
 
 # Source chain, in fallback order (primary first).
 FGI_API_URL = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata"
@@ -202,6 +205,7 @@ def build_result(
     return result
 
 
+@log_scrape("FGI (Fear & Greed Index)")
 def run(config: dict[str, Any] | None = None) -> dict[str, Any]:
     """Fetch and return the FGI result as a structured dict.
 
@@ -211,6 +215,7 @@ def run(config: dict[str, Any] | None = None) -> dict[str, Any]:
     config = config or {}
     sources = config.get("sources") or DEFAULT_SOURCES
     source_list = [(s["name"], s["url"]) for s in sources]
+    logger.info("  sources: %s", ", ".join(n for n, _ in source_list))
     timeout = config.get("timeout", DEFAULT_TIMEOUT)
     retries = config.get("retries", DEFAULT_RETRIES)
     backoff = config.get("backoff", DEFAULT_BACKOFF)

@@ -10,11 +10,38 @@ from __future__ import annotations
 
 import logging
 import time
+from functools import wraps
 from typing import Any, Callable
 
 import requests
 
 logger = logging.getLogger(__name__)
+
+
+def log_scrape(label: str):
+    """Decorator: frame a scraper ``run`` with START/DONE log lines + elapsed.
+
+    The decorated scraper should log *what* it is scraping itself (source URL,
+    ticker count, ...) — this decorator only adds the timing frame so the
+    console shows when each module starts and finishes. Failures are NOT caught
+    here: they propagate to the orchestrator, which logs them.
+    """
+
+    def decorator(fn: Callable[..., dict[str, Any]]) -> Callable[..., dict[str, Any]]:
+        @wraps(fn)
+        def wrapper(config: dict[str, Any] | None = None) -> dict[str, Any]:
+            log = logging.getLogger(fn.__module__)
+            start = time.monotonic()
+            log.info("  ▶ %s start", label)
+            result = fn(config)
+            elapsed = time.monotonic() - start
+            status = result.get("status", "?") if isinstance(result, dict) else "?"
+            log.info("  ✓ %s done — status=%s (%.1fs)", label, status, elapsed)
+            return result
+
+        return wrapper
+
+    return decorator
 
 
 def fetch_first_success(

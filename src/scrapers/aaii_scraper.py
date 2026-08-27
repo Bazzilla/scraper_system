@@ -23,7 +23,7 @@ from typing import Any
 import requests
 from bs4 import BeautifulSoup
 
-from fetch_utils import try_parsers
+from fetch_utils import log_scrape, try_parsers
 
 logger = logging.getLogger(__name__)
 
@@ -152,6 +152,7 @@ def _fetch_with_retry(
     raise RuntimeError(f"AAII fetch failed after {retries} attempts: {last_error}")
 
 
+@log_scrape("AAII sentiment survey")
 def run(config: dict[str, Any] | None = None) -> dict[str, Any]:
     """Fetch and return the AAII sentiment result as a structured dict.
 
@@ -160,6 +161,7 @@ def run(config: dict[str, Any] | None = None) -> dict[str, Any]:
     """
     config = config or {}
     url = config.get("url", AAII_URL)
+    logger.info("  url: %s", url)
     timeout = config.get("timeout", DEFAULT_TIMEOUT)
     retries = config.get("retries", DEFAULT_RETRIES)
     backoff = config.get("backoff", DEFAULT_BACKOFF)

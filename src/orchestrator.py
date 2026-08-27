@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import sqlite3
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -96,26 +97,31 @@ def run(
 
     with sqlite3.connect(db_path) as conn:
         init_db(conn)
-        for name, scraper in config["scrapers"].items():
-            result, status, error = _run_scraper_safely(
-                name, scraper, base_dir, config.get("tickers", {})
-            )
-            record_execution(conn, name, _now_iso(), status, error)
-            if result is not None:
-                # Il risultato scrapato è esplicitamente marcato (mai confuso
-                # con un manual override).
-                result["origin"] = "scraped"
-                results[scraper["output_key"]] = result
-            else:
-                # Fail-closed: un modulo fallito NON sparisce dall'output.
-                # Viene registrato con status "error" così il consolidator e
-                # il report lo segnalano invece di fingere che non esista.
-                results[scraper["output_key"]] = {
-                    "status": "error",
-                    "origin": "missing",
-                    "error": error or "unknown error",
-                    "fetched_at": _now_iso(),
-                }
+    for name, scraper in config["scrapers"].items():
+        logger.info("▶ [%s] start", name)
+        start = time.monotonic()
+        result, status, error = _run_scraper_safely(
+            name, scraper, base_dir, config.get("tickers", {})
+        )
+        elapsed = time.monotonic() - start
+        record_execution(conn, name, _now_iso(), status, error)
+        if result is not None:
+            # Il risultato scrapato è esplicitamente marcato (mai confuso
+            # con un manual override).
+            result["origin"] = "scraped"
+            results[scraper["output_key"]] = result
+            logger.info("✓ [%s] done — success (%.1fs)", name, elapsed)
+        else:
+            # Fail-closed: un modulo fallito NON sparisce dall'output.
+            # Viene registrato con status "error" così il consolidator e
+            # il report lo segnalano invece di fingere che non esista.
+            results[scraper["output_key"]] = {
+                "status": "error",
+                "origin": "missing",
+                "error": error or "unknown error",
+                "fetched_at": _now_iso(),
+            }
+            logger.error("✗ [%s] failed — %s (%.1fs)", name, error, elapsed)
 
     # Manual overrides: priorità scraping > manual > missing. Gli override
     # validi e freschi sostituiscono i risultati error/missing (o quelli fresh

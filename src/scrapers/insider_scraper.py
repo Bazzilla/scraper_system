@@ -24,6 +24,8 @@ from typing import Any
 import requests
 from bs4 import BeautifulSoup
 
+from fetch_utils import log_scrape
+
 logger = logging.getLogger(__name__)
 
 OPENINSIDER_OFFICER_URL = "http://openinsider.com/latest-officer-purchases-25k"
@@ -223,6 +225,7 @@ def _fetch_with_retry(
     raise RuntimeError(f"Insider fetch failed after {retries} attempts: {last_error}")
 
 
+@log_scrape("Insider purchases (OpenInsider)")
 def run(config: dict[str, Any] | None = None) -> dict[str, Any]:
     """Fetch insider purchases and compute the strategy bonus.
 
@@ -232,6 +235,7 @@ def run(config: dict[str, Any] | None = None) -> dict[str, Any]:
     config = config or {}
     tickers = config.get("tickers", {})
     url = config.get("url", OPENINSIDER_OFFICER_URL)
+    logger.info("  url: %s", url)
     timeout = config.get("timeout", DEFAULT_TIMEOUT)
     retries = config.get("retries", DEFAULT_RETRIES)
     backoff = config.get("backoff", DEFAULT_BACKOFF)

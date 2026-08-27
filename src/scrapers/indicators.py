@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+from fetch_utils import log_scrape
 from ta.momentum import RSIIndicator
 from ta.trend import SMAIndicator
 from ta.volume import (
@@ -157,6 +158,7 @@ def build_result(
     return result
 
 
+@log_scrape("Technical indicators (from OHLCV cache)")
 def run(config: dict[str, Any] | None = None) -> dict[str, Any]:
     """Compute indicators from the OHLCV cache.
 
@@ -170,6 +172,7 @@ def run(config: dict[str, Any] | None = None) -> dict[str, Any]:
         raise ValueError("indicators requires 'cache_path' in config")
 
     cache = load_cache(cache_path)
+    logger.info("  cache: %s", cache_path)
     rsi_window = config.get("rsi_window", DEFAULT_RSI_WINDOW)
     mfi_window = config.get("mfi_window", DEFAULT_MFI_WINDOW)
     sma_fast = config.get("sma_fast", DEFAULT_SMA_FAST)

@@ -22,6 +22,8 @@ from typing import Any
 
 import requests
 
+from fetch_utils import log_scrape
+
 logger = logging.getLogger(__name__)
 
 CBOE_DAILY_URL = "https://www.cboe.com/us/options/market_statistics/daily/"
@@ -149,6 +151,7 @@ def _fetch_with_retry(
     raise RuntimeError(f"PCR fetch failed after {retries} attempts: {last_error}")
 
 
+@log_scrape("Put/Call Ratio (CBOE)")
 def run(config: dict[str, Any] | None = None) -> dict[str, Any]:
     """Fetch and return the equity put/call ratio as a structured dict.
 
@@ -157,6 +160,7 @@ def run(config: dict[str, Any] | None = None) -> dict[str, Any]:
     """
     config = config or {}
     url = config.get("url", CBOE_DAILY_URL)
+    logger.info("  url: %s", url)
     timeout = config.get("timeout", DEFAULT_TIMEOUT)
     retries = config.get("retries", DEFAULT_RETRIES)
     backoff = config.get("backoff", DEFAULT_BACKOFF)
