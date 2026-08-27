@@ -69,6 +69,7 @@ def run(
     config_path: str,
     output_path: str | None = None,
     db_path: str | None = None,
+    config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Execute the full orchestration flow.
 
@@ -78,8 +79,12 @@ def run(
             the value in config.yaml (``output.json_path``).
         db_path: Path to the SQLite audit database. Defaults to the value in
             config.yaml (``output.db_path``).
+        config: Optional pre-loaded config dict.  When provided, skips
+            ``load_config`` and uses this dict directly (useful for running
+            with filtered tickers without touching the file on disk).
     """
-    config = load_config(config_path)
+    if config is None:
+        config = load_config(config_path)
     output_cfg = config.get("output", {})
     output_path = output_path or output_cfg.get("json_path", "output/output.json")
     db_path = db_path or output_cfg.get("db_path", "output/scraper_audit.db")

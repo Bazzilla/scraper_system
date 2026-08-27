@@ -22,6 +22,26 @@ _PAGE_CSS = _CSS + """\
 .mode-select label { color: var(--text); font-size: 0.9rem; cursor: pointer;
         display: flex; align-items: flex-start; gap: 8px; }
 .mode-select .desc { color: var(--muted); font-size: 0.85rem; margin-left: 24px; }
+.mode-extra { margin-left: 24px; margin-top: -4px; margin-bottom: 4px;
+        display: none; }
+.mode-extra.visible { display: block; }
+.cat-select { background: var(--bg); color: var(--text);
+        border: 1px solid var(--border); border-radius: 6px;
+        padding: 6px 8px; font-size: 0.9rem; width: 280px; }
+.cat-count { color: var(--muted); font-size: 0.85rem; margin-left: 8px; }
+.ticker-search { position: relative; }
+.ticker-input { background: var(--bg); color: var(--text);
+        border: 1px solid var(--border); border-radius: 6px;
+        padding: 6px 8px; font-size: 0.9rem; width: 280px; }
+.ticker-results { position: absolute; top: 100%; left: 0; right: 0;
+        background: var(--card); border: 1px solid var(--border);
+        border-radius: 6px; max-height: 200px; overflow-y: auto;
+        z-index: 10; display: none; }
+.ticker-results.open { display: block; }
+.ticker-result-item { padding: 6px 8px; cursor: pointer; font-size: 0.85rem; }
+.ticker-result-item:hover { background: var(--bg); }
+.ticker-result-item .sym { font-weight: 700; }
+.ticker-result-item .cat { color: var(--muted); font-size: 0.8rem; }
 .run-btn { background: var(--green); color: #fff; border: none; border-radius: 8px;
         padding: 10px 20px; cursor: pointer; font-size: 1rem; font-weight: 600; }
 .run-btn:hover { opacity: 0.9; }
@@ -64,6 +84,29 @@ _MODE_OPTIONS = """\
     <span class="desc">Applica gli override manuali a output.json e rigenera
     il report. Utile dopo aver modificato i valori manuali.</span></span>
   </label>
+  <label>
+    <input type="radio" name="mode" value="category">
+    <span><strong>Singola categoria</strong><br>
+    <span class="desc">Scraping dei soli ticker di una categoria.</span></span>
+  </label>
+  <div id="cat-extra" class="mode-extra">
+    <select id="category-select" class="cat-select" disabled>
+      <option value="">Seleziona categoria...</option>
+    </select>
+    <span id="cat-count" class="cat-count"></span>
+  </div>
+  <label>
+    <input type="radio" name="mode" value="ticker">
+    <span><strong>Singolo ticker</strong><br>
+    <span class="desc">Scraping di un singolo ticker per simbolo o nome.</span></span>
+  </label>
+  <div id="tick-extra" class="mode-extra">
+    <div class="ticker-search">
+      <input id="ticker-input" class="ticker-input"
+             placeholder="Cerca simbolo o nome..." disabled>
+      <div id="ticker-results" class="ticker-results"></div>
+    </div>
+  </div>
 </div>
 <button id="run-btn" class="run-btn" type="button">▶ Avvia</button>
 """
@@ -74,43 +117,103 @@ _RUN_SCRIPT = """\
   var output = document.getElementById("output");
   var statusBar = document.getElementById("status-bar");
   var pollTimer = null;
+  var catExtra = document.getElementById("cat-extra");
+  var catSelect = document.getElementById("category-select");
+  var catCount = document.getElementById("cat-count");
+  var tickExtra = document.getElementById("tick-extra");
+  var tickerInput = document.getElementById("ticker-input");
+  var tickerResults = document.getElementById("ticker-results");
+  var allTickers = {};
+  var selectedCat = null;
+  var selectedSym = null;
 
-  function setStatus(cls, text) {
-    statusBar.className = "status-bar " + cls;
-    statusBar.textContent = text;
-  }
+  /* --- Load tickers on page load --- */
+  fetch("/api/tickers").then(function (r) { return r.json(); }).then(function (d) {
+    allTickers = d.tickers || {};
+    Object.keys(allTickers).sort().forEach(function (cat) {
+      var opt = document.createElement("option");
+      opt.value = cat;
+      opt.textContent = cat + " (" + allTickers[cat].length + " ticker)";
+      catSelect.appendChild(opt);
+    });
+  });
 
-  function clearOutput() { output.textContent = ""; }
+  /* --- Radio change → show/hide extra UI --- */
+  document.querySelectorAll('input[name="mode"]').forEach(function (r) {
+    r.addEventListener("change", function () {
+      var m = this.value;
+      catExtra.classList.toggle("visible", m === "category");
+      tickExtra.classList.toggle("visible", m === "ticker");
+      catSelect.disabled = (m !== "category");
+      tickerInput.disabled = (m !== "ticker");
+      if (m !== "ticker") { tickerResults.classList.remove("open"); tickerResults.innerHTML = ""; selectedSym = null; }
+      if (m !== "category") { selectedCat = null; catCount.textContent = ""; }
+    });
+  });
 
-  document.getElementById("clear-btn").addEventListener("click", clearOutput);
+  /* --- Category select --- */
+  catSelect.addEventListener("change", function () {
+    selectedCat = this.value || null;
+    var n = selectedCat ? (allTickers[selectedCat] || []).length : 0;
+    catCount.textContent = selectedCat ? n + " ticker" : "";
+  });
 
-  /* --- Check state on load --- */
+  /* --- Ticker search --- */
+  tickerInput.addEventListener("input", function () {
+    var q = this.value.trim().toLowerCase();
+    if (!q) { tickerResults.classList.remove("open"); return; }
+    var hits = [];
+    Object.keys(allTickers).forEach(function (cat) {
+      allTickers[cat].forEach(function (t) {
+        if (t.symbol.toLowerCase().indexOf(q) !== -1 ||
+            t.name.toLowerCase().indexOf(q) !== -1) {
+          hits.push({s: t.symbol, n: t.name, c: cat});
+        }
+      });
+    });
+    if (!hits.length) { tickerResults.innerHTML = '<div class="ticker-result-item" style="color:var(--muted)">Nessun risultato</div>'; tickerResults.classList.add("open"); return; }
+    tickerResults.innerHTML = hits.slice(0, 20).map(function (h) {
+      return '<div class="ticker-result-item" data-sym="' + h.s + '">'
+        + '<span class="sym">' + h.s + '</span> &ndash; ' + h.n
+        + ' <span class="cat">(' + h.c + ')</span></div>';
+    }).join("");
+    tickerResults.classList.add("open");
+  });
+  tickerInput.addEventListener("blur", function () {
+    setTimeout(function () { tickerResults.classList.remove("open"); }, 150);
+  });
+  tickerResults.addEventListener("click", function (e) {
+    var el = e.target.closest(".ticker-result-item");
+    if (!el || !el.dataset.sym) return;
+    selectedSym = el.dataset.sym;
+    tickerInput.value = selectedSym;
+    tickerResults.classList.remove("open");
+  });
+
+  /* --- Status check on load --- */
   fetch("/api/scraper-run/status").then(function (r) { return r.json(); }).then(function (s) {
     if (s.running) {
-      btn.disabled = true;
-      btn.textContent = "⏳ In corso...";
-      setStatus("running", "Scraping in corso (pid " + s.pid + ")...");
+      btn.disabled = true; btn.textContent = "⏳ In corso...";
+      statusBar.className = "status-bar running";
+      statusBar.textContent = "Scraping in corso (pid " + s.pid + ")...";
       startPoll();
     } else if (s.exit_code !== null) {
       var ok = s.exit_code === 0;
-      setStatus(ok ? "done" : "error",
-        ok ? "Ultimo scrape completato" : "Ultimo scrape fallito (exit " + s.exit_code + ")");
+      statusBar.className = "status-bar " + (ok ? "done" : "error");
+      statusBar.textContent = ok ? "Ultimo scrape completato" : "Ultimo scrape fallito (exit " + s.exit_code + ")";
     }
   });
 
-  /* --- Polling --- */
   function startPoll() {
     if (pollTimer) return;
     pollTimer = setInterval(function () {
       fetch("/api/scraper-run/status").then(function (r) { return r.json(); }).then(function (s) {
         if (!s.running) {
-          clearInterval(pollTimer);
-          pollTimer = null;
-          btn.disabled = false;
-          btn.textContent = "▶ Avvia";
+          clearInterval(pollTimer); pollTimer = null;
+          btn.disabled = false; btn.textContent = "▶ Avvia";
           var ok = s.exit_code === 0;
-          setStatus(ok ? "done" : "error",
-            ok ? "Scrape completato" : "Scrape fallito (exit " + s.exit_code + ")");
+          statusBar.className = "status-bar " + (ok ? "done" : "error");
+          statusBar.textContent = ok ? "Scrape completato" : "Scrape fallito (exit " + s.exit_code + ")";
         }
       });
     }, 2000);
@@ -119,32 +222,41 @@ _RUN_SCRIPT = """\
   /* --- Run button --- */
   btn.addEventListener("click", function () {
     var mode = document.querySelector('input[name="mode"]:checked').value;
-    btn.disabled = true;
-    btn.textContent = "⏳ In corso...";
-    output.textContent = "";
-    setStatus("running", "Scraping in corso...");
+    if (mode === "category" && !selectedCat) { alert("Seleziona una categoria"); return; }
+    if (mode === "ticker" && !selectedSym) { alert("Seleziona un ticker"); return; }
 
-    var evtSource = new EventSource("/api/scraper-run?mode=" + encodeURIComponent(mode));
+    var url = "/api/scraper-run?mode=" + encodeURIComponent(mode);
+    if (mode === "category") url += "&category=" + encodeURIComponent(selectedCat);
+    if (mode === "ticker") url += "&ticker=" + encodeURIComponent(selectedSym);
+
+    btn.disabled = true; btn.textContent = "⏳ In corso...";
+    output.textContent = "";
+    statusBar.className = "status-bar running";
+    statusBar.textContent = "Scraping in corso...";
+
+    var evtSource = new EventSource(url);
     evtSource.onmessage = function (e) {
       output.textContent += e.data + "\\n";
       output.scrollTop = output.scrollHeight;
     };
     evtSource.addEventListener("done", function (e) {
       evtSource.close();
-      btn.disabled = false;
-      btn.textContent = "▶ Avvia";
+      btn.disabled = false; btn.textContent = "▶ Avvia";
       var code = parseInt(e.data, 10);
       var ok = code === 0;
-      setStatus(ok ? "done" : "error",
-        ok ? "Scrape completato" : "Scrape fallito (exit " + code + ")");
-      output.scrollTop = output.scrollHeight;
+      statusBar.className = "status-bar " + (ok ? "done" : "error");
+      statusBar.textContent = ok ? "Scrape completato" : "Scrape fallito (exit " + code + ")";
     });
     evtSource.onerror = function () {
       evtSource.close();
-      btn.disabled = false;
-      btn.textContent = "▶ Avvia";
+      btn.disabled = false; btn.textContent = "▶ Avvia";
       output.textContent += "\\n❌ Errore di connessione";
     };
+  });
+
+  /* --- Clear button --- */
+  document.getElementById("clear-btn").addEventListener("click", function () {
+    output.textContent = "";
   });
 })();
 """

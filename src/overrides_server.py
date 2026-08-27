@@ -327,6 +327,18 @@ class OverridesHandler(BaseHTTPRequestHandler):
             flags = ["--report-only"]
         elif mode == "override_only":
             flags = ["--override-only"]
+        elif mode == "category":
+            cat = params.get("category", [None])[0]
+            if not cat:
+                self._send_json(400, {"ok": False, "message": "missing ?category= param"})
+                return
+            flags = ["--category", cat]
+        elif mode == "ticker":
+            sym = params.get("ticker", [None])[0]
+            if not sym:
+                self._send_json(400, {"ok": False, "message": "missing ?ticker= param"})
+                return
+            flags = ["--ticker", sym]
 
         cmd = [sys.executable, str(PROJECT_ROOT / "run.py"), DEFAULT_CONFIG] + flags
 

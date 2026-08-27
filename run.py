@@ -7,6 +7,8 @@ Modes:
     ./.venv/bin/python run.py --override-only  # apply manual overrides to output.json,
                                                # rebuild the indicator matrix and render HTML
                                                # (no scraping)
+    ./.venv/bin/python run.py --category semiconductors  # scrape only one category
+    ./.venv/bin/python run.py --ticker NVDA              # scrape only one ticker
 
 The script works from any directory: it resolves paths relative to the
 project root (the directory containing this file). The config path is
@@ -48,11 +50,42 @@ def _render_report(config_path: str) -> str:
     return path
 
 
-def mode_full(config_path: str) -> int:
+def _filter_tickers(
+    config: dict[str, Any], category: str | None, ticker: str | None
+) -> dict[str, Any]:
+    """Return a shallow copy of *config* with tickers filtered by category or symbol."""
+    if not category and not ticker:
+        return config
+    tickers = config.get("tickers", {})
+    filtered: dict[str, Any] = dict(config)
+    if category:
+        if category not in tickers:
+            raise ValueError(f"Category not found: {category}")
+        filtered["tickers"] = {category: tickers[category]}
+    elif ticker:
+        upper = ticker.upper()
+        for cat, entries in tickers.items():
+            for entry in entries:
+                if entry.get("symbol", "").upper() == upper:
+                    filtered["tickers"] = {cat: [entry]}
+                    return filtered
+        raise ValueError(f"Ticker not found: {ticker}")
+    return filtered
+
+
+def mode_full(config_path: str, category: str | None = None, ticker: str | None = None) -> int:
     from orchestrator import run as run_orchestrator
 
-    print(f"[1/2] Orchestration with {config_path} ...")
-    output = run_orchestrator(config_path)
+    config = _load_config(config_path)
+    try:
+        config = _filter_tickers(config, category, ticker)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    label = category or ticker or "all"
+    print(f"[1/2] Orchestration with {config_path} (tickers: {label}) ...")
+    output = run_orchestrator(config_path, config=config)
     summary = output.get("stale_summary", {})
     print(
         f"      sources: {summary.get('fresh', 0)}/{summary.get('total_sources', 0)} "
@@ -149,6 +182,14 @@ def main() -> int:
         action="store_true",
         help="Apply manual overrides to the existing output.json and re-render (no scraping)",
     )
+    parser.add_argument(
+        "--category",
+        help="Scrape only the specified category (e.g. semiconductors)",
+    )
+    parser.add_argument(
+        "--ticker",
+        help="Scrape only the specified ticker symbol (e.g. NVDA)",
+    )
     args = parser.parse_args()
 
     config_path = str(PROJECT_ROOT / args.config)
@@ -160,7 +201,7 @@ def main() -> int:
         return mode_report_only(config_path)
     if args.override_only:
         return mode_override_only(config_path)
-    return mode_full(config_path)
+    return mode_full(config_path, category=args.category, ticker=args.ticker)
 
 
 if __name__ == "__main__":
