@@ -633,6 +633,22 @@ La vendita non deve cambiare il prezzo medio della quantità residua.
 - usare ordinamento per `trade_date`, poi `id`;
 - non gestire per ora tasse, dividendi, split o FIFO.
 
+## Accumulatore realized P/L
+
+Il motore deve calcolare le posizioni in un singolo passaggio cronologico
+e **mantenere un accumulatore di realized P/L per ticker**:
+
+```text
+realized_pnl_accumulator_by_ticker: {ticker: total_realized_pnl_usd}
+```
+
+Questo accumulatore:
+
+- viene incrementato a ogni SELL con il realized_pnl di quella singola vendita;
+- **non viene resettato** a ogni ricalcolo — il dato è derivato dall'intero storico;
+- viene restituito come parte dell'output del motore;
+- è il valore che la pagina portfolio deve mostrare come "P/L realizzato".
+
 ## Integrazione con prezzi correnti
 
 Se disponibile `last_close` da `output/output.json`, il modulo può calcolare:
@@ -676,7 +692,9 @@ Test minimi:
 - commissioni su BUY;
 - commissioni su SELL;
 - calcolo unrealized P/L con prezzo corrente;
-- comportamento con prezzo mancante.
+- comportamento con prezzo mancante;
+- realized_pnl_accumulator_by_ticker accumula su vendite multiple;
+- vendite su ticker diversi sono indipendenti.
 
 ## Criteri di completamento
 
