@@ -22,9 +22,11 @@ _PAGE_CSS = _CSS + """\
 .summary-value.negative { color: var(--red); }
 .summary-value.neutral { color: var(--text); }
 table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-th { text-align: left; padding: 8px 6px; border-bottom: 2px solid var(--border);
+th { text-align: center; padding: 8px 6px; border-bottom: 2px solid var(--border);
      color: var(--muted); font-weight: 600; font-size: 0.8rem; }
-td { padding: 8px 6px; border-bottom: 1px solid var(--border); color: var(--text); }
+td { padding: 8px 6px; border-bottom: 1px solid var(--border); color: var(--text);
+     text-align: center; }
+td:first-child, th:first-child { text-align: left; }
 tr:hover td { background: var(--bg); }
 .pnl-pos { color: var(--green); font-weight: 600; }
 .pnl-neg { color: var(--red); font-weight: 600; }
@@ -107,6 +109,7 @@ def render_portfolio_page() -> str:
   <style>{_PAGE_CSS}</style>
 </head>
 <body>
+  <div class="container">
   <header>
     <div>{render_nav("portfolio")} </div>
     <h1>Portfolio</h1>
@@ -177,6 +180,7 @@ def render_portfolio_page() -> str:
 
     {_FORM_HTML}
   </main>
+  </div>
 
   <script>{_PAGE_SCRIPT}</script>
 </body>
@@ -201,6 +205,11 @@ _PAGE_SCRIPT = """\
   function valClass(v) {
     if (v == null) return 'neutral';
     return v >= 0 ? 'positive' : 'negative';
+  }
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    var p = iso.split('-');
+    return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso;
   }
 
   function api(method, path, body) {
@@ -343,7 +352,7 @@ _PAGE_SCRIPT = """\
     tbody.innerHTML = list.map(function (t) {
       var actionClass = t.action === 'BUY' ? 'pnl-pos' : 'pnl-neg';
       return '<tr>'
-        + '<td>' + t.trade_date + '</td>'
+        + '<td>' + fmtDate(t.trade_date) + '</td>'
         + '<td><strong>' + t.ticker + '</strong></td>'
         + '<td class="' + actionClass + '">' + t.action + '</td>'
         + '<td>' + fmt(t.quantity) + '</td>'

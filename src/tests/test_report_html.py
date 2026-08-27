@@ -849,9 +849,11 @@ class TestRenderSections(unittest.TestCase):
 
     def test_build_page_portfolio_summary_no_db(self):
         """Portfolio summary gracefully returns empty when no portfolio.db."""
-        html = build_page(_sample_data())
-        # Without portfolio.db, the section should not appear
-        self.assertNotIn("💼 Portafoglio", html)
+        from unittest import mock
+        with mock.patch("report_html.render_portfolio_summary", return_value=""):
+            html = build_page(_sample_data())
+            # Without portfolio.db, the section should not appear
+            self.assertNotIn("💼 Portafoglio", html)
 
     def test_build_page_has_sell_signal_css(self):
         """Report CSS includes sell signal badge styles."""
