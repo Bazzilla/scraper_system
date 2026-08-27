@@ -15,6 +15,15 @@ Serves:
                                      (full | report_only | override_only)
     GET  /api/scraper-run/status → JSON with running state, pid, exit_code
 
+Portfolio endpoints (output/portfolio.db):
+    GET    /api/transactions      → list all transactions
+    GET    /api/transactions/{id} → get one transaction
+    POST   /api/transactions      → create transaction
+    PUT    /api/transactions/{id} → update transaction
+    DELETE /api/transactions/{id} → delete transaction
+    GET    /api/positions         → list open positions (derived from transactions)
+    GET    /api/positions/{ticker} → get position for one ticker
+
 Binds to 127.0.0.1 by default (single-user, local use). ``--lan`` binds to
 0.0.0.0 so other devices on the same network can reach the pages — note that
 the editor endpoints are UNAUTHENTICATED: enable only on a trusted LAN.
@@ -52,15 +61,36 @@ from report_html import render as render_report
 from tickers_page import render_tickers_page
 from scraper_run_page import render_scraper_run_page
 from tickers_store import load_tickers, save_tickers
+from portfolio_db import (
+    TransactionError,
+    add_transaction,
+    delete_transaction,
+    get_transaction,
+    get_transactions,
+    init_db,
+    update_transaction,
+)
+from portfolio import calculate_positions
 
 # Path del config: risolto rispetto alla root del progetto (src/..).
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG = str(PROJECT_ROOT / "config.yaml")
+PORTFOLIO_DB = str(PROJECT_ROOT / "output" / "portfolio.db")
 
 # --- Scraper-run state (in-memory, single-user) ----------------------------
 _scrape_state: dict[str, Any] = {
     "running": False, "pid": None, "exit_code": None, "started_at": None,
 }
+
+
+def _portfolio_conn():
+    """Return an initialised SQLite connection for the portfolio DB."""
+    import sqlite3
+    Path(PORTFOLIO_DB).parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(PORTFOLIO_DB)
+    conn.row_factory = sqlite3.Row
+    init_db(conn)
+    return conn
 
 # --- Basic Auth (tutte le pagine e le API) ---------------------------------
 # Credenziali di default; per cambiarle creare un file `.server-auth` nella
@@ -154,6 +184,14 @@ class OverridesHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _read_json_body(self) -> dict[str, Any] | None:
+        """Read and parse the request body as JSON. Returns None on error."""
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            return json.loads(self.rfile.read(length).decode("utf-8"))
+        except (ValueError, json.JSONDecodeError):
+            return None
+
     def _require_auth(self) -> bool:
         """Gate unico di autenticazione: True se autorizzato, altrimenti 401.
 
@@ -208,6 +246,19 @@ class OverridesHandler(BaseHTTPRequestHandler):
                 return
             self._send_html(200, report_path.read_text(encoding="utf-8"))
             return
+        # ── Portfolio API ────────────────────────────────────────────────
+        if self.path == "/api/transactions":
+            self._handle_get_transactions()
+            return
+        if self.path.startswith("/api/transactions/"):
+            self._handle_get_transaction()
+            return
+        if self.path == "/api/positions":
+            self._handle_get_positions()
+            return
+        if self.path.startswith("/api/positions/"):
+            self._handle_get_position_ticker()
+            return
         self._send_html(404, "<h1>404</h1>")
 
     def do_POST(self) -> None:  # noqa: N802 (http.server API)
@@ -216,9 +267,28 @@ class OverridesHandler(BaseHTTPRequestHandler):
         if self.path == "/api/tickers/save":
             self._handle_tickers_save()
             return
+        if self.path == "/api/transactions":
+            self._handle_post_transaction()
+            return
         if self.path != "/api/save":
             self._send_json(404, {"ok": False, "message": "not found"})
             return
+
+    def do_PUT(self) -> None:  # noqa: N802 (http.server API)
+        if not self._require_auth():
+            return
+        if self.path.startswith("/api/transactions/"):
+            self._handle_put_transaction()
+            return
+        self._send_json(404, {"ok": False, "message": "not found"})
+
+    def do_DELETE(self) -> None:  # noqa: N802 (http.server API)
+        if not self._require_auth():
+            return
+        if self.path.startswith("/api/transactions/"):
+            self._handle_delete_transaction()
+            return
+        self._send_json(404, {"ok": False, "message": "not found"})
         try:
             length = int(self.headers.get("Content-Length", "0"))
             payload = json.loads(self.rfile.read(length).decode("utf-8"))
@@ -384,6 +454,188 @@ class OverridesHandler(BaseHTTPRequestHandler):
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
         print(f"[overrides] {self.address_string()} - {format % args}")
+
+    # ── Portfolio: transactions ──────────────────────────────────────────
+
+    def _handle_get_transactions(self) -> None:
+        conn = _portfolio_conn()
+        try:
+            txs = get_transactions(conn)
+        finally:
+            conn.close()
+        self._send_json(200, {"ok": True, "transactions": txs})
+
+    def _handle_get_transaction(self) -> None:
+        """GET /api/transactions/{id}"""
+        tx_id = self._extract_id_from_path("/api/transactions/")
+        if tx_id is None:
+            self._send_json(400, {"ok": False, "message": "invalid transaction id"})
+            return
+        conn = _portfolio_conn()
+        try:
+            tx = get_transaction(conn, tx_id)
+        finally:
+            conn.close()
+        if tx is None:
+            self._send_json(404, {"ok": False, "message": "transaction not found"})
+            return
+        self._send_json(200, {"ok": True, "transaction": tx})
+
+    def _handle_post_transaction(self) -> None:
+        """POST /api/transactions — create a new transaction."""
+        payload = self._read_json_body()
+        if payload is None or not isinstance(payload, dict):
+            self._send_json(400, {"ok": False, "message": "JSON malformato"})
+            return
+        conn = _portfolio_conn()
+        try:
+            tx = add_transaction(
+                conn,
+                trade_date=payload.get("trade_date", ""),
+                ticker=payload.get("ticker", ""),
+                action=payload.get("action", ""),
+                quantity=payload.get("quantity", 0),
+                price_usd=payload.get("price_usd", 0),
+                commission_usd=payload.get("commission_usd", 0),
+                note=payload.get("note"),
+            )
+        except TransactionError as exc:
+            self._send_json(400, {"ok": False, "message": str(exc)})
+            return
+        finally:
+            conn.close()
+        self._send_json(201, {"ok": True, "transaction": tx})
+
+    def _handle_put_transaction(self) -> None:
+        """PUT /api/transactions/{id} — update an existing transaction."""
+        tx_id = self._extract_id_from_path("/api/transactions/")
+        if tx_id is None:
+            self._send_json(400, {"ok": False, "message": "invalid transaction id"})
+            return
+        payload = self._read_json_body()
+        if payload is None or not isinstance(payload, dict):
+            self._send_json(400, {"ok": False, "message": "JSON malformato"})
+            return
+        conn = _portfolio_conn()
+        try:
+            # Only pass fields that are present in the payload.
+            kwargs: dict[str, Any] = {}
+            for field in ("trade_date", "ticker", "action", "quantity",
+                          "price_usd", "commission_usd", "note"):
+                if field in payload:
+                    kwargs[field] = payload[field]
+            tx = update_transaction(conn, tx_id, **kwargs)
+        except TransactionError as exc:
+            self._send_json(400, {"ok": False, "message": str(exc)})
+            return
+        finally:
+            conn.close()
+        if tx is None:
+            self._send_json(404, {"ok": False, "message": "transaction not found"})
+            return
+        self._send_json(200, {"ok": True, "transaction": tx})
+
+    def _handle_delete_transaction(self) -> None:
+        """DELETE /api/transactions/{id}"""
+        tx_id = self._extract_id_from_path("/api/transactions/")
+        if tx_id is None:
+            self._send_json(400, {"ok": False, "message": "invalid transaction id"})
+            return
+        conn = _portfolio_conn()
+        try:
+            deleted = delete_transaction(conn, tx_id)
+        finally:
+            conn.close()
+        if not deleted:
+            self._send_json(404, {"ok": False, "message": "transaction not found"})
+            return
+        self._send_json(200, {"ok": True, "message": "deleted"})
+
+    # ── Portfolio: positions ─────────────────────────────────────────────
+
+    def _handle_get_positions(self) -> None:
+        conn = _portfolio_conn()
+        try:
+            txs = get_transactions(conn)
+        finally:
+            conn.close()
+        # Fetch current prices from output.json if available.
+        prices = self._load_prices()
+        result = calculate_positions(txs, prices=prices)
+        positions = [_pos_to_dict(pos) for pos in result.positions.values()]
+        self._send_json(200, {
+            "ok": True,
+            "positions": positions,
+            "realized_pnl_by_ticker": result.realized_pnl_by_ticker,
+        })
+
+    def _handle_get_position_ticker(self) -> None:
+        """GET /api/positions/{ticker}"""
+        ticker = self.path.split("/api/positions/")[-1].strip().upper()
+        if not ticker:
+            self._send_json(400, {"ok": False, "message": "invalid ticker"})
+            return
+        conn = _portfolio_conn()
+        try:
+            txs = get_transactions(conn)
+        finally:
+            conn.close()
+        prices = self._load_prices()
+        result = calculate_positions(txs, prices=prices)
+        pos = result.positions.get(ticker)
+        if pos is None:
+            self._send_json(404, {"ok": False, "message": f"no open position for {ticker}"})
+            return
+        self._send_json(200, {"ok": True, "position": _pos_to_dict(pos)})
+
+    # ── Helpers ──────────────────────────────────────────────────────────
+
+    def _extract_id_from_path(self, prefix: str) -> int | None:
+        """Extract a numeric id from a URL path like /api/transactions/123."""
+        try:
+            return int(self.path[len(prefix):].strip("/"))
+        except (ValueError, IndexError):
+            return None
+
+    def _load_prices(self) -> dict[str, float] | None:
+        """Load last_close per ticker from output.json, if available."""
+        output_path = PROJECT_ROOT / "output" / "output.json"
+        if not output_path.exists():
+            return None
+        try:
+            with output_path.open("r", encoding="utf-8") as fh:
+                data = json.load(fh)
+        except (json.JSONDecodeError, OSError):
+            return None
+        prices: dict[str, float] = {}
+        indicators = data.get("indicators", {})
+        for category in indicators.values():
+            if not isinstance(category, dict):
+                continue
+            for ticker, entry in category.items():
+                if isinstance(entry, dict) and "last_close" in entry:
+                    try:
+                        prices[ticker] = float(entry["last_close"])
+                    except (TypeError, ValueError):
+                        pass
+        return prices or None
+
+
+def _pos_to_dict(pos) -> dict[str, Any]:
+    """Convert a Position dataclass to a JSON-serializable dict."""
+    return {
+        "ticker": pos.ticker,
+        "quantity": pos.quantity,
+        "average_entry_price_usd": pos.average_entry_price,
+        "total_cost_usd": pos.total_cost,
+        "realized_pnl_usd": pos.realized_pnl,
+        "market_price_usd": pos.market_price,
+        "market_value_usd": pos.market_value,
+        "unrealized_pnl_usd": pos.unrealized_pnl,
+        "unrealized_pnl_pct": pos.unrealized_pnl_pct,
+        "total_pnl_usd": pos.total_pnl,
+        "total_pnl_pct": pos.total_pnl_pct,
+    }
 
 
 def _overrides_path() -> Path:
