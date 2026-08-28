@@ -279,9 +279,10 @@ class OverridesHandler(BaseHTTPRequestHandler):
         if self.path == "/api/transactions":
             self._handle_post_transaction()
             return
-        if self.path != "/api/save":
-            self._send_json(404, {"ok": False, "message": "not found"})
+        if self.path == "/api/save":
+            self._handle_save()
             return
+        self._send_json(404, {"ok": False, "message": "not found"})
 
     def do_PUT(self) -> None:  # noqa: N802 (http.server API)
         if not self._require_auth():
@@ -298,6 +299,9 @@ class OverridesHandler(BaseHTTPRequestHandler):
             self._handle_delete_transaction()
             return
         self._send_json(404, {"ok": False, "message": "not found"})
+
+    def _handle_save(self) -> None:
+        """Validate + save one manual override, then rebuild report."""
         try:
             length = int(self.headers.get("Content-Length", "0"))
             payload = json.loads(self.rfile.read(length).decode("utf-8"))
