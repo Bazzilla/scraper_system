@@ -24,13 +24,21 @@ from report_helpers import FAVICON_LINK, render_nav
 
 _PAGE_CSS = _CSS + """\
 .category-card { background: var(--card); border: 1px solid var(--border);
-        border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+        border-radius: 12px; margin-bottom: 16px; }
+.category-card summary { display: flex; align-items: center; gap: 10px;
+        flex-wrap: wrap; padding: 12px 16px; cursor: pointer;
+        list-style: none; user-select: none; }
+.category-card summary::-webkit-details-marker { display: none; }
+.category-card summary::after { content: "▾"; font-size: 0.9rem;
+        color: var(--muted); margin-left: auto; transition: transform 0.15s ease; }
+.category-card[open] summary::after { transform: rotate(180deg); }
 .category-head { display: flex; align-items: center; gap: 10px;
-        flex-wrap: wrap; margin-bottom: 10px; }
+        flex-wrap: wrap; width: 100%; }
 .category-head input.cat-name { background: var(--bg); color: var(--text);
         border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px;
         font-size: 1rem; font-weight: 700; width: 220px; }
 .category-head .count { color: var(--muted); font-size: 0.85rem; }
+.category-body { padding: 0 16px 16px; }
 .ticker-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
         padding: 4px 0; border-bottom: 1px solid var(--border); }
 .ticker-row:last-of-type { border-bottom: none; }
@@ -84,13 +92,14 @@ _EDITOR_SCRIPT = """\
     var html = "";
     Object.keys(model).forEach(function (cat) {
       var entries = model[cat];
-      html += '<div class="category-card" data-cat="' + esc(cat) + '">';
-      html += '<div class="category-head">'
+      html += '<details class="category-card" data-cat="' + esc(cat) + '" open>';
+      html += '<summary><div class="category-head">'
         + '<label>Nome categoria <input class="txt cat-name" data-cat="' + esc(cat)
-        + '" value="' + esc(cat) + '"></label>'
+        + '" value="' + esc(cat) + '" onclick="event.stopPropagation()"></label>'
         + '<span class="count">' + entries.length + ' ticker</span>'
         + '<button type="button" class="danger" data-action="remove-category"'
-        + ' data-cat="' + esc(cat) + '">Elimina categoria</button></div>';
+        + ' data-cat="' + esc(cat) + '">Elimina categoria</button></div></summary>';
+      html += '<div class="category-body">';
       entries.forEach(function (t, i) {
         html += '<div class="ticker-row">'
           + '<input class="txt sym" value="' + esc(t.symbol) + '" readonly>'
@@ -105,7 +114,7 @@ _EDITOR_SCRIPT = """\
         + '<input class="txt nm" data-new-name="' + esc(cat) + '" placeholder="Nome società">'
         + '<button type="button" class="primary" data-action="add-ticker"'
         + ' data-cat="' + esc(cat) + '">+ Aggiungi</button></div>';
-      html += '</div>';
+      html += '</div></details>';
     });
     listEl.innerHTML = html;
   }
@@ -225,7 +234,40 @@ _EDITOR_SCRIPT = """\
       });
   });
 
+  /* ── Global toggle: Apri/Chiudi tutte ─────────────────────────── */
+  var toggleBtn = document.getElementById("sections-toggle");
+  function allOpen() {
+    var cards = document.querySelectorAll(".category-card");
+    for (var i = 0; i < cards.length; i++) {
+      if (!cards[i].open) return false;
+    }
+    return true;
+  }
+  function updateToggleLabel() {
+    if (toggleBtn) {
+      toggleBtn.textContent = allOpen() ? "🗂️ Chiudi tutte" : "🗂️ Apri tutte";
+    }
+  }
+  if (toggleBtn) {
+    toggleBtn.addEventListener("click", function () {
+      var open = !allOpen();
+      var cards = document.querySelectorAll(".category-card");
+      for (var i = 0; i < cards.length; i++) {
+        cards[i].open = open;
+      }
+      updateToggleLabel();
+    });
+  }
+
   render();
+  updateToggleLabel();
+
+  /* Aggiorna label toggle quando un singolo details cambia */
+  listEl.addEventListener("toggle", function (ev) {
+    if (ev.target.classList && ev.target.classList.contains("category-card")) {
+      updateToggleLabel();
+    }
+  }, true);
 })();
 </script>
 """
@@ -252,6 +294,7 @@ def render_tickers_page(tickers: dict[str, Any]) -> str:
         '<button id="save-btn" type="button" class="primary">💾 Salva su config.yaml</button>'
         '<input id="new-category" class="txt" placeholder="nuova-categoria">'
         '<button id="add-category-btn" type="button" class="subtle">+ Nuova categoria</button>'
+        '<button id="sections-toggle" type="button" class="subtle">🗂️ Chiudi tutte</button>'
         '<span id="msg" role="status"></span>'
         "</div>"
         f'<script id="tickers-data" type="application/json">{payload}</script>'
