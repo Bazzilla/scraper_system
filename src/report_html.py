@@ -68,6 +68,12 @@ DEFAULT_HTML_PATH = "output/report.html"
 
 """Report-specific CSS — appended to _BASE_CSS via page_base."""
 _REPORT_CSS = """\
+/* Layout: il report ha tabelle a 12 colonne → container più largo delle
+   altre pagine (override della variabile definita in _BASE_CSS). */
+:root { --container-max: 1400px; }
+/* Densità: tabelle ticker dense → padding e font ridotti. */
+table.ticker-table th, table.ticker-table td { padding: 6px 10px; }
+table.ticker-table td { font-size: 0.85rem; }
 .age { color: var(--muted); font-size: 0.75rem; display: block; margin-top: 2px; }
 .badge.age-badge { margin-left: 8px; }
 .fgi-components { margin-top: 10px; border-top: 1px solid var(--border);

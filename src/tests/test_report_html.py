@@ -582,6 +582,31 @@ class TestAttrattivaScore(unittest.TestCase):
         self.assertIn("Sottopunteggio (0-29)", html)
 
 
+class TestPageLayout(unittest.TestCase):
+    """Larghezza per-pagina: report più largo (12 colonne), resto a 1100px."""
+
+    def test_base_css_defines_container_variable(self):
+        from page_base import _BASE_CSS
+        self.assertIn("--container-max: 1100px", _BASE_CSS)
+        self.assertIn("max-width: var(--container-max)", _BASE_CSS)
+
+    def test_report_css_overrides_container_width(self):
+        from report_html import _REPORT_CSS
+        self.assertIn("--container-max: 1400px", _REPORT_CSS)
+
+    def test_report_css_has_dense_ticker_tables(self):
+        from report_html import _REPORT_CSS
+        self.assertIn("table.ticker-table th, table.ticker-table td", _REPORT_CSS)
+        self.assertIn("padding: 6px 10px", _REPORT_CSS)
+
+    def test_report_page_uses_wider_container(self):
+        # Il CSS finale della pagina report contiene sia il default sia l'override
+        data = _sample_data()
+        html = build_page(data)
+        self.assertIn("--container-max: 1100px", html)   # default da _BASE_CSS
+        self.assertIn("--container-max: 1400px", html)   # override da _REPORT_CSS
+
+
 class TestRenderSections(unittest.TestCase):
     def test_market_cards_contains_values(self):
         html = render_market_cards(_sample_data())

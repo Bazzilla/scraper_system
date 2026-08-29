@@ -14,7 +14,7 @@ from report_helpers import FAVICON_LINK, render_nav
 _BASE_CSS = """\
 :root { --bg: #0f1419; --card: #1a212b; --border: #2c3542; --text: #e6edf3;
         --muted: #8b949e; --green: #2ea043; --yellow: #d29922; --red: #f85149;
-        --neutral: #58a6ff; }
+        --neutral: #58a6ff; --container-max: 1100px; }
 [data-theme="light"] { --bg: #f6f8fa; --card: #ffffff; --border: #d0d7de;
         --text: #1f2328; --muted: #57606a; --green: #1a7f37; --yellow: #9a6700;
         --red: #cf222e; --neutral: #0969da; }
@@ -22,7 +22,7 @@ _BASE_CSS = """\
 body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
         sans-serif; background: var(--bg); color: var(--text); line-height: 1.5;
         padding: 24px; }
-.container { max-width: 1100px; margin: 0 auto; }
+.container { max-width: var(--container-max); margin: 0 auto; }
 header { display: flex; flex-direction: column; align-items: flex-start;
         gap: 8px; margin-bottom: 24px; }
 h1 { font-size: 1.5rem; }
