@@ -456,14 +456,14 @@ class TestBuyTheDipGate(unittest.TestCase):
 
 
 class TestAttrattivaScore(unittest.TestCase):
-    """Punteggio Attrattiva 0-100: versione numerica ordinabile del Segnale."""
+    """Punteggio Attrattiva: versione numerica ordinabile, allineata al Segnale."""
 
-    def test_all_missing_data_is_zero(self):
-        # Fail-closed: nessun dato → nessuna attrattiva
-        self.assertEqual(attrattiva_score({}), 0)
-        self.assertEqual(attrattiva_score({}, fgi_score=None), 0)
+    def test_all_missing_data_fails_low(self):
+        # Fail-closed: nessun dato → fondo della banda ATTENDI
+        self.assertEqual(attrattiva_score({}), 10)
+        self.assertEqual(attrattiva_score({}, fgi_score=None), 10)
 
-    def test_perfect_dip_with_strong_open_caps_at_100(self):
+    def test_perfect_dip_with_strong_open_reaches_99(self):
         entry = {
             "last_close": 100.0,
             "rsi_14": 15.0,        # dip pieno → 15
@@ -472,8 +472,8 @@ class TestAttrattivaScore(unittest.TestCase):
             "sma_200": 80.0,       # sopra → 10
             "drawdown_52w": -40.0, # profondo → 15
         }
-        # tech 60 + gate strong_open 40 = 100
-        self.assertEqual(attrattiva_score(entry, fgi_score=15), 100)
+        # buy → base 70 + sub 29 = 99
+        self.assertEqual(attrattiva_score(entry, fgi_score=15), 99)
 
     def test_score_never_exceeds_100(self):
         entry = {"rsi_14": 0, "mfi_14": 0, "sma_50": 1, "sma_200": 1,
@@ -495,17 +495,47 @@ class TestAttrattivaScore(unittest.TestCase):
         self.assertGreater(s_bull, s_weak)
         self.assertGreater(s_weak, s_neut)
 
+    def test_hold_never_outranks_watchlist(self):
+        # Allineamento per costruzione: il miglior ATTENDI resta sotto il
+        # peggiore OSSERVA (bande disgiunte 10-39 / 40-69 / 70-99).
+        hold_max = {"last_close": 100.0, "rsi_14": 15.0, "mfi_14": 10.0,
+                    "sma_50": 90.0, "sma_200": 80.0, "drawdown_52w": -2.0}
+        # bullish + gate chiuso → hold; tech 46 → sub 22 → 32
+        self.assertEqual(attrattiva_score(hold_max, fgi_score=60), 32)
+        watchlist_min = {"last_close": 100.0, "rsi_14": 75.0, "mfi_14": 85.0,
+                         "sma_50": 110.0, "sma_200": 120.0, "drawdown_52w": -16.0}
+        # weak → watchlist; tech 8 → sub 4 → 44
+        self.assertEqual(attrattiva_score(watchlist_min, fgi_score=60), 44)
+        self.assertLess(
+            attrattiva_score(hold_max, fgi_score=60),
+            attrattiva_score(watchlist_min, fgi_score=60),
+        )
+
+    def test_weak_outranks_strong_hold_when_gate_closed(self):
+        # Caso reale ENERGY (FGI 54, gate chiuso): il weak (OSSERVA) deve
+        # superare il bullish-con-forza bloccato dal gate (ATTENDI).
+        duk_like = {"last_close": 100.0, "rsi_14": 41.9, "mfi_14": 30.0,
+                    "sma_50": 110.0, "sma_200": 120.0, "drawdown_52w": -7.9}
+        epd_like = {"last_close": 100.0, "rsi_14": 60.3, "mfi_14": 55.0,
+                    "sma_50": 90.0, "sma_200": 80.0, "drawdown_52w": -0.4}
+        self.assertEqual(compute_signal(duk_like, fgi_score=54), "watchlist")
+        self.assertEqual(compute_signal(epd_like, fgi_score=54), "hold")
+        self.assertGreater(
+            attrattiva_score(duk_like, fgi_score=54),   # OSSERVA → 44
+            attrattiva_score(epd_like, fgi_score=54),   # ATTENDI → 20
+        )
+
     def test_gate_contribution_fear_beats_greed(self):
-        # Stesso entry: FGI in paura → score più alto che in greed
+        # Stesso entry: FGI in paura → banda buy; in greed → banda hold
         entry = {"last_close": 100.0, "rsi_14": 25.0, "mfi_14": 15.0,
                  "sma_50": 90.0, "sma_200": 80.0, "drawdown_52w": -8.0}
         self.assertGreater(
-            attrattiva_score(entry, fgi_score=15),   # strong_open → 40
-            attrattiva_score(entry, fgi_score=60),   # closed → 6
+            attrattiva_score(entry, fgi_score=15),   # strong_open → buy
+            attrattiva_score(entry, fgi_score=60),   # closed → hold
         )
 
     def test_missing_fgi_scores_lower_than_open_gate(self):
-        # Fail-closed: FGI mancante → 0 pt gate, meno del gate aperto
+        # Fail-closed: FGI mancante → gate blocca la banda buy
         entry = {"last_close": 100.0, "rsi_14": 25.0, "mfi_14": 15.0,
                  "sma_50": 90.0, "sma_200": 80.0, "drawdown_52w": -8.0}
         self.assertGreater(
@@ -521,11 +551,11 @@ class TestAttrattivaScore(unittest.TestCase):
         self.assertLessEqual(score, 100)
 
     def test_overbought_ticker_scores_low(self):
-        # Ipercomprato + sopra le SMA: nessun dip → solo forza + gate
+        # Ipercomprato + sopra le SMA: bullish ma gate chiuso → banda ATTENDI
         entry = {"last_close": 100.0, "rsi_14": 75.0, "mfi_14": 85.0,
                  "sma_50": 90.0, "sma_200": 80.0, "drawdown_52w": -2.0}
-        # tech: 0 dip (rsi/mfi overbought) + 1 dd + 20 forza = 21; FGI 60 → closed 6 → 27
-        self.assertEqual(attrattiva_score(entry, fgi_score=60), 27)
+        # hold → base 10 + sub round(21/60*29)=10 → 20
+        self.assertEqual(attrattiva_score(entry, fgi_score=60), 20)
 
     def test_attrattiva_column_in_table(self):
         data = _sample_data()
@@ -546,9 +576,10 @@ class TestAttrattivaScore(unittest.TestCase):
     def test_legend_explains_attrattiva(self):
         html = render_legend()
         self.assertIn("Attrattiva", html)
-        self.assertIn("0 - 100", html)
-        self.assertIn("Componente tecnica (0-60)", html)
-        self.assertIn("Componente di mercato (0-40)", html)
+        self.assertIn("70-99", html)
+        self.assertIn("40-69", html)
+        self.assertIn("10-39", html)
+        self.assertIn("Sottopunteggio (0-29)", html)
 
 
 class TestRenderSections(unittest.TestCase):

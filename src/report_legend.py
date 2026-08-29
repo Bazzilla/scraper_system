@@ -220,24 +220,26 @@ _LEGEND_STOCK = [
     },
     {
         "name": "Attrattiva",
-        "range": "0 - 100",
-        "short": "Punteggio sintetico buy-the-dip: quanto il titolo è papabile ora.",
+        "range": "10 - 99",
+        "short": "Punteggio sintetico buy-the-dip, allineato al Segnale: ordinabile.",
         "detail": (
             "Versione numerica e <strong>ordinabile</strong> del Segnale: ordinando "
-            "la colonna si ottiene la classifica dei titoli dal più al meno papabile "
-            "secondo la strategia buy-the-dip. Stessi input del Segnale, due "
-            "componenti:<br>"
-            "<strong>Componente tecnica (0-60)</strong>: RSI basso (fino a 15 pt), MFI "
-            "basso (fino a 10), drawdown profondo (fino a 15), prezzo sopra SMA50 (10) "
-            "e SMA200 (10) — premia la convergenza ipervenduto + forza, il profilo "
-            "buy-the-dip.<br>"
-            "<strong>Componente di mercato (0-40)</strong>: gate FGI — paura forte "
-            "(FGI ≤ 20) 40 pt, gate aperto (≤ 25) 34, sola osservazione (≤ 40) 22, "
-            "chiuso 6, mancante/stale 0 (fail-closed).<br>"
-            "<strong>Lettura</strong>: 75-100 attrattiva alta (setup tecnico + paura "
-            "sufficiente); 50-74 media; 25-49 bassa; 0-24 trascurabile. Dati mancanti "
-            "→ 0 pt per quella componente (mai premi su dati assenti). Il Segnale "
-            "resta il riferimento categorico: l'Attrattiva è la sua versione "
+            "la colonna le icone di segnale si raggruppano in ordine di papabilità "
+            "(ATTENDI in fondo, OSSERVA in mezzo, VALUTA INGRESSO in cima). La "
+            "<strong>banda</strong> deriva dal Segnale stesso:<br>"
+            "<strong>70-99</strong> = VALUTA INGRESSO (setup tecnico favorevole + gate "
+            "FGI aperto);<br>"
+            "<strong>40-69</strong> = OSSERVA (dip profondo da monitorare oppure setup "
+            "bloccato dal gate in sola osservazione);<br>"
+            "<strong>10-39</strong> = ATTENDI (nessuna condizione o gate chiuso; i "
+            "valori più alti della banda = titoli con forza tecnica, i primi a "
+            "diventare interessanti se il gate si apre).<br>"
+            "<strong>Sottopunteggio (0-29) dentro ogni banda</strong>: componente "
+            "tecnica continua — RSI basso (fino a 15 pt), MFI basso (fino a 10), "
+            "drawdown profondo (fino a 15), prezzo sopra SMA50 (10) e SMA200 (10) — "
+            "normalizzata; ordina i titoli con lo stesso segnale. Dati mancanti → 0 pt "
+            "per quella componente (fail-closed, mai premi su dati assenti). Il "
+            "Segnale resta il riferimento categorico: l'Attrattiva è la sua versione "
             "continua, non un consiglio operativo."
         ),
     },

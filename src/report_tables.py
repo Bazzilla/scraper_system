@@ -102,7 +102,7 @@ def render_ticker_table(
         entry = entries[symbol]
         ind = entry
         signal = compute_signal(ind, regime, fgi_score=fgi_score)
-        score = attrattiva_score(ind, fgi_score=fgi_score)
+        score = attrattiva_score(ind, fgi_score=fgi_score, regime=regime)
 
         def _dv(value: Any) -> str:
             """Machine-readable cell value ('' quando assente)."""
