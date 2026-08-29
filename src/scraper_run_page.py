@@ -12,10 +12,9 @@ which runs ``run.py`` in a subprocess and streams stdout line-by-line.
 
 from __future__ import annotations
 
-from report_html import _CSS, _SCRIPT
-from report_helpers import FAVICON_LINK, render_nav
+from page_base import _SHARED_SCRIPT, render_header, wrap_page
 
-_PAGE_CSS = _CSS + """\
+_SCRAPER_RUN_CSS = """\
 .run-card { background: var(--card); border: 1px solid var(--border);
         border-radius: 12px; padding: 16px; margin-top: 20px; }
 .mode-select { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
@@ -264,28 +263,18 @@ _RUN_SCRIPT = """\
 
 def render_scraper_run_page() -> str:
     """Render the scraper-run launch page."""
-    return (
-        "<!DOCTYPE html>\n<html lang=\"it\" data-theme=\"dark\">\n<head>"
-        "<meta charset=\"utf-8\">"
-        f"{FAVICON_LINK}"
-        "<title>Esecuzione scraping</title>"
-        f"<style>{_PAGE_CSS}</style>"
-        "</head>\n<body><div class=\"container\">"
-        "<header>"
-        f'<div>{render_nav("scraper-run")} '
-        '<button id="theme-toggle" type="button">☀️ Light</button></div>'
-        "<div><h1>🚀 Esecuzione scraping</h1>"
-        '<div class="sub">Lancia la pipeline di scraping dal browser</div></div>'
-        "</header>"
+    header = render_header("scraper-run", "\U0001f680 Esecuzione scraping",
+                           "Lancia la pipeline di scraping dal browser")
+    content = (
         f'<div class="run-card">{_MODE_OPTIONS}</div>'
         '<div id="status-bar" class="status-bar"></div>'
         '<div class="output-card">'
         '<div class="output-header"><span>Output</span>'
-        '<button id="clear-btn" class="clear-btn" type="button">✕ Pulisci</button></div>'
+        '<button id="clear-btn" class="clear-btn" type="button">\u2715 Pulisci</button></div>'
         '<pre id="output"></pre>'
         "</div>"
-        "</div>"
-        f"{_SCRIPT}"
-        f"<script>{_RUN_SCRIPT}</script>"
-        "</body>\n</html>"
+    )
+    return wrap_page(
+        "Esecuzione scraping", "scraper-run", _SCRAPER_RUN_CSS, header, content,
+        scripts=f"{_SHARED_SCRIPT}<script>{_RUN_SCRIPT}</script>",
     )

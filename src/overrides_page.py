@@ -16,11 +16,11 @@ from __future__ import annotations
 import html as html_mod
 from typing import Any
 
-from report_html import _CSS, _SCRIPT, format_iso_dt
-from report_helpers import FAVICON_LINK, render_nav
+from page_base import _SHARED_SCRIPT, render_header, wrap_page
+from report_html import format_iso_dt
 from indicator_fields import INDICATOR_FIELDS
 
-_PAGE_CSS = _CSS + """\
+_OVERRIDES_CSS = """\
 .override-form { margin-top: 24px; }
 .override-card { background: var(--card); border: 1px solid var(--border);
         border-radius: 12px; padding: 16px; margin-bottom: 16px; }
@@ -130,35 +130,21 @@ def _render_card(indicator: str, spec: dict[str, Any], entry: dict[str, Any]) ->
     )
 
 
-_OVERRIDES_SCRIPT = _SCRIPT + """\
+_OVERRIDES_SCRIPT = """\
 <script>
-// POST JSON con retry su 401: al primo 401 il browser mostra il prompt di
-// Basic Auth e memorizza le credenziali; la richiesta originale NON viene
-// ritentata automaticamente, quindi ritentiamo qui (max 2 tentativi).
-function postJSON(url, payload, attempt) {
-  return fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  }).then(function (resp) {
-    if (resp.status === 401 && attempt < 2) return postJSON(url, payload, attempt + 1);
-    return resp.json();
-  });
-}
 function saveOverride(key) {
   var card = document.querySelector('[data-key="' + key + '"]');
   var payload = { key: key, enabled: card.querySelector('[name="enabled"]').checked };
   card.querySelectorAll("input[name]").forEach(function (input) {
     if (input.name !== "enabled") {
       var val = input.value;
-      // Campi decimali: '.' e ',' sono entrambi separatori decimali
       if (input.getAttribute("inputmode") === "decimal") {
         val = val.replace(/\\s/g, "").replace(",", ".");
       }
       payload[input.name] = val;
     }
   });
-  postJSON("/api/save", payload, 1).then(function (data) {
+  window.__helpers.postJSON("/api/save", payload, 1).then(function (data) {
     var msg = document.createElement("div");
     msg.className = "msg " + (data.ok ? "ok" : "err");
     msg.textContent = data.message || (data.ok ? "Salvato" : "Errore");
@@ -176,21 +162,10 @@ def render_overrides_page(overrides: dict[str, Any]) -> str:
         _render_card(indicator, spec, overrides.get(indicator, {}))
         for indicator, spec in INDICATOR_FIELDS.items()
     )
-    return (
-        "<!DOCTYPE html>\n<html lang=\"it\" data-theme=\"dark\">\n<head>"
-        "<meta charset=\"utf-8\">"
-        f"{FAVICON_LINK}"
-        "<title>Immissione manuale indicatori</title>"
-        f"<style>{_PAGE_CSS}</style>"
-        "</head>\n<body><div class=\"container\">"
-        "<header>"
-        f'<div>{render_nav("overrides")} '
-        '<button id="theme-toggle" type="button">☀️ Light</button></div>'
-        "<div><h1>✍️ Immissione manuale indicatori</h1>"
-        '<div class="sub">Valori per gli indicatori non scrapabili</div></div>'
-        "</header>"
-        f'<div class="override-form">{cards}</div>'
-        "</div>"
-        f"{_OVERRIDES_SCRIPT}"
-        "</body>\n</html>"
+    header = render_header("overrides", "\u270d\ufe0f Immissione manuale indicatori",
+                           "Valori per gli indicatori non scrapabili")
+    content = f'<div class="override-form">{cards}</div>'
+    return wrap_page(
+        "Immissione manuale indicatori", "overrides", _OVERRIDES_CSS,
+        header, content, scripts=f"{_SHARED_SCRIPT}{_OVERRIDES_SCRIPT}",
     )

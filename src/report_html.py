@@ -28,6 +28,7 @@ from typing import Any
 import yaml
 
 from config_loader import normalize_tickers
+from page_base import _BASE_CSS, _SHARED_SCRIPT, render_header, wrap_page
 
 # Re-export from submodules so existing imports (tests, overrides_page,
 # overrides_server) keep working unchanged.
@@ -64,26 +65,8 @@ from report_tables import (  # noqa: F401
 
 DEFAULT_HTML_PATH = "output/report.html"
 
-_CSS = """\
-:root { --bg: #0f1419; --card: #1a212b; --border: #2c3542; --text: #e6edf3;
-        --muted: #8b949e; --green: #2ea043; --yellow: #d29922; --red: #f85149;
-        --neutral: #58a6ff; }
-[data-theme="light"] { --bg: #f6f8fa; --card: #ffffff; --border: #d0d7de;
-        --text: #1f2328; --muted: #57606a; --green: #1a7f37; --yellow: #9a6700;
-        --red: #cf222e; --neutral: #0969da; }
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-        sans-serif; background: var(--bg); color: var(--text); line-height: 1.5;
-        padding: 24px; }
-.container { max-width: 1100px; margin: 0 auto; }
-header { display: flex; flex-direction: column; align-items: flex-start;
-        gap: 8px; margin-bottom: 24px; }
-h1 { font-size: 1.5rem; }
-.sub { color: var(--muted); font-size: 0.9rem; }
-.badge { padding: 2px 10px; border-radius: 999px; font-size: 0.8rem;
-        font-weight: 600; }
-.badge.fresh { background: var(--green); color: #fff; }
-.badge.stale { background: var(--red); color: #fff; }
+"""Report-specific CSS — appended to _BASE_CSS via page_base."""
+_REPORT_CSS = """\
 .age { color: var(--muted); font-size: 0.75rem; display: block; margin-top: 2px; }
 .badge.age-badge { margin-left: 8px; }
 .fgi-components { margin-top: 10px; border-top: 1px solid var(--border);
@@ -91,14 +74,8 @@ h1 { font-size: 1.5rem; }
 .fgi-components .comp { display: flex; justify-content: space-between;
         align-items: center; gap: 8px; }
 .fgi-components .comp-name { color: var(--muted); }
-button#theme-toggle { background: var(--card); color: var(--text);
-        border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px;
-        cursor: pointer; font-size: 0.9rem; }
-h2 { margin: 28px 0 12px; font-size: 1.15rem; }
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
         gap: 16px; }
-.card { background: var(--card); border: 1px solid var(--border);
-        border-radius: 12px; padding: 16px; }
 .card .label { color: var(--muted); font-size: 0.8rem; text-transform: uppercase;
         letter-spacing: 0.05em; }
 .card .value { font-size: 1.6rem; font-weight: 700; margin: 4px 0; }
@@ -119,16 +96,6 @@ h2 { margin: 28px 0 12px; font-size: 1.15rem; }
 .sema-cell { display: flex; justify-content: space-between; align-items: center;
         gap: 8px; width: 100%; }
 .sema-val { white-space: nowrap; }
-table { width: 100%; border-collapse: collapse; background: var(--card);
-        border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-th, td { padding: 8px 12px; text-align: right; border-bottom: 1px solid var(--border);
-        font-size: 0.9rem; }
-th { background: var(--card); color: var(--muted); font-weight: 600;
-        text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.04em;
-        text-align: center; }
-td:first-child, th:first-child { text-align: left; }
-tr:last-child td { border-bottom: none; }
-tr:hover td { background: rgba(88, 166, 255, 0.06); }
 .ticker { font-weight: 700; }
 .name { color: var(--muted); font-size: 0.8rem; }
 .ticker-meta { display: block; color: var(--muted); font-size: 0.72rem;
@@ -137,8 +104,6 @@ tr:hover td { background: rgba(88, 166, 255, 0.06); }
 .meta-validity { color: var(--muted); }
 .meta-role { color: var(--muted); font-style: italic; }
 .meta-notes { color: var(--muted); opacity: 0.85; }
-footer { margin-top: 32px; color: var(--muted); font-size: 0.85rem;
-        border-top: 1px solid var(--border); padding-top: 16px; }
 .legend { margin-top: 24px; }
 .legend-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
         gap: 12px; }
@@ -148,8 +113,8 @@ footer { margin-top: 32px; color: var(--muted); font-size: 0.85rem;
         display: flex; justify-content: space-between; align-items: center;
         gap: 8px; list-style: none; }
 .legend-card summary::-webkit-details-marker { display: none; }
-.legend-card summary::after { content: "ℹ️"; font-size: 0.9rem; }
-.legend-card[open] summary::after { content: "✖"; font-size: 0.9rem; }
+.legend-card summary::after { content: "\\2139\\fe0f"; font-size: 0.9rem; }
+.legend-card[open] summary::after { content: "\\2716"; font-size: 0.9rem; }
 .legend-card .legend-detail { margin-top: 8px; color: var(--text); font-size: 0.85rem;
         border-top: 1px solid var(--border); padding-top: 8px; }
 .legend-card .legend-range { color: var(--muted); font-size: 0.8rem; }
@@ -174,27 +139,6 @@ footer { margin-top: 32px; color: var(--muted); font-size: 0.85rem;
 .indicator-matrix table { width: 100%; }
 .indicator-matrix td { text-align: left; vertical-align: top; }
 .indicator-matrix th { text-align: left; }
-details.section { margin: 28px 0 12px; background: var(--card);
-        border: 1px solid var(--border); border-radius: 12px; }
-details.section > summary { cursor: pointer; list-style: none; padding: 12px 16px;
-        display: flex; align-items: center; justify-content: space-between; }
-details.section > summary::-webkit-details-marker { display: none; }
-details.section > summary h2 { margin: 0; font-size: 1.15rem; }
-details.section > summary::after { content: "▾"; font-size: 1rem; color: var(--muted);
-        transition: transform 0.15s ease; }
-details.section[open] > summary::after { transform: rotate(180deg); }
-details.section > .section-body { padding: 0 16px 16px; }
-button#sections-toggle { background: var(--card); color: var(--text);
-        border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px;
-        cursor: pointer; font-size: 0.9rem; }
-.sections-toolbar { display: flex; justify-content: flex-end; margin-bottom: 8px; }
-.page-nav { display: inline-flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.page-nav a { padding: 4px 12px; border-radius: 999px; font-size: 0.85rem;
-        font-weight: 600; text-decoration: none; background: var(--card);
-        color: var(--text); border: 1px solid var(--border); }
-.page-nav a.active { background: var(--green); color: #fff;
-        border-color: var(--green); }
-.page-nav a:hover { opacity: 0.85; }
 /* Sort & filter tabelle ticker */
 table.ticker-table th.sortable { cursor: pointer; user-select: none; }
 table.ticker-table th.sorted { color: var(--neutral); }
@@ -232,33 +176,14 @@ table.ticker-table th.sorted { color: var(--neutral); }
         background: rgba(88, 166, 255, 0.08);
         border-left: 3px solid var(--neutral); padding: 6px 10px;
         border-radius: 6px; }
-.sell-signal { display: inline-block; padding: 2px 8px; border-radius: 6px;
-        font-size: 0.75rem; font-weight: 600; }
-.sell-NESSUNA { background: var(--card); color: var(--muted); }
-.sell-MANTIENI { background: #1a3a1a; color: #4ade80; }
-.sell-PRENDI { background: #3a2a0a; color: #fbbf24; }
-.sell-RIDUCI { background: #3a1a1a; color: #f87171; }
-.sell-ATTENZIONE { background: #2a1a3a; color: #c084fc; }
 .portfolio-summary .pnl-pos { color: var(--green); font-weight: 600; }
 .portfolio-summary .pnl-neg { color: var(--red); font-weight: 600; }
 """
 
-_SCRIPT = """\
+"""Report-specific script — age badges for data-fetched-at elements."""
+_REPORT_SCRIPT = """\
 <script>
 (function () {
-  var saved = localStorage.getItem("report-theme");
-  var theme = saved || "dark";
-  document.documentElement.setAttribute("data-theme", theme);
-  var btn = document.getElementById("theme-toggle");
-  btn.textContent = theme === "dark" ? "☀️ Light" : "🌙 Dark";
-  btn.addEventListener("click", function () {
-    var next = theme === "dark" ? "light" : "dark";
-    theme = next;
-    document.documentElement.setAttribute("data-theme", next);
-    localStorage.setItem("report-theme", next);
-    btn.textContent = next === "dark" ? "☀️ Light" : "🌙 Dark";
-  });
-
   function fmtAge(ms) {
     var min = Math.floor(ms / 60000);
     if (min < 60) return min + "min fa";
@@ -266,7 +191,6 @@ _SCRIPT = """\
     if (h < 24) return h + "h fa";
     return Math.floor(h / 24) + "g fa";
   }
-
   function fmtRemaining(ms) {
     var min = Math.ceil(ms / 60000);
     if (min < 60) return "tra " + min + "min";
@@ -274,7 +198,6 @@ _SCRIPT = """\
     if (h < 24) return "tra " + h + "h";
     return "tra " + Math.ceil(h / 24) + "g";
   }
-
   var els = document.querySelectorAll("[data-fetched-at]");
   for (var i = 0; i < els.length; i++) {
     var el = els[i];
@@ -288,58 +211,20 @@ _SCRIPT = """\
     var status = isStale ? "stale" : "fresh";
     var text = isStale
       ? "scaduto da " + fmtAge(ageMs - staleMs)
-      : "aggiornato " + fmtAge(ageMs) + " · " + fmtRemaining(staleMs - ageMs);
-
+      : "aggiornato " + fmtAge(ageMs) + " \\u00b7 " + fmtRemaining(staleMs - ageMs);
     var badge = document.createElement("span");
     badge.className = "badge age-badge " + status;
     badge.textContent = status;
     var value = el.querySelector(".value");
-    if (value) {
-      value.parentNode.insertBefore(badge, value.nextSibling);
-    } else {
-      var firstCell = el.querySelector("td:first-child");
-      if (firstCell) firstCell.appendChild(badge);
-    }
-
+    if (value) { value.parentNode.insertBefore(badge, value.nextSibling); }
+    else { var fc = el.querySelector("td:first-child"); if (fc) fc.appendChild(badge); }
     var age = document.createElement("span");
     age.className = "age";
     age.textContent = text;
     var metas = el.querySelectorAll(".meta");
     var meta = metas.length ? metas[metas.length - 1] : null;
-    if (meta) {
-      meta.appendChild(age);
-    } else {
-      var lastCell = el.querySelector("td:last-child");
-      if (lastCell) lastCell.appendChild(age);
-    }
-  }
-
-  // Collapsible sections: global "Apri tutte / Chiudi tutte" toggle.
-  var sections = document.querySelectorAll("details.section");
-  var sectionsBtn = document.getElementById("sections-toggle");
-  function allOpen() {
-    for (var i = 0; i < sections.length; i++) {
-      if (!sections[i].open) return false;
-    }
-    return true;
-  }
-  function updateSectionsLabel() {
-    if (sectionsBtn) {
-      sectionsBtn.textContent = allOpen() ? "🗂️ Chiudi tutte" : "🗂️ Apri tutte";
-    }
-  }
-  if (sectionsBtn) {
-    sectionsBtn.addEventListener("click", function () {
-      var open = !allOpen();
-      for (var i = 0; i < sections.length; i++) {
-        sections[i].open = open;
-      }
-      updateSectionsLabel();
-    });
-    for (var i = 0; i < sections.length; i++) {
-      sections[i].addEventListener("toggle", updateSectionsLabel);
-    }
-    updateSectionsLabel();
+    if (meta) { meta.appendChild(age); }
+    else { var lc = el.querySelector("td:last-child"); if (lc) lc.appendChild(age); }
   }
 })();
 </script>
@@ -741,22 +626,15 @@ def build_page(data: dict[str, Any], tickers_config: dict[str, Any] | None = Non
     stale = data.get("stale_summary", {})
     overall = "fresh" if stale.get("stale", 0) == 0 else "stale"
     title = "Market Dashboard"
-    html_doc = (
-        "<!DOCTYPE html>\n<html lang=\"it\" data-theme=\"dark\">\n<head>"
-        "<meta charset=\"utf-8\">"
-        f"{FAVICON_LINK}"
-        f"<title>{title}</title>"
-        f"<style>{_CSS}</style>"
-        "</head>\n<body><div class=\"container\">"
-        "<header>"
-        f'<div><span class="badge {overall}">{overall}</span> '
-        f'{render_nav("report")} '
-        '<button id="theme-toggle" type="button">☀️ Light</button></div>'
-        f"<div><h1>📊 {title}</h1>"
-        f'<div class="sub">Generato: {format_iso_dt(data.get("generated_at"))}</div></div>'
-        "</header>"
+
+    header = render_header(
+        "report", f"📊 {title}",
+        f"Generato: {format_iso_dt(data.get('generated_at'))}",
+        extra_badge=f'<span class="badge {overall}">{overall}</span>',
+    )
+    content = (
         '<div class="sections-toolbar">'
-        '<button id="sections-toggle" type="button">🗂️ Chiudi tutte</button>'
+        '<button id="sections-toggle" type="button">\U0001f5c2\ufe0f Chiudi tutte</button>'
         "</div>"
         f"{_collapsible('Indicatori di mercato', render_market_cards(data))}"
         f"{_ticker_sections(data, tickers_config)}"
@@ -764,11 +642,11 @@ def build_page(data: dict[str, Any], tickers_config: dict[str, Any] | None = Non
         f"{render_indicator_matrix(data.get('strategy_indicators', {}))}"
         f"{render_stale_summary(stale)}"
         f"{render_legend()}"
-        "</div>"
-        f"{_SCRIPT}{_TABLE_SCRIPT}"
-        "</body>\n</html>"
     )
-    return html_doc
+    return wrap_page(
+        title, "report", _REPORT_CSS, header, content,
+        scripts=f"{_REPORT_SCRIPT}{_TABLE_SCRIPT}",
+    )
 
 
 def render(config_path: str, output_path: str | None = None) -> str:

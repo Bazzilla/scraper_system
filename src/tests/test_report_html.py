@@ -857,12 +857,12 @@ class TestRenderSections(unittest.TestCase):
 
     def test_build_page_has_sell_signal_css(self):
         """Report CSS includes sell signal badge styles."""
-        from report_html import _CSS
-        self.assertIn("sell-signal", _CSS)
-        self.assertIn("sell-MANTIENI", _CSS)
-        self.assertIn("sell-PRENDI", _CSS)
-        self.assertIn("sell-RIDUCI", _CSS)
-        self.assertIn("sell-ATTENZIONE", _CSS)
+        from page_base import _BASE_CSS
+        self.assertIn("sell-signal", _BASE_CSS)
+        self.assertIn("sell-MANTIENI", _BASE_CSS)
+        self.assertIn("sell-PRENDI", _BASE_CSS)
+        self.assertIn("sell-RIDUCI", _BASE_CSS)
+        self.assertIn("sell-ATTENZIONE", _BASE_CSS)
 
     def test_legend_has_strategy_explanations(self):
         html = render_legend()
@@ -1028,16 +1028,16 @@ class TestAgeAttrs(unittest.TestCase):
 
 class TestAgeScript(unittest.TestCase):
     def test_script_contains_age_logic(self):
-        from report_html import _SCRIPT
-        self.assertIn("data-fetched-at", _SCRIPT)
-        self.assertIn("data-stale-hours", _SCRIPT)
-        self.assertIn("scaduto da", _SCRIPT)
-        self.assertIn("aggiornato", _SCRIPT)
-        self.assertIn("age-badge", _SCRIPT)
+        from report_html import _REPORT_SCRIPT
+        self.assertIn("data-fetched-at", _REPORT_SCRIPT)
+        self.assertIn("data-stale-hours", _REPORT_SCRIPT)
+        self.assertIn("scaduto da", _REPORT_SCRIPT)
+        self.assertIn("aggiornato", _REPORT_SCRIPT)
+        self.assertIn("age-badge", _REPORT_SCRIPT)
 
     def test_css_contains_age_class(self):
-        from report_html import _CSS
-        self.assertIn(".age", _CSS)
+        from report_html import _REPORT_CSS
+        self.assertIn(".age", _REPORT_CSS)
 
 
 class TestRender(unittest.TestCase):

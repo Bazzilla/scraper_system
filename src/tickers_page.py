@@ -19,10 +19,9 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from report_html import _CSS, _SCRIPT
-from report_helpers import FAVICON_LINK, render_nav
+from page_base import _SHARED_SCRIPT, render_header, wrap_page
 
-_PAGE_CSS = _CSS + """\
+_TICKERS_CSS = """\
 .category-card { background: var(--card); border: 1px solid var(--border);
         border-radius: 12px; margin-bottom: 16px; }
 .category-card summary { display: flex; align-items: center; gap: 10px;
@@ -276,31 +275,21 @@ _EDITOR_SCRIPT = """\
 def render_tickers_page(tickers: dict[str, Any]) -> str:
     """Render the complete tickers editor page."""
     payload = json.dumps(tickers, ensure_ascii=False).replace("</", "<\\/")
-    return (
-        "<!DOCTYPE html>\n<html lang=\"it\" data-theme=\"dark\">\n<head>"
-        "<meta charset=\"utf-8\">"
-        f"{FAVICON_LINK}"
-        "<title>Gestione ticker</title>"
-        f"<style>{_PAGE_CSS}</style>"
-        "</head>\n<body><div class=\"container\">"
-        "<header>"
-        f'<div>{render_nav("tickers")} '
-        '<button id="theme-toggle" type="button">☀️ Light</button></div>'
-        "<div><h1>📋 Gestione ticker</h1>"
-        '<div class="sub">Categorie e liste persistenti su config.yaml '
-        "(ogni salvataggio crea un backup datato in backups/)</div></div>"
-        "</header>"
+    header = render_header("tickers", "\U0001f4cb Gestione ticker",
+                           "Categorie e liste persistenti su config.yaml "
+                           "(ogni salvataggio crea un backup datato in backups/)")
+    content = (
         '<div class="toolbar">'
-        '<button id="save-btn" type="button" class="primary">💾 Salva su config.yaml</button>'
+        '<button id="save-btn" type="button" class="primary">\U0001f4be Salva su config.yaml</button>'
         '<input id="new-category" class="txt" placeholder="nuova-categoria">'
         '<button id="add-category-btn" type="button" class="subtle">+ Nuova categoria</button>'
-        '<button id="sections-toggle" type="button" class="subtle">🗂️ Chiudi tutte</button>'
+        '<button id="sections-toggle" type="button" class="subtle">\U0001f5c2\ufe0f Chiudi tutte</button>'
         '<span id="msg" role="status"></span>'
         "</div>"
         f'<script id="tickers-data" type="application/json">{payload}</script>'
         '<div id="categories"></div>'
-        "</div>"
-        f"{_SCRIPT}"
-        f"{_EDITOR_SCRIPT}"
-        "</body>\n</html>"
+    )
+    return wrap_page(
+        "Gestione ticker", "tickers", _TICKERS_CSS, header, content,
+        scripts=f"{_SHARED_SCRIPT}{_EDITOR_SCRIPT}",
     )

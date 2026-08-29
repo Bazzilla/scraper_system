@@ -7,10 +7,9 @@ zero client-side calculations.
 
 from __future__ import annotations
 
-from report_html import _CSS, _SCRIPT
-from report_helpers import FAVICON_LINK, render_nav
+from page_base import _SHARED_SCRIPT, render_header, wrap_page
 
-_PAGE_CSS = _CSS + """\
+_PORTFOLIO_CSS = """\
 .card { background: var(--card); border: 1px solid var(--border);
         border-radius: 12px; padding: 16px; margin-top: 20px; }
 .card h2 { margin: 0 0 12px 0; font-size: 1rem; color: var(--text); }
@@ -98,95 +97,77 @@ _FORM_HTML = """\
 
 def render_portfolio_page() -> str:
     """Return the full HTML for the portfolio page."""
-    return f"""\
-<!DOCTYPE html>
-<html lang="it" data-theme="dark">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Portfolio — scraper-system</title>
-  {FAVICON_LINK}
-  <style>{_PAGE_CSS}</style>
-</head>
-<body>
-  <div class="container">
-  <header>
-    <div>{render_nav("portfolio")}
-      <button id="theme-toggle" type="button">☀️ Light</button></div>
-    <div><h1>💼 Portfolio</h1>
-      <div class="sub">Transazioni, posizioni e P/L</div></div>
-  </header>
-
-  <main>
-    <!-- Summary -->
-    <div class="card" id="summary-card">
-      <h2>Riepilogo</h2>
-      <div class="summary-grid" id="summary-grid">
-        <div class="summary-item"><div class="summary-label">Posizioni aperte</div>
-          <div class="summary-value neutral" id="s-count">—</div></div>
-        <div class="summary-item"><div class="summary-label">Valore corrente</div>
-          <div class="summary-value neutral" id="s-value">—</div></div>
-        <div class="summary-item"><div class="summary-label">Capitale investito</div>
-          <div class="summary-value neutral" id="s-cost">—</div></div>
-        <div class="summary-item"><div class="summary-label">P/L non realizzato</div>
-          <div class="summary-value neutral" id="s-unrealized">—</div></div>
-        <div class="summary-item"><div class="summary-label">P/L realizzato</div>
-          <div class="summary-value neutral" id="s-realized">—</div></div>
-        <div class="summary-item"><div class="summary-label">P/L totale</div>
-          <div class="summary-value neutral" id="s-total">—</div></div>
-      </div>
-      <div class="warn-banner" id="price-warning">
-        ⚠️ Alcuni prezzi correnti non disponibili — P/L parziale.
-      </div>
+    header = render_header("portfolio", "\U0001f4b0 Portfolio",
+                           "Transazioni, posizioni e P/L")
+    content = f"""\
+<main>
+  <!-- Summary -->
+  <div class="card" id="summary-card">
+    <h2>Riepilogo</h2>
+    <div class="summary-grid" id="summary-grid">
+      <div class="summary-item"><div class="summary-label">Posizioni aperte</div>
+        <div class="summary-value neutral" id="s-count">\u2014</div></div>
+      <div class="summary-item"><div class="summary-label">Valore corrente</div>
+        <div class="summary-value neutral" id="s-value">\u2014</div></div>
+      <div class="summary-item"><div class="summary-label">Capitale investito</div>
+        <div class="summary-value neutral" id="s-cost">\u2014</div></div>
+      <div class="summary-item"><div class="summary-label">P/L non realizzato</div>
+        <div class="summary-value neutral" id="s-unrealized">\u2014</div></div>
+      <div class="summary-item"><div class="summary-label">P/L realizzato</div>
+        <div class="summary-value neutral" id="s-realized">\u2014</div></div>
+      <div class="summary-item"><div class="summary-label">P/L totale</div>
+        <div class="summary-value neutral" id="s-total">\u2014</div></div>
     </div>
-
-    <!-- Open positions -->
-    <div class="card">
-      <h2>Posizioni aperte</h2>
-      <div id="positions-body">
-        <table>
-          <thead><tr>
-            <th>Ticker</th><th>Qtà</th><th>Prezzo medio</th><th>Ultimo prezzo</th>
-            <th>Valore</th><th>Costo</th><th>Gain/Loss $</th><th>Gain/Loss %</th>
-          </tr></thead>
-          <tbody id="positions-tbody"></tbody>
-        </table>
-        <div class="empty-msg" id="positions-empty">Nessuna posizione aperta.</div>
-      </div>
+    <div class="warn-banner" id="price-warning">
+      \u26a0\ufe0f Alcuni prezzi correnti non disponibili \u2014 P/L parziale.
     </div>
-
-    <!-- SELL signals -->
-    <div class="card">
-      <h2>Segnali SELL</h2>
-      <div id="sell-body">
-        <div id="sell-list"></div>
-        <div class="empty-msg" id="sell-empty">Nessun segnale disponibile.</div>
-      </div>
-    </div>
-
-    <!-- Transactions -->
-    <div class="card">
-      <h2>Transazioni</h2>
-      <div id="transactions-body">
-        <table>
-          <thead><tr>
-            <th>Data</th><th>Ticker</th><th>Azione</th><th>Qtà</th>
-            <th>Prezzo</th><th>Comm.</th><th>Note</th><th>Azioni</th>
-          </tr></thead>
-          <tbody id="transactions-tbody"></tbody>
-        </table>
-        <div class="empty-msg" id="transactions-empty">Nessuna transazione registrata.</div>
-      </div>
-    </div>
-
-    {_FORM_HTML}
-  </main>
   </div>
 
-  {_SCRIPT}
-  <script>{_PAGE_SCRIPT}</script>
-</body>
-</html>"""
+  <!-- Open positions -->
+  <div class="card">
+    <h2>Posizioni aperte</h2>
+    <div id="positions-body">
+      <table>
+        <thead><tr>
+          <th>Ticker</th><th>Qt\u00e0</th><th>Prezzo medio</th><th>Ultimo prezzo</th>
+          <th>Valore</th><th>Costo</th><th>Gain/Loss $</th><th>Gain/Loss %</th>
+        </tr></thead>
+        <tbody id="positions-tbody"></tbody>
+      </table>
+      <div class="empty-msg" id="positions-empty">Nessuna posizione aperta.</div>
+    </div>
+  </div>
+
+  <!-- SELL signals -->
+  <div class="card">
+    <h2>Segnali SELL</h2>
+    <div id="sell-body">
+      <div id="sell-list"></div>
+      <div class="empty-msg" id="sell-empty">Nessun segnale disponibile.</div>
+    </div>
+  </div>
+
+  <!-- Transactions -->
+  <div class="card">
+    <h2>Transazioni</h2>
+    <div id="transactions-body">
+      <table>
+        <thead><tr>
+          <th>Data</th><th>Ticker</th><th>Azione</th><th>Qt\u00e0</th>
+          <th>Prezzo</th><th>Comm.</th><th>Note</th><th>Azioni</th>
+        </tr></thead>
+        <tbody id="transactions-tbody"></tbody>
+      </table>
+      <div class="empty-msg" id="transactions-empty">Nessuna transazione registrata.</div>
+    </div>
+  </div>
+
+  {_FORM_HTML}
+</main>"""
+    return wrap_page(
+        "Portfolio", "portfolio", _PORTFOLIO_CSS, header, content,
+        scripts=f"{_SHARED_SCRIPT}<script>{_PAGE_SCRIPT}</script>",
+    )
 
 
 _PAGE_SCRIPT = """\
