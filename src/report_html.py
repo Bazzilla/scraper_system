@@ -113,8 +113,8 @@ _REPORT_CSS = """\
         display: flex; justify-content: space-between; align-items: center;
         gap: 8px; list-style: none; }
 .legend-card summary::-webkit-details-marker { display: none; }
-.legend-card summary::after { content: "\\2139\\fe0f"; font-size: 0.9rem; }
-.legend-card[open] summary::after { content: "\\2716"; font-size: 0.9rem; }
+.legend-card summary::after { content: "ℹ️"; font-size: 0.9rem; }
+.legend-card[open] summary::after { content: "✖"; font-size: 0.9rem; }
 .legend-card .legend-detail { margin-top: 8px; color: var(--text); font-size: 0.85rem;
         border-top: 1px solid var(--border); padding-top: 8px; }
 .legend-card .legend-range { color: var(--muted); font-size: 0.8rem; }

@@ -165,7 +165,7 @@ def render_portfolio_page() -> str:
   {_FORM_HTML}
 </main>"""
     return wrap_page(
-        "Portfolio", "portfolio", _PORTFOLIO_CSS, header, content,
+        "Portfolio — scraper-system", "portfolio", _PORTFOLIO_CSS, header, content,
         scripts=f"{_SHARED_SCRIPT}<script>{_PAGE_SCRIPT}</script>",
     )
 

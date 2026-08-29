@@ -149,7 +149,7 @@ _SHARED_SCRIPT = """\
 
   /* Shared helpers — available to page scripts */
   window.__helpers = {
-    $(function (id) { return document.getElementById(id); }),
+    $: function (id) { return document.getElementById(id); },
     fmt: function (v) {
       if (v == null) return "\\u2014";
       return v.toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -220,7 +220,7 @@ def wrap_page(
         "<meta charset=\"utf-8\">"
         "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
         f"{FAVICON_LINK}"
-        f"<title>{title} \\u2014 scraper-system</title>"
+        f"<title>{title}</title>"
         f"{extra_head}"
         f"<style>{_BASE_CSS}{css}</style>"
         "</head>\n<body><div class=\"container\">"
@@ -253,7 +253,7 @@ def render_header(
     return (
         "<header>"
         f"<div>{badge_html}{render_nav(nav_active)} "
-        '<button id="theme-toggle" type="button">\\u2600\\ufe0f Light</button></div>'
+        '<button id="theme-toggle" type="button">☀️ Light</button></div>'
         f"<div><h1>{title}</h1>"
         f"{sub_html}</div>"
         "</header>"
