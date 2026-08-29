@@ -219,6 +219,29 @@ _LEGEND_STOCK = [
         ),
     },
     {
+        "name": "Attrattiva",
+        "range": "0 - 100",
+        "short": "Punteggio sintetico buy-the-dip: quanto il titolo è papabile ora.",
+        "detail": (
+            "Versione numerica e <strong>ordinabile</strong> del Segnale: ordinando "
+            "la colonna si ottiene la classifica dei titoli dal più al meno papabile "
+            "secondo la strategia buy-the-dip. Stessi input del Segnale, due "
+            "componenti:<br>"
+            "<strong>Componente tecnica (0-60)</strong>: RSI basso (fino a 15 pt), MFI "
+            "basso (fino a 10), drawdown profondo (fino a 15), prezzo sopra SMA50 (10) "
+            "e SMA200 (10) — premia la convergenza ipervenduto + forza, il profilo "
+            "buy-the-dip.<br>"
+            "<strong>Componente di mercato (0-40)</strong>: gate FGI — paura forte "
+            "(FGI ≤ 20) 40 pt, gate aperto (≤ 25) 34, sola osservazione (≤ 40) 22, "
+            "chiuso 6, mancante/stale 0 (fail-closed).<br>"
+            "<strong>Lettura</strong>: 75-100 attrattiva alta (setup tecnico + paura "
+            "sufficiente); 50-74 media; 25-49 bassa; 0-24 trascurabile. Dati mancanti "
+            "→ 0 pt per quella componente (mai premi su dati assenti). Il Segnale "
+            "resta il riferimento categorico: l'Attrattiva è la sua versione "
+            "continua, non un consiglio operativo."
+        ),
+    },
+    {
         "name": "Segnale",
         "range": "VALUTA INGRESSO / OSSERVA / ATTENDI",
         "short": "Sintesi degli indicatori del ticker + clima di mercato.",

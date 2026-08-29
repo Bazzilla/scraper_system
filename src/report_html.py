@@ -43,6 +43,7 @@ from report_helpers import (  # noqa: F401
     _sema,
     _signal_badge,
     _status_badge,
+    attrattiva_score,
     buy_the_dip_gate,
     compute_signal,
     final_action,

@@ -10,6 +10,7 @@ from report_helpers import (
     _collapsible,
     _sema,
     _signal_badge,
+    attrattiva_score,
     _status_badge,
     compute_signal,
     fmt,
@@ -101,6 +102,7 @@ def render_ticker_table(
         entry = entries[symbol]
         ind = entry
         signal = compute_signal(ind, regime, fgi_score=fgi_score)
+        score = attrattiva_score(ind, fgi_score=fgi_score)
 
         def _dv(value: Any) -> str:
             """Machine-readable cell value ('' quando assente)."""
@@ -120,6 +122,8 @@ def render_ticker_table(
             f"<td data-value=\"{_dv(ind.get('drawdown_52w'))}\">{_sema(ind.get('drawdown_52w'), 'drawdown')}</td>"
             f"<td data-value=\"{_dv(ind.get('upside_pct'))}\""
             f"{_bucket_title(ind)}>{_sema(ind.get('upside_pct'), 'upside')}</td>"
+            f'<td data-value="{score}" title="Attrattiva buy-the-dip (0-100): '
+            f'punteggio sintetico ordinabile">{score}</td>'
             f'<td data-value="{signal}">{_signal_badge(signal)}</td>'
             f'<td data-value="{_dv(ind.get("fetched_at"))}">{format_iso_dt(ind.get("fetched_at"))}</td>'
             "</tr>"
@@ -135,6 +139,8 @@ def render_ticker_table(
         '<th data-type="num">SMA200</th>'
         '<th data-type="num">Drawdown</th>'
         '<th data-type="num" title="Upside vs target mediano analisti (fair value, informativo)">Upside FV</th>'
+        '<th data-type="num" title="Attrattiva buy-the-dip (0-100): punteggio sintetico '
+        'ordinabile — dal più al meno papabile">Attrattiva</th>'
         '<th data-type="text">Segnale</th>'
         '<th data-type="date">Aggiornato</th>'
         "</tr></thead>"

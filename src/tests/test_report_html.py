@@ -9,6 +9,7 @@ from pathlib import Path
 
 from report_html import (
     _age_attrs,
+    attrattiva_score,
     build_page,
     buy_the_dip_gate,
     compute_signal,
@@ -452,6 +453,102 @@ class TestBuyTheDipGate(unittest.TestCase):
     def test_non_numeric_is_missing_or_stale(self):
         self.assertEqual(buy_the_dip_gate("abc"), "missing_or_stale")
         self.assertEqual(buy_the_dip_gate("53.57"), "missing_or_stale")
+
+
+class TestAttrattivaScore(unittest.TestCase):
+    """Punteggio Attrattiva 0-100: versione numerica ordinabile del Segnale."""
+
+    def test_all_missing_data_is_zero(self):
+        # Fail-closed: nessun dato → nessuna attrattiva
+        self.assertEqual(attrattiva_score({}), 0)
+        self.assertEqual(attrattiva_score({}, fgi_score=None), 0)
+
+    def test_perfect_dip_with_strong_open_caps_at_100(self):
+        entry = {
+            "last_close": 100.0,
+            "rsi_14": 15.0,        # dip pieno → 15
+            "mfi_14": 10.0,        # dip pieno → 10
+            "sma_50": 90.0,        # sopra → 10
+            "sma_200": 80.0,       # sopra → 10
+            "drawdown_52w": -40.0, # profondo → 15
+        }
+        # tech 60 + gate strong_open 40 = 100
+        self.assertEqual(attrattiva_score(entry, fgi_score=15), 100)
+
+    def test_score_never_exceeds_100(self):
+        entry = {"rsi_14": 0, "mfi_14": 0, "sma_50": 1, "sma_200": 1,
+                 "last_close": 100.0, "drawdown_52w": -90.0}
+        self.assertLessEqual(attrattiva_score(entry, fgi_score=10), 100)
+
+    def test_ordering_bullish_weak_neutral(self):
+        # Stesso FGI: bullish (VALUTA INGRESSO) > weak (OSSERVA) > neutral (ATTENDI)
+        bullish = {"last_close": 100.0, "rsi_14": 25.0, "mfi_14": 15.0,
+                   "sma_50": 90.0, "sma_200": 80.0, "drawdown_52w": -8.0}
+        weak = {"last_close": 100.0, "rsi_14": 22.0, "mfi_14": 12.0,
+                "sma_50": 110.0, "sma_200": 120.0, "drawdown_52w": -35.0}
+        neutral = {"last_close": 100.0, "rsi_14": 50.0, "mfi_14": 50.0,
+                   "sma_50": 110.0, "sma_200": 80.0, "drawdown_52w": -3.0}
+        fgi = 22
+        s_bull = attrattiva_score(bullish, fgi)
+        s_weak = attrattiva_score(weak, fgi)
+        s_neut = attrattiva_score(neutral, fgi)
+        self.assertGreater(s_bull, s_weak)
+        self.assertGreater(s_weak, s_neut)
+
+    def test_gate_contribution_fear_beats_greed(self):
+        # Stesso entry: FGI in paura → score più alto che in greed
+        entry = {"last_close": 100.0, "rsi_14": 25.0, "mfi_14": 15.0,
+                 "sma_50": 90.0, "sma_200": 80.0, "drawdown_52w": -8.0}
+        self.assertGreater(
+            attrattiva_score(entry, fgi_score=15),   # strong_open → 40
+            attrattiva_score(entry, fgi_score=60),   # closed → 6
+        )
+
+    def test_missing_fgi_scores_lower_than_open_gate(self):
+        # Fail-closed: FGI mancante → 0 pt gate, meno del gate aperto
+        entry = {"last_close": 100.0, "rsi_14": 25.0, "mfi_14": 15.0,
+                 "sma_50": 90.0, "sma_200": 80.0, "drawdown_52w": -8.0}
+        self.assertGreater(
+            attrattiva_score(entry, fgi_score=22),
+            attrattiva_score(entry, fgi_score=None),
+        )
+
+    def test_partial_data_scores_partial(self):
+        # Solo RSI oversold, resto mancante → punteggio parziale ma valido
+        entry = {"rsi_14": 20.0}
+        score = attrattiva_score(entry, fgi_score=22)
+        self.assertGreater(score, 0)
+        self.assertLessEqual(score, 100)
+
+    def test_overbought_ticker_scores_low(self):
+        # Ipercomprato + sopra le SMA: nessun dip → solo forza + gate
+        entry = {"last_close": 100.0, "rsi_14": 75.0, "mfi_14": 85.0,
+                 "sma_50": 90.0, "sma_200": 80.0, "drawdown_52w": -2.0}
+        # tech: 0 dip (rsi/mfi overbought) + 1 dd + 20 forza = 21; FGI 60 → closed 6 → 27
+        self.assertEqual(attrattiva_score(entry, fgi_score=60), 27)
+
+    def test_attrattiva_column_in_table(self):
+        data = _sample_data()
+        entries = data["indicators"]["semiconductors"]
+        html = render_ticker_table("semiconductors", entries, fgi_score=22)
+        self.assertIn(">Attrattiva</th>", html)
+        self.assertIn('data-type="num" title="Attrattiva', html)
+        # Celle con data-value numerico intero
+        self.assertRegex(html, r'<td data-value="\d+" title="Attrattiva')
+
+    def test_attrattiva_column_between_upside_and_segnale(self):
+        data = _sample_data()
+        entries = data["indicators"]["semiconductors"]
+        html = render_ticker_table("semiconductors", entries, fgi_score=22)
+        self.assertLess(html.index("Upside FV"), html.index("Attrattiva"))
+        self.assertLess(html.index("Attrattiva"), html.index(">Segnale<"))
+
+    def test_legend_explains_attrattiva(self):
+        html = render_legend()
+        self.assertIn("Attrattiva", html)
+        self.assertIn("0 - 100", html)
+        self.assertIn("Componente tecnica (0-60)", html)
+        self.assertIn("Componente di mercato (0-40)", html)
 
 
 class TestRenderSections(unittest.TestCase):

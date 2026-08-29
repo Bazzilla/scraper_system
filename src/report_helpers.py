@@ -233,6 +233,70 @@ def compute_signal(
     return final_action(technical, gate)
 
 
+def _clamp01(v: float) -> float:
+    """Clamp a value to the [0, 1] interval."""
+    return max(0.0, min(1.0, v))
+
+
+def attrattiva_score(entry: dict[str, Any], fgi_score: float | None = None) -> int:
+    """Continuous 0-100 buy-the-dip attractiveness score for a ticker.
+
+    Numeric, sortable counterpart of the categorical Segnale: ordering a
+    table by this value ranks tickers from most to least suitable under the
+    buy-the-dip strategy. Consumes the SAME inputs as ``compute_signal``
+    (local per-ticker indicators + FGI gate) — no proxy indicators, and
+    fail-closed on missing data (missing indicator → 0 points for that
+    component; missing/stale FGI → 0 gate points).
+
+    Technical component (0-60), continuous, dip-oriented:
+    - RSI dip (max 15):  15 * clamp((45 - rsi) / 25, 0, 1)   → rsi ≤ 20 full
+    - MFI dip (max 10):  10 * clamp((35 - mfi) / 20, 0, 1)   → mfi ≤ 15 full
+    - Drawdown (max 15): 15 * clamp(-drawdown_52w / 30, 0, 1) → dd ≤ -30% full
+    - Strength support: price ≥ SMA50 → 10, price ≥ SMA200 → 10
+      (the 'bullish' convergence = oversold + strength; being above the
+      SMAs is what separates a VALUTA INGRESSO setup from a deep-dip watch)
+
+    Market component (0-40) from ``buy_the_dip_gate`` (same for every
+    ticker in a run — shifts the absolute level with market fear):
+    - strong_open → 40, open → 34, watch_only → 22, closed → 6,
+      missing_or_stale → 0
+
+    Reading bands: 75-100 alta, 50-74 media, 25-49 bassa, 0-24 trascurabile.
+    The Segnale column remains the categorical reference; Attrattiva is its
+    continuous version, NOT an operational order.
+    """
+    rsi = entry.get("rsi_14")
+    mfi = entry.get("mfi_14")
+    price = entry.get("last_close")
+    sma50 = entry.get("sma_50")
+    sma200 = entry.get("sma_200")
+    drawdown = entry.get("drawdown_52w")
+
+    tech = 0.0
+    if isinstance(rsi, (int, float)):
+        tech += 15 * _clamp01((45 - rsi) / 25)
+    if isinstance(mfi, (int, float)):
+        tech += 10 * _clamp01((35 - mfi) / 20)
+    if isinstance(drawdown, (int, float)):
+        tech += 15 * _clamp01(-drawdown / 30)
+    if isinstance(price, (int, float)) and isinstance(sma50, (int, float)):
+        if price >= sma50:
+            tech += 10
+    if isinstance(price, (int, float)) and isinstance(sma200, (int, float)):
+        if price >= sma200:
+            tech += 10
+
+    gate_points = {
+        GATE_STRONG_OPEN: 40,
+        GATE_OPEN: 34,
+        GATE_WATCH_ONLY: 22,
+        GATE_CLOSED: 6,
+        GATE_MISSING_OR_STALE: 0,
+    }[buy_the_dip_gate(fgi_score)]
+
+    return int(round(min(100.0, tech + gate_points)))
+
+
 def _signal_badge(signal: str) -> str:
     """Render the signal badge for a ticker.
 
