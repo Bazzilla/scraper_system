@@ -126,37 +126,6 @@ _RUN_SCRIPT = """\
   var selectedCat = null;
   var selectedSym = null;
 
-  /* --- localStorage persistence (output tra navigazioni) --- */
-  var STORE_OUT = "scrape-output";
-  function saveOutput() { localStorage.setItem(STORE_OUT, output.textContent); }
-  function clearStored() { localStorage.removeItem(STORE_OUT); }
-
-  /* --- SSE connection (riusabile: avvio manuale + reconnect su page load) --- */
-  function connectSSE(url) {
-    var evtSource = new EventSource(url);
-    evtSource.onmessage = function (e) {
-      output.textContent += e.data + "\\n";
-      output.scrollTop = output.scrollHeight;
-      saveOutput();
-    };
-    evtSource.addEventListener("done", function (e) {
-      evtSource.close();
-      btn.disabled = false; btn.textContent = "▶ Avvia";
-      var code = parseInt(e.data, 10);
-      var ok = code === 0;
-      statusBar.className = "status-bar " + (ok ? "done" : "error");
-      statusBar.textContent = ok ? "Scrape completato" : "Scrape fallito (exit " + code + ")";
-      localStorage.removeItem(STORE_OUT);
-    });
-    evtSource.onerror = function () {
-      evtSource.close();
-      btn.disabled = false; btn.textContent = "▶ Avvia";
-      output.textContent += "\\n❌ Errore di connessione";
-      saveOutput();
-    };
-    return evtSource;
-  }
-
   /* --- Load tickers on page load --- */
   fetch("/api/tickers").then(function (r) { return r.json(); }).then(function (d) {
     allTickers = d.tickers || {};
@@ -220,22 +189,17 @@ _RUN_SCRIPT = """\
     tickerResults.classList.remove("open");
   });
 
-  /* --- Status check on load: ripristina output + ricollega se attivo --- */
+  /* --- Status check on load --- */
   fetch("/api/scraper-run/status").then(function (r) { return r.json(); }).then(function (s) {
     if (s.running) {
       btn.disabled = true; btn.textContent = "⏳ In corso...";
       statusBar.className = "status-bar running";
       statusBar.textContent = "Scraping in corso (pid " + s.pid + ")...";
-      /* Ricollega SSE: il server invia buffer + nuove righe via tee */
-      connectSSE("/api/scraper-run");
       startPoll();
     } else if (s.exit_code !== null) {
       var ok = s.exit_code === 0;
       statusBar.className = "status-bar " + (ok ? "done" : "error");
       statusBar.textContent = ok ? "Ultimo scrape completato" : "Ultimo scrape fallito (exit " + s.exit_code + ")";
-      /* Ripristina output dell'ultimo scrape */
-      var stored = localStorage.getItem(STORE_OUT);
-      if (stored) { output.textContent = stored; output.scrollTop = output.scrollHeight; }
     }
   });
 
@@ -266,17 +230,32 @@ _RUN_SCRIPT = """\
 
     btn.disabled = true; btn.textContent = "⏳ In corso...";
     output.textContent = "";
-    clearStored();
     statusBar.className = "status-bar running";
     statusBar.textContent = "Scraping in corso...";
 
-    connectSSE(url);
+    var evtSource = new EventSource(url);
+    evtSource.onmessage = function (e) {
+      output.textContent += e.data + "\\n";
+      output.scrollTop = output.scrollHeight;
+    };
+    evtSource.addEventListener("done", function (e) {
+      evtSource.close();
+      btn.disabled = false; btn.textContent = "▶ Avvia";
+      var code = parseInt(e.data, 10);
+      var ok = code === 0;
+      statusBar.className = "status-bar " + (ok ? "done" : "error");
+      statusBar.textContent = ok ? "Scrape completato" : "Scrape fallito (exit " + code + ")";
+    });
+    evtSource.onerror = function () {
+      evtSource.close();
+      btn.disabled = false; btn.textContent = "▶ Avvia";
+      output.textContent += "\\n❌ Errore di connessione";
+    };
   });
 
   /* --- Clear button --- */
   document.getElementById("clear-btn").addEventListener("click", function () {
     output.textContent = "";
-    clearStored();
   });
 })();
 """

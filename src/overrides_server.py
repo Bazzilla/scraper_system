@@ -37,11 +37,9 @@ import argparse
 import base64
 import hmac
 import json
-import queue
 import socket
 import subprocess
 import sys
-import threading
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -86,11 +84,6 @@ PORTFOLIO_DB = str(PROJECT_ROOT / "output" / "portfolio.db")
 _scrape_state: dict[str, Any] = {
     "running": False, "pid": None, "exit_code": None, "started_at": None,
 }
-
-# Tee buffer: un thread reader distribuisce l'output a tutti i subscriber SSE.
-_scrape_buffer: list[str] = []
-_scrape_subs: list[queue.Queue] = []
-_scrape_lock = threading.Lock()
 
 
 def _portfolio_conn():
@@ -183,32 +176,6 @@ def rebuild_report(config_path: str) -> None:
     output_path.write_text(json.dumps(output, indent=2), encoding="utf-8")
 
     render_report(config_path)
-
-
-def _scrape_reader(proc: subprocess.Popen) -> None:  # type: ignore[type-arg]
-    """Background thread: reads subprocess stdout, distributes to SSE subscribers.
-
-    Each line is appended to ``_scrape_buffer`` and pushed to every active
-    subscriber queue. When the subprocess exits, a ``("DONE", returncode)``
-    sentinel is sent to all queues.
-    """
-    try:
-        assert proc.stdout is not None  # noqa: S101
-        for raw_line in proc.stdout:
-            text = raw_line.rstrip("\n\r")
-            with _scrape_lock:
-                _scrape_buffer.append(text)
-                for sub in _scrape_subs:
-                    sub.put(text)
-    except Exception:  # noqa: BLE001
-        pass
-    finally:
-        proc.wait()
-        with _scrape_lock:
-            _scrape_state["exit_code"] = proc.returncode
-            _scrape_state["running"] = False
-            for sub in _scrape_subs:
-                sub.put(("DONE", proc.returncode))
 
 
 class OverridesHandler(BaseHTTPRequestHandler):
@@ -434,75 +401,43 @@ class OverridesHandler(BaseHTTPRequestHandler):
         })
 
     def _handle_scraper_run_sse(self) -> None:
-        """Run ``run.py`` with the selected mode and stream output via SSE.
+        """Run ``run.py`` with the selected mode and stream output via SSE."""
+        if _scrape_state["running"]:
+            try:
+                msg = "event: error\ndata: Scrape gia' in corso\nevent: done\ndata: -1\n\n"
+                self.wfile.write(msg.encode("utf-8"))
+                self.wfile.flush()
+            except BrokenPipeError:
+                pass
+            return
 
-        Se lo scraping è già in corso, si collega come subscriber e riceve
-        le righe già catturate + le nuove (tee lato server via thread reader).
-        """
-        q: queue.Queue = queue.Queue()
+        parsed = urlparse(self.path)
+        params = parse_qs(parsed.query)
+        mode = params.get("mode", ["full"])[0]
 
-        with _scrape_lock:
-            if _scrape_state["running"]:
-                # --- Subscriber: invia buffer + iscrivi per le nuove righe ---
-                for line in _scrape_buffer:
-                    try:
-                        self.wfile.write(f"data: {line}\n\n".encode("utf-8"))
-                    except BrokenPipeError:
-                        return
-                try:
-                    self.wfile.flush()
-                except BrokenPipeError:
-                    return
-                _scrape_subs.append(q)
-            else:
-                # --- Nuovo scrape: avvia subprocess + reader thread ----------
-                parsed = urlparse(self.path)
-                params = parse_qs(parsed.query)
-                mode = params.get("mode", ["full"])[0]
+        flags = []
+        if mode == "report_only":
+            flags = ["--report-only"]
+        elif mode == "override_only":
+            flags = ["--override-only"]
+        elif mode == "category":
+            cat = params.get("category", [None])[0]
+            if not cat:
+                self._send_json(400, {"ok": False, "message": "missing ?category= param"})
+                return
+            flags = ["--category", cat, "--merge"]
+        elif mode == "ticker":
+            sym = params.get("ticker", [None])[0]
+            if not sym:
+                self._send_json(400, {"ok": False, "message": "missing ?ticker= param"})
+                return
+            flags = ["--ticker", sym, "--merge"]
 
-                flags = []
-                if mode == "report_only":
-                    flags = ["--report-only"]
-                elif mode == "override_only":
-                    flags = ["--override-only"]
-                elif mode == "category":
-                    cat = params.get("category", [None])[0]
-                    if not cat:
-                        self._send_json(400, {"ok": False, "message": "missing ?category= param"})
-                        return
-                    flags = ["--category", cat, "--merge"]
-                elif mode == "ticker":
-                    sym = params.get("ticker", [None])[0]
-                    if not sym:
-                        self._send_json(400, {"ok": False, "message": "missing ?ticker= param"})
-                        return
-                    flags = ["--ticker", sym, "--merge"]
+        cmd = [sys.executable, str(PROJECT_ROOT / "run.py"), DEFAULT_CONFIG] + flags
 
-                cmd = [sys.executable, str(PROJECT_ROOT / "run.py"), DEFAULT_CONFIG] + flags
+        _scrape_state.update(running=True, pid=None, exit_code=None,
+                            started_at=datetime.now(timezone.utc).isoformat())
 
-                _scrape_buffer.clear()
-                _scrape_subs.clear()
-                _scrape_state.update(running=True, pid=None, exit_code=None,
-                                    started_at=datetime.now(timezone.utc).isoformat())
-
-                try:
-                    proc = subprocess.Popen(
-                        cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                        text=True, bufsize=1,
-                    )
-                except Exception as exc:  # noqa: BLE001
-                    _scrape_state["running"] = False
-                    self._send_json(500, {"ok": False, "message": str(exc)})
-                    return
-
-                _scrape_state["pid"] = proc.pid
-                _scrape_subs.append(q)
-
-                threading.Thread(
-                    target=_scrape_reader, args=(proc,), daemon=True,
-                ).start()
-
-        # --- Stream da queue (comune a subscriber e nuovo scrape) ----------
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Cache-Control", "no-cache")
@@ -510,31 +445,35 @@ class OverridesHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
         try:
-            while True:
-                msg = q.get(timeout=30)
-                if msg is None:
-                    # Sentinel: fine dello scrape
-                    break
-                if isinstance(msg, tuple) and msg[0] == "DONE":
-                    code = msg[1]
-                    try:
-                        self.wfile.write(f"event: done\ndata: {code}\n\n".encode("utf-8"))
-                        self.wfile.flush()
-                    except BrokenPipeError:
-                        pass
-                    break
+            proc = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                text=True, bufsize=1,
+            )
+            _scrape_state["pid"] = proc.pid
+            for line in proc.stdout:
                 try:
-                    self.wfile.write(f"data: {msg}\n\n".encode("utf-8"))
+                    self.wfile.write(f"data: {line.rstrip()}\n\n".encode("utf-8"))
                     self.wfile.flush()
                 except BrokenPipeError:
                     break
-        except queue.Empty:
-            # Timeout: nessuna attività per 30s — chiudi connessione
-            pass
+            proc.wait()
+            _scrape_state["exit_code"] = proc.returncode
+            try:
+                self.wfile.write(
+                    f"event: done\ndata: {proc.returncode}\n\n".encode("utf-8")
+                )
+                self.wfile.flush()
+            except BrokenPipeError:
+                pass
+        except Exception as exc:  # noqa: BLE001
+            _scrape_state["exit_code"] = -1
+            try:
+                self.wfile.write(f"event: error\ndata: {exc}\n\n".encode("utf-8"))
+                self.wfile.flush()
+            except BrokenPipeError:
+                pass
         finally:
-            with _scrape_lock:
-                if q in _scrape_subs:
-                    _scrape_subs.remove(q)
+            _scrape_state["running"] = False
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
         print(f"[overrides] {self.address_string()} - {format % args}")
