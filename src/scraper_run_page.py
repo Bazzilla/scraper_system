@@ -126,6 +126,13 @@ _RUN_SCRIPT = """\
   var selectedCat = null;
   var selectedSym = null;
 
+  /* --- localStorage persistence --- */
+  var STORE_OUT = "scrape-output";
+  var STORE_STS = "scrape-status";
+
+  function saveOutput() { localStorage.setItem(STORE_OUT, output.textContent); }
+  function clearStored() { localStorage.removeItem(STORE_OUT); localStorage.removeItem(STORE_STS); }
+
   /* --- Load tickers on page load --- */
   fetch("/api/tickers").then(function (r) { return r.json(); }).then(function (d) {
     allTickers = d.tickers || {};
@@ -189,17 +196,23 @@ _RUN_SCRIPT = """\
     tickerResults.classList.remove("open");
   });
 
-  /* --- Status check on load --- */
+  /* --- Status check on load + restore output --- */
   fetch("/api/scraper-run/status").then(function (r) { return r.json(); }).then(function (s) {
     if (s.running) {
       btn.disabled = true; btn.textContent = "⏳ In corso...";
       statusBar.className = "status-bar running";
       statusBar.textContent = "Scraping in corso (pid " + s.pid + ")...";
+      /* Ripristina output catturato prima di navigare via */
+      var stored = localStorage.getItem(STORE_OUT);
+      if (stored) { output.textContent = stored; output.scrollTop = output.scrollHeight; }
       startPoll();
     } else if (s.exit_code !== null) {
       var ok = s.exit_code === 0;
       statusBar.className = "status-bar " + (ok ? "done" : "error");
       statusBar.textContent = ok ? "Ultimo scrape completato" : "Ultimo scrape fallito (exit " + s.exit_code + ")";
+      /* Ripristina output dell'ultimo scrape completato */
+      var stored = localStorage.getItem(STORE_OUT);
+      if (stored) { output.textContent = stored; output.scrollTop = output.scrollHeight; }
     }
   });
 
@@ -213,6 +226,7 @@ _RUN_SCRIPT = """\
           var ok = s.exit_code === 0;
           statusBar.className = "status-bar " + (ok ? "done" : "error");
           statusBar.textContent = ok ? "Scrape completato" : "Scrape fallito (exit " + s.exit_code + ")";
+          localStorage.setItem(STORE_STS, "done");
         }
       });
     }, 2000);
@@ -230,13 +244,16 @@ _RUN_SCRIPT = """\
 
     btn.disabled = true; btn.textContent = "⏳ In corso...";
     output.textContent = "";
+    clearStored();
     statusBar.className = "status-bar running";
     statusBar.textContent = "Scraping in corso...";
+    localStorage.setItem(STORE_STS, "running");
 
     var evtSource = new EventSource(url);
     evtSource.onmessage = function (e) {
       output.textContent += e.data + "\\n";
       output.scrollTop = output.scrollHeight;
+      saveOutput();
     };
     evtSource.addEventListener("done", function (e) {
       evtSource.close();
@@ -245,17 +262,20 @@ _RUN_SCRIPT = """\
       var ok = code === 0;
       statusBar.className = "status-bar " + (ok ? "done" : "error");
       statusBar.textContent = ok ? "Scrape completato" : "Scrape fallito (exit " + code + ")";
+      localStorage.setItem(STORE_STS, "done");
     });
     evtSource.onerror = function () {
       evtSource.close();
       btn.disabled = false; btn.textContent = "▶ Avvia";
       output.textContent += "\\n❌ Errore di connessione";
+      saveOutput();
     };
   });
 
   /* --- Clear button --- */
   document.getElementById("clear-btn").addEventListener("click", function () {
     output.textContent = "";
+    clearStored();
   });
 })();
 """
