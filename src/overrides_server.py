@@ -96,23 +96,33 @@ def _portfolio_conn():
     return conn
 
 # --- Basic Auth (tutte le pagine e le API) ---------------------------------
-# Credenziali di default; per cambiarle creare un file `.server-auth` nella
-# root del progetto con una riga "user:password" (git-ignored). Il realm
-# dichiara charset UTF-8 (RFC 7617) perché la password può contenere non-ASCII.
-DEFAULT_CREDENTIALS = ("admin", "so€uri€€€")
+# Le credenziali vivono SOLO nel file `.server-auth` nella root del progetto
+# (git-ignored). Il file deve contenere una riga "user:password".
+# Il realm dichiara charset UTF-8 (RFC 7617) perché la password può
+# contenere non-ASCII.
 AUTH_REALM = "scraper-system"
 AUTH_FILE = ".server-auth"
 
 
 def load_credentials(path: str | Path | None = None) -> tuple[str, str]:
-    """Resolve the server credentials: `.server-auth` file if present, else default."""
+    """Resolve the server credentials from `.server-auth` file.
+
+    Raises ``SystemExit`` if the file is missing or malformed — il server
+    non parte mai con credenziali sconosciute.
+    """
     auth_path = Path(path) if path else PROJECT_ROOT / AUTH_FILE
-    if auth_path.exists():
-        line = auth_path.read_text(encoding="utf-8").strip()
-        user, sep, password = line.partition(":")
-        if sep and user.strip() and password:
-            return user.strip(), password
-    return DEFAULT_CREDENTIALS
+    if not auth_path.exists():
+        raise SystemExit(
+            f"Credenziali mancanti: crea il file {auth_path} con una riga "
+            f"user:password (git-ignored)."
+        )
+    line = auth_path.read_text(encoding="utf-8").strip()
+    user, sep, password = line.partition(":")
+    if not sep or not user.strip() or not password:
+        raise SystemExit(
+            f"Formato non valido in {auth_path}: serve una riga user:password."
+        )
+    return user.strip(), password
 
 
 def is_authorized(header_value: str | None, credentials: tuple[str, str] | None = None) -> bool:

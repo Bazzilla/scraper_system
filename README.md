@@ -423,9 +423,9 @@ da qualsiasi directory):
 
 Il server espone `/report.html` (dashboard), `/overrides.html` (immissione
 manuale) e `/tickers.html` (editor liste ticker); la root `/` redirige alla
-dashboard. **Tutte le pagine e le API richiedono Basic Auth** (default:
-`admin` / `so€uri€€€`; personalizzabile creando un file `.server-auth`
-git-ignored nella root con una riga `user:password`). Con `--lan` il bind è
+dashboard. **Tutte le pagine e le API richiedono Basic Auth**. Per configurare le
+credenziali, creare un file `.server-auth` nella root del progetto con
+una riga nel formato `user:password` (git-ignored di default). Con `--lan` il bind è
 su `0.0.0.0`: l'accesso è protetto dalle credenziali, ma resta consigliato
 solo su rete fidata (le credenziali viaggiano in chiaro senza HTTPS).
 

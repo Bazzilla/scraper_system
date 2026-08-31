@@ -15,7 +15,6 @@ from unittest import mock
 
 from overrides_page import render_overrides_page
 from overrides_server import (
-    DEFAULT_CREDENTIALS,
     OverridesHandler,
     SUPPORTED_KEYS,
     is_authorized,
@@ -23,6 +22,9 @@ from overrides_server import (
     parse_number,
     rebuild_report,
 )
+
+# Credenziali fittizie per i test (mai usate in produzione).
+_TEST_CREDS = ("testuser", "testpass")
 
 
 class TestParseNumber(unittest.TestCase):
@@ -41,8 +43,8 @@ class TestParseNumber(unittest.TestCase):
 
 
 def _auth_header(user: str = "", password: str = "") -> str:
-    user = user or DEFAULT_CREDENTIALS[0]
-    password = password or DEFAULT_CREDENTIALS[1]
+    user = user or _TEST_CREDS[0]
+    password = password or _TEST_CREDS[1]
     raw = base64.b64encode(f"{user}:{password}".encode("utf-8")).decode()
     return f"Basic {raw}"
 
@@ -96,25 +98,24 @@ class TestRebuildReport(unittest.TestCase):
 
 
 class TestBasicAuth(unittest.TestCase):
-    def test_default_credentials(self):
-        self.assertEqual(DEFAULT_CREDENTIALS, ("admin", "so€uri€€€"))
-
     def test_is_authorized_valid_credentials(self):
-        self.assertTrue(is_authorized(_auth_header()))
+        self.assertTrue(is_authorized(_auth_header(), credentials=_TEST_CREDS))
 
     def test_is_authorized_rejects_missing_header(self):
-        self.assertFalse(is_authorized(None))
-        self.assertFalse(is_authorized(""))
+        self.assertFalse(is_authorized(None, credentials=_TEST_CREDS))
+        self.assertFalse(is_authorized("", credentials=_TEST_CREDS))
 
     def test_is_authorized_rejects_wrong_password(self):
-        self.assertFalse(is_authorized(_auth_header(password="sbagliata")))
+        self.assertFalse(is_authorized(_auth_header(password="sbagliata"),
+                                       credentials=_TEST_CREDS))
 
     def test_is_authorized_rejects_wrong_user(self):
-        self.assertFalse(is_authorized(_auth_header(user="altro")))
+        self.assertFalse(is_authorized(_auth_header(user="altro"),
+                                       credentials=_TEST_CREDS))
 
     def test_is_authorized_rejects_malformed_header(self):
-        self.assertFalse(is_authorized("Basic !!!non-base64!!!"))
-        self.assertFalse(is_authorized("Bearer abc123"))
+        self.assertFalse(is_authorized("Basic !!!non-base64!!!", credentials=_TEST_CREDS))
+        self.assertFalse(is_authorized("Bearer abc123", credentials=_TEST_CREDS))
 
     def test_load_credentials_from_file(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -122,15 +123,29 @@ class TestBasicAuth(unittest.TestCase):
             auth_file.write_text("pippo:pluto €\n", encoding="utf-8")
             self.assertEqual(load_credentials(auth_file), ("pippo", "pluto €"))
 
-    def test_load_credentials_falls_back_to_default_when_file_invalid(self):
+    def test_load_credentials_raises_when_file_invalid(self):
         with tempfile.TemporaryDirectory() as tmp:
             auth_file = Path(tmp) / ".server-auth"
             auth_file.write_text("senza-separatore\n", encoding="utf-8")
-            self.assertEqual(load_credentials(auth_file), DEFAULT_CREDENTIALS)
-            self.assertEqual(load_credentials(Path(tmp) / "inesistente"), DEFAULT_CREDENTIALS)
+            with self.assertRaises(SystemExit):
+                load_credentials(auth_file)
+
+    def test_load_credentials_raises_when_file_missing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(SystemExit):
+                load_credentials(Path(tmp) / "inesistente")
 
 
 class TestOverridesHandler(unittest.TestCase):
+    def setUp(self):
+        self._cred_patcher = mock.patch(
+            "overrides_server.load_credentials", return_value=_TEST_CREDS,
+        )
+        self._cred_patcher.start()
+
+    def tearDown(self):
+        self._cred_patcher.stop()
+
     def test_supported_keys_whitelist(self):
         self.assertEqual(
             SUPPORTED_KEYS,

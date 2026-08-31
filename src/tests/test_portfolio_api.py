@@ -20,12 +20,13 @@ from portfolio_db import init_db
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-DEFAULT_CREDS = ("admin", "so€uri€€€")
+# Credenziali fittizie per i test (mai usate in produzione).
+_TEST_CREDS = ("testuser", "testpass")
 
 
 def _auth_header(user: str = "", password: str = "") -> str:
-    user = user or DEFAULT_CREDS[0]
-    password = password or DEFAULT_CREDS[1]
+    user = user or _TEST_CREDS[0]
+    password = password or _TEST_CREDS[1]
     raw = base64.b64encode(f"{user}:{password}".encode("utf-8")).decode()
     return f"Basic {raw}"
 
@@ -43,6 +44,11 @@ def _start_server() -> tuple[ThreadingHTTPServer, threading.Thread, int, Path]:
         conn.row_factory = sqlite3.Row
         init_db(conn)
         return conn
+
+    # Mock load_credentials to use test creds (no .server-auth needed).
+    OverridesHandler._orig_load_creds = mock.patch(  # type: ignore[attr-defined]
+        "overrides_server.load_credentials", return_value=_TEST_CREDS,
+    ).start()
 
     server = ThreadingHTTPServer(("127.0.0.1", 0), OverridesHandler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
