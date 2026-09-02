@@ -106,6 +106,16 @@ _MODE_OPTIONS = """\
       <div id="ticker-results" class="ticker-results"></div>
     </div>
   </div>
+  <label>
+    <input type="radio" name="mode" value="scraper">
+    <span><strong>Singolo scraper</strong><br>
+    <span class="desc">Esegue un solo modulo di scraping generale (senza ticker).</span></span>
+  </label>
+  <div id="scraper-extra" class="mode-extra">
+    <select id="scraper-select" class="cat-select" disabled>
+      <option value="">Seleziona scraper...</option>
+    </select>
+  </div>
 </div>
 <button id="run-btn" class="run-btn" type="button">▶ Avvia</button>
 """
@@ -122,9 +132,12 @@ _RUN_SCRIPT = """\
   var tickExtra = document.getElementById("tick-extra");
   var tickerInput = document.getElementById("ticker-input");
   var tickerResults = document.getElementById("ticker-results");
+  var scraperExtra = document.getElementById("scraper-extra");
+  var scraperSelect = document.getElementById("scraper-select");
   var allTickers = {};
   var selectedCat = null;
   var selectedSym = null;
+  var selectedScraper = null;
 
   /* --- Load tickers on page load --- */
   fetch("/api/tickers").then(function (r) { return r.json(); }).then(function (d) {
@@ -137,16 +150,29 @@ _RUN_SCRIPT = """\
     });
   });
 
+  /* --- Load scrapers on page load --- */
+  fetch("/api/scrapers").then(function (r) { return r.json(); }).then(function (d) {
+    (d.scrapers || []).forEach(function (s) {
+      var opt = document.createElement("option");
+      opt.value = s.name;
+      opt.textContent = s.label;
+      scraperSelect.appendChild(opt);
+    });
+  });
+
   /* --- Radio change → show/hide extra UI --- */
   document.querySelectorAll('input[name="mode"]').forEach(function (r) {
     r.addEventListener("change", function () {
       var m = this.value;
       catExtra.classList.toggle("visible", m === "category");
       tickExtra.classList.toggle("visible", m === "ticker");
+      scraperExtra.classList.toggle("visible", m === "scraper");
       catSelect.disabled = (m !== "category");
       tickerInput.disabled = (m !== "ticker");
+      scraperSelect.disabled = (m !== "scraper");
       if (m !== "ticker") { tickerResults.classList.remove("open"); tickerResults.innerHTML = ""; selectedSym = null; }
       if (m !== "category") { selectedCat = null; catCount.textContent = ""; }
+      if (m !== "scraper") { selectedScraper = null; }
     });
   });
 
@@ -155,6 +181,11 @@ _RUN_SCRIPT = """\
     selectedCat = this.value || null;
     var n = selectedCat ? (allTickers[selectedCat] || []).length : 0;
     catCount.textContent = selectedCat ? n + " ticker" : "";
+  });
+
+  /* --- Scraper select --- */
+  scraperSelect.addEventListener("change", function () {
+    selectedScraper = this.value || null;
   });
 
   /* --- Ticker search --- */
@@ -223,10 +254,12 @@ _RUN_SCRIPT = """\
     var mode = document.querySelector('input[name="mode"]:checked').value;
     if (mode === "category" && !selectedCat) { alert("Seleziona una categoria"); return; }
     if (mode === "ticker" && !selectedSym) { alert("Seleziona un ticker"); return; }
+    if (mode === "scraper" && !selectedScraper) { alert("Seleziona uno scraper"); return; }
 
     var url = "/api/scraper-run?mode=" + encodeURIComponent(mode);
     if (mode === "category") url += "&category=" + encodeURIComponent(selectedCat);
     if (mode === "ticker") url += "&ticker=" + encodeURIComponent(selectedSym);
+    if (mode === "scraper") url += "&name=" + encodeURIComponent(selectedScraper);
 
     btn.disabled = true; btn.textContent = "⏳ In corso...";
     output.textContent = "";

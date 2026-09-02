@@ -249,6 +249,9 @@ class OverridesHandler(BaseHTTPRequestHandler):
         if self.path == "/portfolio.html":
             self._send_html(200, render_portfolio_page())
             return
+        if self.path == "/api/scrapers":
+            self._handle_get_scrapers()
+            return
         if self.path.startswith("/api/scraper-run"):
             if "status" in self.path:
                 self._send_json(200, _scrape_state)
@@ -400,6 +403,27 @@ class OverridesHandler(BaseHTTPRequestHandler):
             "backup": str(backup_path),
         })
 
+    def _handle_get_scrapers(self) -> None:
+        """Return the list of general (non-ticker) scrapers for the dropdown."""
+        _TICKER_SCRAPERS = {"ohlcv", "indicators", "valuation"}
+        _NAMES = {
+            "fgi": "Fear & Greed Index",
+            "aaii": "AAII Sentiment",
+            "vix": "VIX",
+            "pcr": "Put/Call Ratio",
+            "nh_nl": "Highs/Lows 52w",
+            "insider": "Insider Purchases",
+        }
+        try:
+            config = load_config(DEFAULT_CONFIG)
+            scrapers = []
+            for name in config.get("scrapers", {}):
+                if name not in _TICKER_SCRAPERS:
+                    scrapers.append({"name": name, "label": _NAMES.get(name, name)})
+            self._send_json(200, {"scrapers": scrapers})
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(500, {"scrapers": [], "error": str(exc)})
+
     def _handle_scraper_run_sse(self) -> None:
         """Run ``run.py`` with the selected mode and stream output via SSE."""
         if _scrape_state["running"]:
@@ -432,6 +456,12 @@ class OverridesHandler(BaseHTTPRequestHandler):
                 self._send_json(400, {"ok": False, "message": "missing ?ticker= param"})
                 return
             flags = ["--ticker", sym, "--merge"]
+        elif mode == "scraper":
+            name = params.get("name", [None])[0]
+            if not name:
+                self._send_json(400, {"ok": False, "message": "missing ?name= param"})
+                return
+            flags = ["--scraper", name]
 
         cmd = [sys.executable, str(PROJECT_ROOT / "run.py"), DEFAULT_CONFIG] + flags
 

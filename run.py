@@ -9,6 +9,7 @@ Modes:
                                                # (no scraping)
     ./.venv/bin/python run.py --category semiconductors  # scrape only one category
     ./.venv/bin/python run.py --ticker NVDA              # scrape only one ticker
+    ./.venv/bin/python run.py --scraper vix              # scrape only one general scraper
 
 Merge mode (--category or --ticker + --merge):
 
@@ -240,6 +241,21 @@ def mode_override_only(config_path: str) -> int:
     return 0
 
 
+def mode_scraper(config_path: str, scraper_name: str) -> int:
+    """Run a single general scraper (non-ticker) and merge into output."""
+    from orchestrator import run_single_scraper
+
+    print(f"[1/2] Running scraper: {scraper_name} ...")
+    try:
+        run_single_scraper(config_path, scraper_name)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    _render_report(config_path)
+    return 0
+
+
 def main() -> int:
     logging.basicConfig(
         level=logging.INFO,
@@ -278,6 +294,10 @@ def main() -> int:
         action="store_true",
         help="Merge new scrape results into existing output.json (preserves other tickers/categories)",
     )
+    parser.add_argument(
+        "--scraper",
+        help="Run only the specified general scraper (e.g. vix, insider, fgi)",
+    )
     args = parser.parse_args()
 
     config_path = str(PROJECT_ROOT / args.config)
@@ -289,6 +309,8 @@ def main() -> int:
         return mode_report_only(config_path)
     if args.override_only:
         return mode_override_only(config_path)
+    if args.scraper:
+        return mode_scraper(config_path, args.scraper)
     return mode_full(
         config_path,
         category=args.category,

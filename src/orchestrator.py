@@ -141,6 +141,66 @@ def run(
     return output
 
 
+def run_single_scraper(
+    config_path: str,
+    scraper_name: str,
+    output_path: str | None = None,
+) -> dict[str, Any]:
+    """Run a single scraper and merge into existing output.json.
+
+    Used by ``run.py --scraper NAME`` for the scraping page dropdown.
+    Loads the existing output, runs only the named scraper, re-consolidates
+    and re-renders the report.
+    """
+    config = load_config(config_path)
+    output_cfg = config.get("output", {})
+    output_path = output_path or output_cfg.get("json_path", "output/output.json")
+    base_dir = Path(config_path).resolve().parent
+    output_path = str(base_dir / output_path)
+
+    scraper_cfg = config.get("scrapers", {}).get(scraper_name)
+    if not scraper_cfg:
+        raise ValueError(f"Scraper '{scraper_name}' not found in config")
+
+    # Load existing output and extract results (drop meta keys).
+    meta_keys = {"generated_at", "stale_summary", "strategy_indicators"}
+    with open(output_path, "r", encoding="utf-8") as fh:
+        full_output = json.load(fh)
+    results = {k: v for k, v in full_output.items() if k not in meta_keys}
+
+    # Run the single scraper.
+    logger.info("▶ [%s] start (single)", scraper_name)
+    start = time.monotonic()
+    result, status, error = _run_scraper_safely(
+        scraper_name, scraper_cfg, base_dir, config.get("tickers", {}),
+    )
+    elapsed = time.monotonic() - start
+
+    if result is not None:
+        result["origin"] = "scraped"
+        results[scraper_cfg["output_key"]] = result
+        logger.info("✓ [%s] done — success (%.1fs)", scraper_name, elapsed)
+    else:
+        results[scraper_cfg["output_key"]] = {
+            "status": "error",
+            "origin": "missing",
+            "error": error or "unknown error",
+            "fetched_at": _now_iso(),
+        }
+        logger.error("✗ [%s] failed — %s (%.1fs)", scraper_name, error, elapsed)
+
+    # Re-consolidate and rebuild strategy indicators.
+    output = consolidate(results)
+    output["strategy_indicators"] = _build_strategy_indicators(
+        config, base_dir, results,
+    )
+
+    with open(output_path, "w", encoding="utf-8") as fh:
+        json.dump(output, fh, indent=2)
+
+    return output
+
+
 def _apply_manual_overrides(
     config: dict[str, Any],
     base_dir: Path,
