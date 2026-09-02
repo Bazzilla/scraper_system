@@ -158,7 +158,7 @@ scrapers:
     schedule: daily
     config:
       url: "http://openinsider.com/latest-officer-purchases-25k"
-      timeout: 20
+      timeout: 45
       retries: 3
       backoff: 2.0
       headers:
@@ -175,7 +175,6 @@ tickers:
   # - buy_the_dip_validity: high | medium | low (coerenza con la strategia BTD)
   # - notes: motivazione leggibile nel report (opzionale)
   semiconductors:
-    # Core / high validity
     - symbol: NVDA
       name: NVIDIA
       quality_tier: core
@@ -196,7 +195,7 @@ tickers:
       quality_tier: core
       strategy_role: foundry
       buy_the_dip_validity: high
-      notes: "Rischio geopolitico Taiwan: escludere/ridurre in caso di escalation"
+      notes: 'Rischio geopolitico Taiwan: escludere/ridurre in caso di escalation'
     - symbol: KLAC
       name: KLA
       quality_tier: core
@@ -217,7 +216,6 @@ tickers:
       quality_tier: core
       strategy_role: analog_industrial
       buy_the_dip_validity: high
-    # Secondary / medium validity
     - symbol: AMD
       name: Advanced Micro Devices
       quality_tier: secondary
@@ -253,30 +251,28 @@ tickers:
       quality_tier: secondary
       strategy_role: cyclical_leader
       buy_the_dip_validity: medium
-    - symbol: "ON"
+    - symbol: 'ON'
       name: ON Semiconductor
       quality_tier: secondary
       strategy_role: analog_industrial
       buy_the_dip_validity: medium
-    # Opportunistic / low validity
     - symbol: MU
       name: Micron
       quality_tier: opportunistic
       strategy_role: memory
       buy_the_dip_validity: low
-      notes: "Ciclicità memoria: solo a sconto profondo"
+      notes: 'Ciclicità memoria: solo a sconto profondo'
     - symbol: INTC
       name: Intel
       quality_tier: opportunistic
       strategy_role: turnaround
       buy_the_dip_validity: low
-      notes: "Turnaround in corso: solo tesi di recupero"
+      notes: 'Turnaround in corso: solo tesi di recupero'
     - symbol: SWKS
       name: Skyworks Solutions
       quality_tier: opportunistic
       strategy_role: cyclical_leader
       buy_the_dip_validity: low
-    # Nuovi candidati Semiconductor / AI infrastructure
     - symbol: SNPS
       name: Synopsys
       quality_tier: core
@@ -292,7 +288,7 @@ tickers:
       quality_tier: secondary
       strategy_role: compounder
       buy_the_dip_validity: medium
-      notes: "Valutazione sensibile al prezzo"
+      notes: Valutazione sensibile al prezzo
     - symbol: MCHP
       name: Microchip Technology
       quality_tier: secondary
@@ -304,7 +300,6 @@ tickers:
       strategy_role: semiconductor_equipment
       buy_the_dip_validity: medium
   defense:
-    # Core / high validity
     - symbol: LMT
       name: Lockheed Martin
       quality_tier: core
@@ -340,7 +335,6 @@ tickers:
       quality_tier: core
       strategy_role: aerospace_components
       buy_the_dip_validity: high
-    # Secondary / medium validity
     - symbol: LHX
       name: L3Harris
       quality_tier: secondary
@@ -351,13 +345,12 @@ tickers:
       quality_tier: secondary
       strategy_role: defense_tech
       buy_the_dip_validity: medium
-      notes: "Rischio valutazione/growth: multipli elevati"
+      notes: 'Rischio valutazione/growth: multipli elevati'
     - symbol: TXT
       name: Textron
       quality_tier: secondary
       strategy_role: aerospace_components
       buy_the_dip_validity: medium
-    # Nuovi candidati Defense / government tech
     - symbol: BAH
       name: Booz Allen Hamilton
       quality_tier: core
@@ -383,3 +376,54 @@ tickers:
       quality_tier: secondary
       strategy_role: defense_prime
       buy_the_dip_validity: medium
+  energy:
+    - symbol: BE
+      name: Bloom Energy Corporation
+    - symbol: CEG
+      name: Constellation Energy
+    - symbol: VST
+      name: Vistra
+    - symbol: NEE
+      name: NextEra Energy
+    - symbol: SO
+      name: Southern Company
+    - symbol: DUK
+      name: Duke Energy
+    - symbol: AEP
+      name: American Electric Power
+    - symbol: GEV
+      name: GE Vernova
+    - symbol: ETN
+      name: Eaton
+    - symbol: PWR
+      name: Quanta Services
+    - symbol: HUBB
+      name: Hubbell
+    - symbol: VRT
+      name: Vertiv
+    - symbol: EQT
+      name: EQT
+    - symbol: LNG
+      name: Cheniere Energy
+    - symbol: WMB
+      name: Williams Companies
+    - symbol: KMI
+      name: Kinder Morgan
+    - symbol: EPD
+      name: Enterprise Products Partners
+    - symbol: ET
+      name: Energy Transfer
+  tech:
+    - symbol: GOOGL
+      name: Alphabet Inc.
+    - symbol: NOW
+      name: ServiceNow, Inc.
+    - symbol: SAP
+      name: SAP SE
+    - symbol: NBIS
+      name: Nebius Group N.V.
+    - symbol: AMPX
+      name: Amprius Technologies, Inc.
+  pharma:
+    - symbol: GEHC
+      name: GE HealthCare Technologies Inc.
