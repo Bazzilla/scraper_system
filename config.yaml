@@ -158,7 +158,7 @@ scrapers:
     schedule: daily
     config:
       url: "http://openinsider.com/latest-officer-purchases-25k"
-      timeout: 45
+      timeout: 180
       retries: 3
       backoff: 2.0
       headers:
@@ -169,213 +169,86 @@ scrapers:
       stale_after_hours: 24
 
 tickers:
-  # Classificazione strategica (display-only nel report, MAI segnale BUY):
-  # - quality_tier: core | secondary | opportunistic
-  # - strategy_role: ruolo strategico (compounder, defense_prime, ...)
-  # - buy_the_dip_validity: high | medium | low (coerenza con la strategia BTD)
-  # - notes: motivazione leggibile nel report (opzionale)
   semiconductors:
     - symbol: NVDA
       name: NVIDIA
-      quality_tier: core
-      strategy_role: compounder
-      buy_the_dip_validity: high
     - symbol: AVGO
       name: Broadcom
-      quality_tier: core
-      strategy_role: compounder
-      buy_the_dip_validity: high
     - symbol: ASML
       name: ASML Holding
-      quality_tier: core
-      strategy_role: semiconductor_equipment
-      buy_the_dip_validity: high
     - symbol: TSM
       name: Taiwan Semiconductor
-      quality_tier: core
-      strategy_role: foundry
-      buy_the_dip_validity: high
-      notes: 'Rischio geopolitico Taiwan: escludere/ridurre in caso di escalation'
     - symbol: KLAC
       name: KLA
-      quality_tier: core
-      strategy_role: semiconductor_equipment
-      buy_the_dip_validity: high
     - symbol: AMAT
       name: Applied Materials
-      quality_tier: core
-      strategy_role: semiconductor_equipment
-      buy_the_dip_validity: high
     - symbol: LRCX
       name: Lam Research
-      quality_tier: core
-      strategy_role: semiconductor_equipment
-      buy_the_dip_validity: high
     - symbol: MPWR
       name: Monolithic Power Systems
-      quality_tier: core
-      strategy_role: analog_industrial
-      buy_the_dip_validity: high
     - symbol: AMD
       name: Advanced Micro Devices
-      quality_tier: secondary
-      strategy_role: cyclical_leader
-      buy_the_dip_validity: medium
     - symbol: ADI
       name: Analog Devices
-      quality_tier: secondary
-      strategy_role: analog_industrial
-      buy_the_dip_validity: medium
     - symbol: TXN
       name: Texas Instruments
-      quality_tier: secondary
-      strategy_role: analog_industrial
-      buy_the_dip_validity: medium
     - symbol: NXPI
       name: NXP Semiconductors
-      quality_tier: secondary
-      strategy_role: analog_industrial
-      buy_the_dip_validity: medium
     - symbol: MRVL
       name: Marvell
-      quality_tier: secondary
-      strategy_role: cyclical_leader
-      buy_the_dip_validity: medium
     - symbol: ENTG
       name: Entegris
-      quality_tier: secondary
-      strategy_role: semiconductor_equipment
-      buy_the_dip_validity: medium
     - symbol: QCOM
       name: Qualcomm
-      quality_tier: secondary
-      strategy_role: cyclical_leader
-      buy_the_dip_validity: medium
     - symbol: 'ON'
       name: ON Semiconductor
-      quality_tier: secondary
-      strategy_role: analog_industrial
-      buy_the_dip_validity: medium
     - symbol: MU
       name: Micron
-      quality_tier: opportunistic
-      strategy_role: memory
-      buy_the_dip_validity: low
-      notes: 'Ciclicità memoria: solo a sconto profondo'
     - symbol: INTC
       name: Intel
-      quality_tier: opportunistic
-      strategy_role: turnaround
-      buy_the_dip_validity: low
-      notes: 'Turnaround in corso: solo tesi di recupero'
     - symbol: SWKS
       name: Skyworks Solutions
-      quality_tier: opportunistic
-      strategy_role: cyclical_leader
-      buy_the_dip_validity: low
     - symbol: SNPS
       name: Synopsys
-      quality_tier: core
-      strategy_role: compounder
-      buy_the_dip_validity: high
     - symbol: CDNS
       name: Cadence Design Systems
-      quality_tier: core
-      strategy_role: compounder
-      buy_the_dip_validity: high
     - symbol: ARM
       name: Arm Holdings
-      quality_tier: secondary
-      strategy_role: compounder
-      buy_the_dip_validity: medium
-      notes: Valutazione sensibile al prezzo
     - symbol: MCHP
       name: Microchip Technology
-      quality_tier: secondary
-      strategy_role: analog_industrial
-      buy_the_dip_validity: medium
     - symbol: TER
       name: Teradyne
-      quality_tier: secondary
-      strategy_role: semiconductor_equipment
-      buy_the_dip_validity: medium
   defense:
     - symbol: LMT
       name: Lockheed Martin
-      quality_tier: core
-      strategy_role: defense_prime
-      buy_the_dip_validity: high
     - symbol: NOC
       name: Northrop Grumman
-      quality_tier: core
-      strategy_role: defense_prime
-      buy_the_dip_validity: high
     - symbol: RTX
       name: RTX
-      quality_tier: core
-      strategy_role: defense_prime
-      buy_the_dip_validity: high
     - symbol: GD
       name: General Dynamics
-      quality_tier: core
-      strategy_role: defense_prime
-      buy_the_dip_validity: high
     - symbol: HEI
       name: HEICO
-      quality_tier: core
-      strategy_role: aerospace_components
-      buy_the_dip_validity: high
     - symbol: TDG
       name: TransDigm Group
-      quality_tier: core
-      strategy_role: aerospace_components
-      buy_the_dip_validity: high
     - symbol: HWM
       name: Howmet Aerospace
-      quality_tier: core
-      strategy_role: aerospace_components
-      buy_the_dip_validity: high
     - symbol: LHX
       name: L3Harris
-      quality_tier: secondary
-      strategy_role: defense_tech
-      buy_the_dip_validity: medium
     - symbol: AXON
       name: Axon Enterprise
-      quality_tier: secondary
-      strategy_role: defense_tech
-      buy_the_dip_validity: medium
-      notes: 'Rischio valutazione/growth: multipli elevati'
     - symbol: TXT
       name: Textron
-      quality_tier: secondary
-      strategy_role: aerospace_components
-      buy_the_dip_validity: medium
     - symbol: BAH
       name: Booz Allen Hamilton
-      quality_tier: core
-      strategy_role: defense_tech
-      buy_the_dip_validity: high
     - symbol: LDOS
       name: Leidos
-      quality_tier: secondary
-      strategy_role: defense_tech
-      buy_the_dip_validity: medium
     - symbol: CACI
       name: CACI International
-      quality_tier: secondary
-      strategy_role: defense_tech
-      buy_the_dip_validity: medium
     - symbol: CW
       name: Curtiss-Wright
-      quality_tier: secondary
-      strategy_role: aerospace_components
-      buy_the_dip_validity: medium
     - symbol: HII
       name: Huntington Ingalls Industries
-      quality_tier: secondary
-      strategy_role: defense_prime
-      buy_the_dip_validity: medium
   energy:
     - symbol: BE
       name: Bloom Energy Corporation
@@ -424,6 +297,10 @@ tickers:
       name: Nebius Group N.V.
     - symbol: AMPX
       name: Amprius Technologies, Inc.
+    - symbol: IOT
+      name: Samsara Inc.
+    - symbol: SSYS
+      name: Stratasys Ltd.
   pharma:
     - symbol: GEHC
       name: GE HealthCare Technologies Inc.
