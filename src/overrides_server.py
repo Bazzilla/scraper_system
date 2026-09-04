@@ -40,6 +40,7 @@ import json
 import socket
 import subprocess
 import sys
+import yaml
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -61,7 +62,7 @@ from overrides_page import render_overrides_page
 from report_html import render as render_report
 from tickers_page import render_tickers_page
 from scraper_run_page import render_scraper_run_page
-from tickers_store import load_tickers, save_tickers
+from tickers_store import load_tickers, save_tickers, export_tickers, import_tickers
 from portfolio_db import (
     TransactionError,
     add_transaction,
@@ -243,6 +244,12 @@ class OverridesHandler(BaseHTTPRequestHandler):
         if self.path == "/api/tickers":
             self._send_json(200, {"ok": True, "tickers": load_tickers(DEFAULT_CONFIG)})
             return
+        if self.path == "/api/tickers/export":
+            self._handle_tickers_export()
+            return
+        if self.path.startswith("/api/tickers/import"):
+            self._handle_tickers_import()
+            return
         if self.path == "/scraper-run.html":
             self._send_html(200, render_scraper_run_page())
             return
@@ -402,6 +409,55 @@ class OverridesHandler(BaseHTTPRequestHandler):
             "message": f"Ticker salvati e report rigenerato (backup: {backup_path.name})",
             "backup": str(backup_path),
         })
+
+    def _handle_tickers_export(self) -> None:
+        """GET /api/tickers/export — export ALL tickers as JSON."""
+        data = export_tickers(DEFAULT_CONFIG)
+        self._send_json(200, {"ok": True, **data})
+
+    def _handle_tickers_import(self) -> None:
+        """POST /api/tickers/import — merge incoming tickers with existing."""
+        content_type = self.headers.get("Content-Type", "")
+        length = int(self.headers.get("Content-Length", 0))
+        if length == 0:
+            self._send_json(400, {"ok": False, "message": "body vuoto"})
+            return
+
+        try:
+            raw = self.rfile.read(length).decode("utf-8")
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(400, {"ok": False, "message": f"leggere body: {exc}"})
+            return
+
+        # Parse JSON or YAML
+        try:
+            if "yaml" in content_type or "yml" in content_type:
+                incoming = yaml.safe_load(raw) or {}
+            else:
+                incoming = json.loads(raw) or {}
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(400, {"ok": False, "message": f"parse fallito: {exc}"})
+            return
+
+        tickers = incoming.get("tickers") if isinstance(incoming, dict) else incoming
+        if not isinstance(tickers, dict):
+            self._send_json(400, {"ok": False,
+                                  "message": "body deve contenere 'tickers' (mapping)"})
+            return
+
+        try:
+            report = import_tickers(DEFAULT_CONFIG, tickers)
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(500, {"ok": False, "message": str(exc)})
+            return
+
+        if report.get("saved"):
+            try:
+                rebuild_report(DEFAULT_CONFIG)
+            except Exception:  # noqa: BLE001
+                pass  # report rebuild è best-effort
+
+        self._send_json(200, report)
 
     def _handle_get_scrapers(self) -> None:
         """Return the list of general (non-ticker) scrapers for the dropdown."""

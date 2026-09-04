@@ -134,3 +134,108 @@ def save_tickers(
 
 def _now_epoch() -> int:
     return int(time.time())
+
+
+# ── Export / Import ──────────────────────────────────────────────────────────
+
+
+def export_tickers(config_path: str) -> dict[str, Any]:
+    """Export ALL tickers from config.yaml with metadata.
+
+    Returns a dict with ``exported_at`` and ``tickers`` (the full mapping).
+    """
+    tickers = load_tickers(config_path)
+    return {
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "tickers": tickers,
+    }
+
+
+def import_tickers(
+    config_path: str,
+    incoming: dict[str, Any],
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Merge incoming tickers into the existing config, with conflict detection.
+
+    Rules:
+    - New ticker (symbol not present anywhere) → added to its category
+    - Existing ticker in the SAME category → skipped (already present)
+    - Existing ticker in a DIFFERENT category → rejected (conflict)
+    - New category → created
+
+    Returns a report dict with ``imported``, ``skipped``, ``conflicts``,
+    and ``saved`` (bool).
+    """
+    existing = load_tickers(config_path)
+
+    # Reverse map: symbol → category (for existing tickers)
+    existing_map: dict[str, str] = {}
+    for cat, entries in existing.items():
+        for entry in entries:
+            sym = entry.get("symbol", "").upper() if isinstance(entry, dict) else ""
+            if sym:
+                existing_map[sym] = cat
+
+    imported: list[dict[str, str]] = []
+    skipped: list[dict[str, str]] = []
+    conflicts: list[dict[str, str]] = []
+
+    # Work on a mutable copy
+    merged = {cat: [dict(e) for e in entries] for cat, entries in existing.items()}
+
+    for cat, entries in incoming.items():
+        if not isinstance(entries, list):
+            continue
+        if cat not in merged:
+            merged[cat] = []
+
+        # Build local map for this category
+        local_syms = {
+            e.get("symbol", "").upper()
+            for e in merged[cat]
+            if isinstance(e, dict)
+        }
+
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            sym = entry.get("symbol", "").upper()
+            if not sym:
+                continue
+
+            prev_cat = existing_map.get(sym)
+            if prev_cat is None:
+                # New ticker → add
+                merged[cat].append(dict(entry))
+                existing_map[sym] = cat
+                imported.append({"symbol": sym, "category": cat})
+            elif prev_cat == cat or sym in local_syms:
+                # Same category → skip
+                skipped.append({
+                    "symbol": sym,
+                    "category": cat,
+                    "reason": "already exists in this category",
+                })
+            else:
+                # Different category → conflict
+                conflicts.append({
+                    "symbol": sym,
+                    "existing_category": prev_cat,
+                    "import_category": cat,
+                    "reason": f"ticker already exists in category '{prev_cat}'",
+                })
+
+    # Save only if there were actual changes
+    saved = False
+    if imported:
+        save_tickers(config_path, merged, now=now)
+        saved = True
+
+    return {
+        "ok": True,
+        "imported": imported,
+        "skipped": skipped,
+        "conflicts": conflicts,
+        "saved": saved,
+    }
