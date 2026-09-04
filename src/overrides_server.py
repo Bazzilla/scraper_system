@@ -62,6 +62,7 @@ from overrides_page import render_overrides_page
 from report_html import render as render_report
 from tickers_page import render_tickers_page
 from scraper_run_page import render_scraper_run_page
+from data_exchange_page import render_data_exchange_page
 from tickers_store import load_tickers, save_tickers, export_tickers, import_tickers
 from portfolio_db import (
     TransactionError,
@@ -252,6 +253,9 @@ class OverridesHandler(BaseHTTPRequestHandler):
             return
         if self.path == "/scraper-run.html":
             self._send_html(200, render_scraper_run_page())
+            return
+        if self.path == "/data-exchange.html":
+            self._send_html(200, render_data_exchange_page())
             return
         if self.path == "/portfolio.html":
             self._send_html(200, render_portfolio_page())
