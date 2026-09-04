@@ -140,14 +140,22 @@ def _now_epoch() -> int:
 
 
 def export_tickers(config_path: str) -> dict[str, Any]:
-    """Export ALL tickers from config.yaml with metadata.
+    """Export ALL tickers with only static fields (symbol + name).
 
-    Returns a dict with ``exported_at`` and ``tickers`` (the full mapping).
+    Metadata (quality_tier, strategy_role, buy_the_dip_validity, notes)
+    is excluded — they are display-only and will be lost on re-import.
     """
     tickers = load_tickers(config_path)
+    clean: dict[str, Any] = {}
+    for cat, entries in tickers.items():
+        clean[cat] = [
+            {"symbol": e.get("symbol", ""), "name": e.get("name", "")}
+            for e in entries
+            if isinstance(e, dict) and e.get("symbol")
+        ]
     return {
         "exported_at": datetime.now(timezone.utc).isoformat(),
-        "tickers": tickers,
+        "tickers": clean,
     }
 
 
@@ -156,11 +164,15 @@ def import_tickers(
     incoming: dict[str, Any],
     now: datetime | None = None,
 ) -> dict[str, Any]:
-    """Merge incoming tickers into the existing config, with conflict detection.
+    """Merge incoming tickers (symbol + name only) into existing config.
+
+    Only ``symbol`` and ``name`` are imported — any extra metadata in the
+    incoming file is silently dropped. Existing metadata on existing tickers
+    is preserved (not overwritten).
 
     Rules:
-    - New ticker (symbol not present anywhere) → added to its category
-    - Existing ticker in the SAME category → skipped (already present)
+    - New ticker (symbol not present anywhere) → added with symbol+name
+    - Existing ticker in the SAME category → skipped
     - Existing ticker in a DIFFERENT category → rejected (conflict)
     - New category → created
 
@@ -201,13 +213,14 @@ def import_tickers(
             if not isinstance(entry, dict):
                 continue
             sym = entry.get("symbol", "").upper()
+            name = entry.get("name", sym)
             if not sym:
                 continue
 
             prev_cat = existing_map.get(sym)
             if prev_cat is None:
-                # New ticker → add
-                merged[cat].append(dict(entry))
+                # New ticker → add (symbol + name only)
+                merged[cat].append({"symbol": sym, "name": name})
                 existing_map[sym] = cat
                 imported.append({"symbol": sym, "category": cat})
             elif prev_cat == cat or sym in local_syms:

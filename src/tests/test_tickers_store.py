@@ -181,14 +181,19 @@ class TestTickersPage(unittest.TestCase):
 
 
 class TestExportTickers(unittest.TestCase):
-    def test_export_returns_all_tickers(self):
+    def test_export_returns_only_symbol_and_name(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = _write_config(tmp)
             result = export_tickers(str(path))
             self.assertIn("exported_at", result)
             self.assertIn("tickers", result)
-            self.assertIn("semiconductors", result["tickers"])
-            self.assertEqual(result["tickers"]["semiconductors"][0]["symbol"], "AMAT")
+            amati = result["tickers"]["semiconductors"][0]
+            self.assertEqual(amati["symbol"], "AMAT")
+            self.assertIn("name", amati)
+            # Metadata esclusa
+            self.assertNotIn("quality_tier", amati)
+            self.assertNotIn("strategy_role", amati)
+            self.assertNotIn("buy_the_dip_validity", amati)
 
     def test_export_empty_config(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -256,7 +261,27 @@ class TestImportTickers(unittest.TestCase):
             self.assertEqual(len(report["conflicts"]), 1)
             self.assertTrue(report["saved"])
 
+    def test_import_creates_entry_with_symbol_and_name_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _write_config(tmp)
+            incoming = {"tech": [{"symbol": "AAPL", "name": "Apple", "quality_tier": "core"}]}
+            report = import_tickers(str(path), incoming)
+            self.assertTrue(report["ok"])
+            self.assertEqual(len(report["imported"]), 1)
+            tickers = load_tickers(str(path))
+            entry = tickers["tech"][0]
+            self.assertEqual(entry["symbol"], "AAPL")
+            self.assertEqual(entry["name"], "Apple")
+            self.assertNotIn("quality_tier", entry)
+
     def test_import_symbol_normalised_uppercase(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _write_config(tmp)
+            incoming = {"tech": [{"symbol": "aapl", "name": "Apple"}]}
+            report = import_tickers(str(path), incoming)
+            self.assertEqual(report["imported"][0]["symbol"], "AAPL")
+            tickers = load_tickers(str(path))
+            self.assertEqual(tickers["tech"][0]["symbol"], "AAPL")
         with tempfile.TemporaryDirectory() as tmp:
             path = _write_config(tmp)
             incoming = {"tech": [{"symbol": "aapl", "name": "Apple"}]}
