@@ -599,13 +599,16 @@ def render_portfolio_summary(data: dict[str, Any]) -> str:
         gain_cls = "pnl-pos" if (gain_pct or 0) > 0 else "pnl-neg" if (gain_pct or 0) < 0 else ""
         gain_str = f"{gain_pct:.1f}%" if gain_pct is not None else "—"
         last_price_str = f"${p['last_price']:.2f}" if p.get('last_price') else "—"
+        qty = p["quantity"]
+        avg = p["avg_price"]
+        last = p.get("last_price")
         rows += (
-            f"<tr><td><strong>{html_mod.escape(p['ticker'])}</strong></td>"
-            f"<td>{p['quantity']}</td>"
-            f"<td>${p['avg_price']:.2f}</td>"
-            f"<td>{last_price_str}</td>"
-            f'<td class="{gain_cls}">{gain_str}</td>'
-            f'<td><span class="sell-signal sell-{signal_class}">{html_mod.escape(signal)}</span></td>'
+            f'<tr><td data-value="{html_mod.escape(p["ticker"])}"><strong>{html_mod.escape(p["ticker"])}</strong></td>'
+            f'<td data-value="{qty}">{qty}</td>'
+            f'<td data-value="{avg:.2f}">${avg:.2f}</td>'
+            f'<td data-value="{last if last is not None else ""}">{last_price_str}</td>'
+            f'<td data-value="{gain_pct if gain_pct is not None else ""}" class="{gain_cls}">{gain_str}</td>'
+            f'<td data-value="{signal}"><span class="sell-signal sell-{signal_class}">{html_mod.escape(signal)}</span></td>'
             "</tr>"
         )
 
@@ -616,8 +619,12 @@ def render_portfolio_summary(data: dict[str, Any]) -> str:
         f'{len(positions)} posizioni aperte — '
         '<a href="/portfolio.html" style="color:var(--green);">dettagli completa →</a></p>'
         '<table class="ticker-table"><thead><tr>'
-        "<th>Ticker</th><th>Qtà</th><th>Prezzo medio</th>"
-        "<th>Ultimo prezzo</th><th>Gain/Loss %</th><th>Segnale SELL</th>"
+        '<th data-type="text">Ticker</th>'
+        '<th data-type="num">Qtà</th>'
+        '<th data-type="num">Prezzo medio</th>'
+        '<th data-type="num">Ultimo prezzo</th>'
+        '<th data-type="num">Gain/Loss %</th>'
+        '<th data-type="text">Segnale SELL</th>'
         "</tr></thead><tbody>"
         f"{rows}"
         "</tbody></table></div>"
