@@ -9,6 +9,12 @@ from typing import Any
 
 from report_helpers import FAVICON_LINK, render_nav
 
+# ── Version ─────────────────────────────────────────────────────────────────
+VERSION_MAJOR = 0
+VERSION_MINOR = 1
+VERSION_BUILD = 100  # git commit count — updated manually
+VERSION = f"{VERSION_MAJOR}.{VERSION_MINOR}.{VERSION_BUILD}"
+
 # ── Base CSS (shared by all pages) ──────────────────────────────────────────
 
 _BASE_CSS = """\
@@ -85,6 +91,10 @@ details.section > .section-body { padding: 0 16px 16px; }
 /* Shared footer */
 footer { margin-top: 32px; color: var(--muted); font-size: 0.85rem;
         border-top: 1px solid var(--border); padding-top: 16px; }
+/* System title */
+.system-title { font-size: 0.75rem; color: var(--muted); margin-bottom: 4px;
+        letter-spacing: 0.05em; text-transform: uppercase; }
+.system-version { font-weight: 400; margin-left: 6px; opacity: 0.7; }
 /* Shared sell signal badges */
 .sell-signal { display: inline-block; padding: 2px 8px; border-radius: 6px;
         font-size: 0.75rem; font-weight: 600; }
@@ -220,7 +230,7 @@ def wrap_page(
         "<meta charset=\"utf-8\">"
         "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
         f"{FAVICON_LINK}"
-        f"<title>{title}</title>"
+        f"<title>SC - {title}</title>"
         f"{extra_head}"
         f"<style>{_BASE_CSS}{css}</style>"
         "</head>\n<body><div class=\"container\">"
@@ -252,6 +262,8 @@ def render_header(
     sub_html = f'<div class="sub">{subtitle}</div>' if subtitle else ""
     return (
         "<header>"
+        '<div class="system-title">SCRAPER-SYSTEM '
+        f'<span class="system-version">v{VERSION}</span></div>'
         f"<div>{badge_html}{render_nav(nav_active)} "
         '<button id="theme-toggle" type="button">☀️ Light</button></div>'
         f"<div><h1>{title}</h1>"

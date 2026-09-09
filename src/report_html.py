@@ -303,8 +303,8 @@ _TABLE_SCRIPT = """\
     var headCells = thead.rows[0].cells;
     var tbody = table.tBodies[0];
     var dataRows = Array.prototype.slice.call(tbody.rows);
-    var sortCol = -1, sortDir = 0;          // 0 = nessun ordinamento
-    var filterStates = [];                  // per colonna: null | stato
+    var sortCol = -1, sortDir = 0;
+    var filterStates = [];
     dataRows.forEach(function (r, i) { r.setAttribute("data-orig-index", i); });
 
     // Toolbar con reset totale (filtri + ordinamento)
@@ -356,7 +356,7 @@ _TABLE_SCRIPT = """\
         visible.sort(function (a, b) {
           var va = cellValue(a, sortCol, type), vb = cellValue(b, sortCol, type);
           if (va === null && vb === null) return 0;
-          if (va === null) return 1;        // valori mancanti sempre in fondo
+          if (va === null) return 1;
           if (vb === null) return -1;
           var cmp = (type === "text")
             ? va.localeCompare(vb)
