@@ -517,6 +517,7 @@ _TABLE_SCRIPT = """\
     });
   }
 
+  window.setupTable = setupTable;
   document.querySelectorAll("table.ticker-table").forEach(setupTable);
 })();
 </script>

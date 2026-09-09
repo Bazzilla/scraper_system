@@ -327,6 +327,9 @@ _PAGE_SCRIPT = """\
         + '<td data-value="' + (pct != null ? pct : '') + '" class="' + pnlClass(pct) + '">' + (pct != null ? fmt(pct) + '%' : '\u2014') + '</td>'
         + '</tr>';
     }).join('');
+    // Re-init sort/filter on positions table (rendered async, after _TABLE_SCRIPT)
+    var table = $('positions-tbody').closest('table');
+    if (table && window.setupTable) { window.setupTable(table); }
   }
 
   /* ── Render transactions ────────────────────────────────────────── */
