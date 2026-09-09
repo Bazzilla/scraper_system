@@ -63,6 +63,7 @@ from report_html import render as render_report
 from tickers_page import render_tickers_page
 from scraper_run_page import render_scraper_run_page
 from data_exchange_page import render_data_exchange_page
+from info_page import render_info_page
 from tickers_store import load_tickers, save_tickers, export_tickers, import_tickers
 from portfolio_db import (
     TransactionError,
@@ -260,11 +261,17 @@ class OverridesHandler(BaseHTTPRequestHandler):
         if self.path == "/data-exchange.html":
             self._send_html(200, render_data_exchange_page())
             return
+        if self.path == "/info.html":
+            self._send_html(200, render_info_page())
+            return
         if self.path == "/portfolio.html":
             self._send_html(200, render_portfolio_page())
             return
         if self.path == "/api/scrapers":
             self._handle_get_scrapers()
+            return
+        if self.path == "/api/status":
+            self._handle_get_status()
             return
         if self.path.startswith("/api/scraper-run"):
             if "status" in self.path:
@@ -498,6 +505,72 @@ class OverridesHandler(BaseHTTPRequestHandler):
             self._send_json(200, {"scrapers": scrapers})
         except Exception as exc:  # noqa: BLE001
             self._send_json(500, {"scrapers": [], "error": str(exc)})
+
+    def _handle_get_status(self) -> None:
+        """GET /api/status — return system status (DB sizes, record counts, file info)."""
+        import os
+        import sqlite3 as _sqlite3
+
+        def _human_size(size: int) -> str:
+            for unit in ("B", "KB", "MB", "GB"):
+                if size < 1024:
+                    return f"{size:.1f} {unit}"
+                size /= 1024
+            return f"{size:.1f} TB"
+
+        def _file_info(path: str) -> dict[str, Any]:
+            p = Path(path)
+            if not p.exists():
+                return {"exists": False}
+            stat = p.stat()
+            return {
+                "exists": True,
+                "size_bytes": stat.st_size,
+                "size_human": _human_size(stat.st_size),
+                "modified": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
+            }
+
+        def _db_info(path: str) -> dict[str, Any]:
+            info = _file_info(path)
+            if not info.get("exists"):
+                info["rows"] = 0
+                info["tables"] = []
+                return info
+            try:
+                conn = _sqlite3.connect(path)
+                tables = [r[0] for r in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+                ).fetchall()]
+                counts = {}
+                for t in tables:
+                    counts[t] = conn.execute(f"SELECT COUNT(*) FROM [{t}]").fetchone()[0]
+                conn.close()
+                info["tables"] = tables
+                info["row_counts"] = counts
+                info["rows"] = sum(counts.values())
+            except Exception:  # noqa: BLE001
+                info["tables"] = []
+                info["row_counts"] = {}
+                info["rows"] = 0
+            return info
+
+        status = {
+            "databases": {
+                "portfolio": _db_info(str(PROJECT_ROOT / "output" / "portfolio.db")),
+                "valuation_history": _db_info(str(PROJECT_ROOT / "output" / "valuation_history.db")),
+                "scraper_audit": _db_info(str(PROJECT_ROOT / "output" / "scraper_audit.db")),
+            },
+            "files": {
+                "config": _file_info(DEFAULT_CONFIG),
+                "output_json": _file_info(str(PROJECT_ROOT / "output" / "output.json")),
+                "report_html": _file_info(str(PROJECT_ROOT / "output" / "report.html")),
+                "manual_overrides": _file_info(str(PROJECT_ROOT / "manual_overrides.yaml")),
+                "indicator_registry": _file_info(str(PROJECT_ROOT / "indicator_registry.yaml")),
+            },
+        }
+        self._send_json(200, {"ok": True, **status})
+
+
 
     def _handle_scraper_run_sse(self) -> None:
         """Run ``run.py`` with the selected mode and stream output via SSE."""

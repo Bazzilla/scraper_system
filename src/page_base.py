@@ -11,7 +11,7 @@ from report_helpers import FAVICON_LINK, render_nav
 
 # ── Version ─────────────────────────────────────────────────────────────────
 VERSION_MAJOR = 0
-VERSION_MINOR = 2
+VERSION_MINOR = 3
 VERSION_BUILD = 1
 VERSION = f"{VERSION_MAJOR}.{VERSION_MINOR}.{VERSION_BUILD}"
 

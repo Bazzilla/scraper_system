@@ -413,7 +413,7 @@ _NAV_ITEMS = [
     ("tickers", "/tickers.html", "📋 Ticker"),
     ("portfolio", "/portfolio.html", "💼 Portfolio"),
     ("scraper-run", "/scraper-run.html", "🚀 Scraping"),
-    ("data-exchange", "/data-exchange.html", "🔄 Import/Export"),
+    ("info", "/info.html", "ℹ️ Info"),
 ]
 
 # Favicon condivisa da tutte le pagine: mini grafico a barre con i colori dei
