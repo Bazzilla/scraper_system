@@ -8,6 +8,7 @@ zero client-side calculations.
 from __future__ import annotations
 
 from page_base import _SHARED_SCRIPT, render_header, wrap_page
+from report_html import _TABLE_SCRIPT
 
 _PORTFOLIO_CSS = """\
 .card { background: var(--card); border: 1px solid var(--border);
@@ -129,8 +130,10 @@ def render_portfolio_page() -> str:
     <div id="positions-body">
       <table>
         <thead><tr>
-          <th>Ticker</th><th>Qt\u00e0</th><th>Prezzo medio</th><th>Ultimo prezzo</th>
-          <th>Valore</th><th>Costo</th><th>Gain/Loss $</th><th>Gain/Loss %</th>
+          <th data-type="text">Ticker</th><th data-type="num">Qt\u00e0</th>
+          <th data-type="num">Prezzo medio</th><th data-type="num">Ultimo prezzo</th>
+          <th data-type="num">Valore</th><th data-type="num">Costo</th>
+          <th data-type="num">Gain/Loss $</th><th data-type="num">Gain/Loss %</th>
         </tr></thead>
         <tbody id="positions-tbody"></tbody>
       </table>
@@ -166,7 +169,7 @@ def render_portfolio_page() -> str:
 </main>"""
     return wrap_page(
         "Portfolio — scraper-system", "portfolio", _PORTFOLIO_CSS, header, content,
-        scripts=f"{_SHARED_SCRIPT}<script>{_PAGE_SCRIPT}</script>",
+        scripts=f"{_SHARED_SCRIPT}{_TABLE_SCRIPT}<script>{_PAGE_SCRIPT}</script>",
     )
 
 
@@ -314,14 +317,14 @@ _PAGE_SCRIPT = """\
       var gain = p.unrealized_pnl_usd;
       var pct = p.unrealized_pnl_pct;
       return '<tr>'
-        + '<td><strong>' + p.ticker + '</strong></td>'
-        + '<td>' + fmt(p.quantity) + '</td>'
-        + '<td>$' + fmt(p.average_entry_price_usd) + '</td>'
-        + '<td>' + (p.market_price_usd != null ? '$' + fmt(p.market_price_usd) : '—') + '</td>'
-        + '<td>' + (p.market_value_usd != null ? '$' + fmt(p.market_value_usd) : '—') + '</td>'
-        + '<td>$' + fmt(p.total_cost_usd) + '</td>'
-        + '<td class="' + pnlClass(gain) + '">$' + fmt(gain) + '</td>'
-        + '<td class="' + pnlClass(pct) + '">' + (pct != null ? fmt(pct) + '%' : '—') + '</td>'
+        + '<td data-value="' + p.ticker + '"><strong>' + p.ticker + '</strong></td>'
+        + '<td data-value="' + (p.quantity || 0) + '">' + fmt(p.quantity) + '</td>'
+        + '<td data-value="' + (p.average_entry_price_usd || 0) + '">$' + fmt(p.average_entry_price_usd) + '</td>'
+        + '<td data-value="' + (p.market_price_usd != null ? p.market_price_usd : '') + '">' + (p.market_price_usd != null ? '$' + fmt(p.market_price_usd) : '\u2014') + '</td>'
+        + '<td data-value="' + (p.market_value_usd != null ? p.market_value_usd : '') + '">' + (p.market_value_usd != null ? '$' + fmt(p.market_value_usd) : '\u2014') + '</td>'
+        + '<td data-value="' + (p.total_cost_usd || 0) + '">$' + fmt(p.total_cost_usd) + '</td>'
+        + '<td data-value="' + (gain != null ? gain : '') + '" class="' + pnlClass(gain) + '">$' + fmt(gain) + '</td>'
+        + '<td data-value="' + (pct != null ? pct : '') + '" class="' + pnlClass(pct) + '">' + (pct != null ? fmt(pct) + '%' : '\u2014') + '</td>'
         + '</tr>';
     }).join('');
   }
