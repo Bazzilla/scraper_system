@@ -197,3 +197,47 @@ def delete_transaction(conn: sqlite3.Connection, tx_id: int) -> bool:
     conn.execute("DELETE FROM transactions WHERE id = ?", (tx_id,))
     conn.commit()
     return True
+
+
+# ── Export / Import ──────────────────────────────────────────────────────────
+
+
+def export_transactions(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """Export ALL transactions as a list of dicts."""
+    return [dict(row) for row in conn.execute("SELECT * FROM transactions ORDER BY id")]
+
+
+def import_transactions(conn: sqlite3.Connection, rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Import transactions from a list of dicts.
+
+    Skips rows with duplicate (trade_date, ticker, action, quantity, price_usd)
+    to avoid duplicates.  Returns a report dict.
+    """
+    imported = 0
+    skipped = 0
+    for row in rows:
+        # Check for duplicate by natural key
+        existing = conn.execute(
+            "SELECT id FROM transactions WHERE trade_date = ? AND ticker = ? "
+            "AND action = ? AND quantity = ? AND price_usd = ?",
+            (row.get("trade_date"), row.get("ticker"), row.get("action"),
+             row.get("quantity"), row.get("price_usd")),
+        ).fetchone()
+        if existing:
+            skipped += 1
+            continue
+        conn.execute(
+            "INSERT INTO transactions (trade_date, ticker, action, quantity, "
+            "price_usd, commission_usd, note, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                row.get("trade_date"), row.get("ticker"), row.get("action"),
+                row.get("quantity"), row.get("price_usd"),
+                row.get("commission_usd", 0), row.get("note"),
+                row.get("created_at", _now_iso()),
+                row.get("updated_at", _now_iso()),
+            ),
+        )
+        imported += 1
+    conn.commit()
+    return {"ok": True, "imported": imported, "skipped": skipped}

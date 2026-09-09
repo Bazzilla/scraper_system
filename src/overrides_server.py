@@ -72,10 +72,13 @@ from portfolio_db import (
     get_transactions,
     init_db,
     update_transaction,
+    export_transactions,
+    import_transactions,
 )
 from portfolio import calculate_positions
 from portfolio_page import render_portfolio_page
 from sell_strategy import evaluate_all, load_rules
+from valuation_store import export_snapshots, import_snapshots
 
 # Path del config: risolto rispetto alla root del progetto (src/..).
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -291,6 +294,18 @@ class OverridesHandler(BaseHTTPRequestHandler):
             return
         if self.path == "/api/portfolio/evaluate":
             self._handle_portfolio_evaluate()
+            return
+        if self.path == "/api/portfolio/export":
+            self._handle_portfolio_export()
+            return
+        if self.path == "/api/portfolio/import":
+            self._handle_portfolio_import()
+            return
+        if self.path == "/api/valuation/export":
+            self._handle_valuation_export()
+            return
+        if self.path == "/api/valuation/import":
+            self._handle_valuation_import()
             return
         self._send_html(404, "<h1>404</h1>")
 
@@ -735,6 +750,92 @@ class OverridesHandler(BaseHTTPRequestHandler):
             "ok": True,
             "evaluations": [ev.__dict__ for ev in evaluations],
         })
+
+    # ── Portfolio export / import ──────────────────────────────────────────
+
+    def _handle_portfolio_export(self) -> None:
+        """GET /api/portfolio/export — export ALL transactions as JSON."""
+        conn = _portfolio_conn()
+        try:
+            rows = export_transactions(conn)
+        finally:
+            conn.close()
+        self._send_json(200, {"ok": True, "transactions": rows})
+
+    def _handle_portfolio_import(self) -> None:
+        """POST /api/portfolio/import — merge transactions."""
+        content_type = self.headers.get("Content-Type", "")
+        length = int(self.headers.get("Content-Length", 0))
+        if length == 0:
+            self._send_json(400, {"ok": False, "message": "body vuoto"})
+            return
+        try:
+            raw = self.rfile.read(length).decode("utf-8")
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(400, {"ok": False, "message": f"leggere body: {exc}"})
+            return
+        try:
+            incoming = json.loads(raw) or {}
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(400, {"ok": False, "message": f"parse fallito: {exc}"})
+            return
+
+        txs = incoming.get("transactions") if isinstance(incoming, dict) else incoming
+        if not isinstance(txs, list):
+            self._send_json(400, {"ok": False,
+                                  "message": "body deve contenere 'transactions' (lista)"})
+            return
+
+        conn = _portfolio_conn()
+        try:
+            report = import_transactions(conn, txs)
+        finally:
+            conn.close()
+        self._send_json(200, report)
+
+    # ── Valuation export / import ──────────────────────────────────────────
+
+    def _handle_valuation_export(self) -> None:
+        """GET /api/valuation/export — export ALL snapshots as JSON."""
+        db_path = str(PROJECT_ROOT / "output" / "valuation_history.db")
+        try:
+            rows = export_snapshots(db_path)
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(500, {"ok": False, "message": str(exc)})
+            return
+        self._send_json(200, {"ok": True, "snapshots": rows})
+
+    def _handle_valuation_import(self) -> None:
+        """POST /api/valuation/import — merge snapshots."""
+        content_type = self.headers.get("Content-Type", "")
+        length = int(self.headers.get("Content-Length", 0))
+        if length == 0:
+            self._send_json(400, {"ok": False, "message": "body vuoto"})
+            return
+        try:
+            raw = self.rfile.read(length).decode("utf-8")
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(400, {"ok": False, "message": f"leggere body: {exc}"})
+            return
+        try:
+            incoming = json.loads(raw) or {}
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(400, {"ok": False, "message": f"parse fallito: {exc}"})
+            return
+
+        snaps = incoming.get("snapshots") if isinstance(incoming, dict) else incoming
+        if not isinstance(snaps, list):
+            self._send_json(400, {"ok": False,
+                                  "message": "body deve contenere 'snapshots' (lista)"})
+            return
+
+        db_path = str(PROJECT_ROOT / "output" / "valuation_history.db")
+        try:
+            report = import_snapshots(db_path, snaps)
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(500, {"ok": False, "message": str(exc)})
+            return
+        self._send_json(200, report)
 
     # ── Helpers ──────────────────────────────────────────────────────────
 

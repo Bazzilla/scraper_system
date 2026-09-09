@@ -211,3 +211,56 @@ if __name__ == "__main__":  # pragma: no cover - CLI di consultazione
     parser.add_argument("--db", default=DEFAULT_HISTORY_PATH)
     args = parser.parse_args()
     print(format_report(summarize(args.db)))
+
+
+# ── Export / Import ──────────────────────────────────────────────────────────
+
+
+def export_snapshots(db_path: str) -> list[dict[str, Any]]:
+    """Export ALL snapshots as a list of dicts."""
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute("SELECT * FROM snapshots ORDER BY snap_date, symbol")
+        return [dict(row) for row in rows]
+    finally:
+        conn.close()
+
+
+def import_snapshots(db_path: str, rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Import snapshots from a list of dicts.
+
+    Deduplicates by (snap_date, symbol) — the UNIQUE constraint.
+    Returns a report dict.
+    """
+    conn = sqlite3.connect(db_path)
+    init_db(conn)
+    imported = 0
+    skipped = 0
+    for row in rows:
+        # UNIQUE constraint on (snap_date, symbol) handles dedup
+        try:
+            conn.execute(
+                "INSERT OR IGNORE INTO snapshots "
+                "(snap_date, symbol, category, upside_pct, trailing_pe, "
+                "forward_pe, price_to_book, ev_ebitda, peg_ratio, "
+                "current_price, target_median, bucket) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    row.get("snap_date"), row.get("symbol"), row.get("category"),
+                    row.get("upside_pct"), row.get("trailing_pe"),
+                    row.get("forward_pe"), row.get("price_to_book"),
+                    row.get("ev_ebitda"), row.get("peg_ratio"),
+                    row.get("current_price"), row.get("target_median"),
+                    row.get("bucket"),
+                ),
+            )
+            if conn.total_changes:
+                imported += 1
+            else:
+                skipped += 1
+        except sqlite3.IntegrityError:
+            skipped += 1
+    conn.commit()
+    conn.close()
+    return {"ok": True, "imported": imported, "skipped": skipped}

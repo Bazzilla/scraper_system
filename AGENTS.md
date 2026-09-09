@@ -73,3 +73,30 @@ I pattern dettagliati vivono in `.opencode/context/project-intelligence/` (fonte
 - `aaii-scraping-guide.md` — dettaglio scraping AAII
 
 Leggili prima di modificare codice che tocca questi pattern. **Caricali per sezione, non in blocco**: usa `grep` per trovare la sezione rilevante e `read` con `offset`/`limit` per leggere solo quella — i file hanno sezioni `##` ben definite e caricarli interi gonfia il contesto.
+
+## Versioning
+
+Il progetto usa versioning **MAJOR.MINOR.BUILD** (semver-lite), gestito in `src/page_base.py`:
+
+```
+VERSION_MAJOR = 0
+VERSION_MINOR = 2
+VERSION_BUILD = 1
+```
+
+### Policy
+
+| Azione | Cosa aumenta | Cosa si azzera | Esempio |
+|--------|-------------|----------------|---------|
+| **Nuova feature** funzionale | MINOR +1 | BUILD → 1 | 0.1.1 → 0.2.1 |
+| **Bugfix** / correzione | BUILD +1 | — | 0.2.1 → 0.2.2 |
+| **Breaking change** / refactoring grosso | MAJOR +1 | MINOR → 0, BUILD → 1 | 0.2.5 → 1.0.1 |
+
+### Regole operative
+
+- **Prima di ogni commit con nuova feature**: aggiornare `VERSION_MINOR` e azzerare `VERSION_BUILD` a 1
+- **Prima di ogni commit di bugfix**: incrementare `VERSION_BUILD`
+- **Prima di breaking change**: incrementare `VERSION_MAJOR`, azzerare MINOR e BUILD
+- La versione è visibile in ogni pagina HTML sopra la nav bar ("SCRAPER-SYSTEM vX.Y.Z")
+- Il prefisso `SC - ` è presente in ogni `<title>`
+- **NON usare `git rev-list --count` come BUILD** — il numero è gestito manualmente

@@ -1,8 +1,9 @@
-"""Data exchange page generator — import/export ticker lists.
+"""Data exchange page generator — import/export tickers, portfolio, valuation.
 
-Builds a static HTML page for exporting the full ticker list as JSON
-and importing a JSON/YAML file with conflict detection. Output is
-displayed inline (imported/skipped/conflicts) without server-side files.
+Builds a static HTML page for exporting and importing:
+- Ticker lists (JSON/YAML with conflict detection)
+- Portfolio transactions (JSON)
+- Valuation history snapshots (JSON)
 """
 
 from __future__ import annotations
@@ -42,8 +43,6 @@ _DATA_EXCHANGE_CSS = """\
 _EXCHANGE_SCRIPT = """\
 (function () {
   var output = document.getElementById("output");
-  var importBtn = document.getElementById("import-btn");
-  var fileInput = document.getElementById("file-input");
 
   function appendLine(text, cls) {
     var span = document.createElement("span");
@@ -55,64 +54,107 @@ _EXCHANGE_SCRIPT = """\
 
   function clearOutput() { output.textContent = ""; }
 
-  /* --- Export --- */
-  document.getElementById("export-btn").addEventListener("click", function () {
-    clearOutput();
-    appendLine("Esportazione in corso...", "line-info");
-    fetch("/api/tickers/export").then(function (r) { return r.json(); }).then(function (d) {
-      if (!d.ok) { appendLine("Errore: " + (d.message || "sconosciuto"), "line-err"); return; }
-      var blob = new Blob([JSON.stringify(d, null, 2)], {type: "application/json"});
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement("a");
-      a.href = url; a.download = "tickers-export.json";
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      var cats = Object.keys(d.tickers || {});
-      var count = cats.reduce(function (n, c) { return n + (d.tickers[c] || []).length; }, 0);
-      appendLine("Export completato: " + count + " ticker in " + cats.length + " categorie.", "line-ok");
-      appendLine("File scaricato: tickers-export.json", "line-info");
-    }).catch(function (e) { appendLine("Errore di rete: " + e, "line-err"); });
-  });
+  function downloadJson(data, filename) {
+    var blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 
-  /* --- Import --- */
-  importBtn.addEventListener("click", function () {
-    var file = fileInput.files[0];
-    if (!file) { alert("Seleziona un file JSON o YAML"); return; }
-    clearOutput();
-    appendLine("Lettura file: " + file.name + " (" + (file.size / 1024).toFixed(1) + " KB)", "line-info");
+  function uploadJson(url, file, callback) {
     var reader = new FileReader();
     reader.onload = function (e) {
-      var content = e.target.result;
-      var isYaml = file.name.endsWith(".yaml") || file.name.endsWith(".yml");
-      var contentType = isYaml ? "application/yaml" : "application/json";
       appendLine("Import in corso...", "line-info");
-      fetch("/api/tickers/import", {
+      fetch(url, {
         method: "POST",
-        headers: {"Content-Type": contentType},
-        body: content
-      }).then(function (r) { return r.json(); }).then(function (d) {
-        if (!d.ok) { appendLine("Errore: " + (d.message || "sconosciuto"), "line-err"); return; }
-        (d.imported || []).forEach(function (t) {
-          appendLine("+ " + t.symbol + " -> " + t.category, "line-ok");
-        });
-        (d.skipped || []).forEach(function (t) {
-          appendLine("~ " + t.symbol + " (" + t.category + "): " + t.reason, "line-warn");
-        });
-        (d.conflicts || []).forEach(function (t) {
-          appendLine("x " + t.symbol + ": esiste gia' in '" + t.existing_category
-            + "', richiesto in '" + t.import_category + "'", "line-err");
-        });
-        appendLine("", "");
-        var sum = (d.imported || []).length;
-        var skip = (d.skipped || []).length;
-        var conf = (d.conflicts || []).length;
-        appendLine("Riepilogo: " + sum + " importati, " + skip + " saltati, " + conf + " conflitti", "line-ok");
-      }).catch(function (err) { appendLine("Errore di rete: " + err, "line-err"); });
+        headers: {"Content-Type": "application/json"},
+        body: e.target.result
+      }).then(function (r) { return r.json(); })
+        .then(function (d) { callback(null, d); })
+        .catch(function (err) { callback(err); });
     };
     reader.readAsText(file);
+  }
+
+  /* ── Ticker ──────────────────────────────────────────────────────── */
+  document.getElementById("export-tickers").addEventListener("click", function () {
+    clearOutput();
+    appendLine("Esportazione ticker...", "line-info");
+    fetch("/api/tickers/export").then(function (r) { return r.json(); }).then(function (d) {
+      if (!d.ok) { appendLine("Errore: " + (d.message || "sconosciuto"), "line-err"); return; }
+      downloadJson(d, "tickers-export.json");
+      var cats = Object.keys(d.tickers || {});
+      var count = cats.reduce(function (n, c) { return n + (d.tickers[c] || []).length; }, 0);
+      appendLine("OK: " + count + " ticker in " + cats.length + " categorie", "line-ok");
+    }).catch(function (e) { appendLine("Errore: " + e, "line-err"); });
   });
 
-  /* --- Clear --- */
+  document.getElementById("import-tickers-btn").addEventListener("click", function () {
+    var file = document.getElementById("import-tickers-file").files[0];
+    if (!file) { alert("Seleziona un file JSON o YAML"); return; }
+    clearOutput();
+    appendLine("File: " + file.name + " (" + (file.size / 1024).toFixed(1) + " KB)", "line-info");
+    uploadJson("/api/tickers/import", file, function (err, d) {
+      if (err) { appendLine("Errore: " + err, "line-err"); return; }
+      if (!d.ok) { appendLine("Errore: " + (d.message || "sconosciuto"), "line-err"); return; }
+      (d.imported || []).forEach(function (t) { appendLine("+ " + t.symbol + " -> " + t.category, "line-ok"); });
+      (d.skipped || []).forEach(function (t) { appendLine("~ " + t.symbol + ": " + t.reason, "line-warn"); });
+      (d.conflicts || []).forEach(function (t) {
+        appendLine("x " + t.symbol + ": esiste in '" + t.existing_category + "'", "line-err");
+      });
+      appendLine("Riepilogo: " + (d.imported||[]).length + " importati, " + (d.skipped||[]).length + " saltati, " + (d.conflicts||[]).length + " conflitti", "line-ok");
+    });
+  });
+
+  /* ── Portfolio transactions ──────────────────────────────────────── */
+  document.getElementById("export-portfolio").addEventListener("click", function () {
+    clearOutput();
+    appendLine("Esportazione transazioni...", "line-info");
+    fetch("/api/portfolio/export").then(function (r) { return r.json(); }).then(function (d) {
+      if (!d.ok) { appendLine("Errore: " + (d.message || "sconosciuto"), "line-err"); return; }
+      downloadJson(d, "portfolio-export.json");
+      appendLine("OK: " + (d.transactions || []).length + " transazioni esportate", "line-ok");
+    }).catch(function (e) { appendLine("Errore: " + e, "line-err"); });
+  });
+
+  document.getElementById("import-portfolio-btn").addEventListener("click", function () {
+    var file = document.getElementById("import-portfolio-file").files[0];
+    if (!file) { alert("Seleziona un file JSON"); return; }
+    clearOutput();
+    appendLine("File: " + file.name + " (" + (file.size / 1024).toFixed(1) + " KB)", "line-info");
+    uploadJson("/api/portfolio/import", file, function (err, d) {
+      if (err) { appendLine("Errore: " + err, "line-err"); return; }
+      if (!d.ok) { appendLine("Errore: " + (d.message || "sconosciuto"), "line-err"); return; }
+      appendLine("Importate: " + d.imported + " | Saltate: " + d.skipped, "line-ok");
+    });
+  });
+
+  /* ── Valuation history ───────────────────────────────────────────── */
+  document.getElementById("export-valuation").addEventListener("click", function () {
+    clearOutput();
+    appendLine("Esportazione valuation history...", "line-info");
+    fetch("/api/valuation/export").then(function (r) { return r.json(); }).then(function (d) {
+      if (!d.ok) { appendLine("Errore: " + (d.message || "sconosciuto"), "line-err"); return; }
+      downloadJson(d, "valuation-export.json");
+      appendLine("OK: " + (d.snapshots || []).length + " snapshot esportati", "line-ok");
+    }).catch(function (e) { appendLine("Errore: " + e, "line-err"); });
+  });
+
+  document.getElementById("import-valuation-btn").addEventListener("click", function () {
+    var file = document.getElementById("import-valuation-file").files[0];
+    if (!file) { alert("Seleziona un file JSON"); return; }
+    clearOutput();
+    appendLine("File: " + file.name + " (" + (file.size / 1024).toFixed(1) + " KB)", "line-info");
+    uploadJson("/api/valuation/import", file, function (err, d) {
+      if (err) { appendLine("Errore: " + err, "line-err"); return; }
+      if (!d.ok) { appendLine("Errore: " + (d.message || "sconosciuto"), "line-err"); return; }
+      appendLine("Importati: " + d.imported + " | Saltati: " + d.skipped, "line-ok");
+    });
+  });
+
+  /* ── Clear ───────────────────────────────────────────────────────── */
   document.getElementById("clear-btn").addEventListener("click", clearOutput);
 })();
 """
@@ -121,24 +163,42 @@ _EXCHANGE_SCRIPT = """\
 def render_data_exchange_page() -> str:
     """Render the data import/export page."""
     header = render_header("data-exchange", "\U0001f504 Import/Export",
-                           "Esporta e importa l'elenco dei ticker")
+                           "Esporta e importa dati di sistema")
     content = (
+        # ── Ticker ──────────────────────────────────────────────────
         '<div class="exchange-card">'
-        "<h2>Esporta ticker</h2>"
+        "<h2>\U0001f4cb Ticker</h2>"
         '<div class="exchange-row">'
-        '<button id="export-btn" class="btn btn-export" type="button">'
-        "\U0001f4e5 Scarica JSON</button>"
-        '<span class="line-info" style="font-size:0.85rem">'
-        "Esporta l'elenco completo di ticker e categorie</span>"
-        "</div></div>"
-        '<div class="exchange-card">'
-        "<h2>Importa ticker</h2>"
-        '<div class="exchange-row">'
-        "<div><label>File JSON o YAML</label>"
-        '<input id="file-input" type="file" accept=".json,.yaml,.yml"></div>'
-        '<button id="import-btn" class="btn btn-import" type="button">'
+        '<button id="export-tickers" class="btn btn-export" type="button">'
+        "\U0001f4e5 Esporta JSON</button>"
+        "<div><label>Importa da file</label>"
+        '<input id="import-tickers-file" type="file" accept=".json,.yaml,.yml"></div>'
+        '<button id="import-tickers-btn" class="btn btn-import" type="button">'
         "\U0001f4e4 Importa</button>"
         "</div></div>"
+        # ── Portfolio transactions ──────────────────────────────────
+        '<div class="exchange-card">'
+        "<h2>\U0001f4b0 Transazioni portfolio</h2>"
+        '<div class="exchange-row">'
+        '<button id="export-portfolio" class="btn btn-export" type="button">'
+        "\U0001f4e5 Esporta JSON</button>"
+        "<div><label>Importa da file</label>"
+        '<input id="import-portfolio-file" type="file" accept=".json"></div>'
+        '<button id="import-portfolio-btn" class="btn btn-import" type="button">'
+        "\U0001f4e4 Importa</button>"
+        "</div></div>"
+        # ── Valuation history ───────────────────────────────────────
+        '<div class="exchange-card">'
+        "<h2>\U0001f4ca Storico valuation</h2>"
+        '<div class="exchange-row">'
+        '<button id="export-valuation" class="btn btn-export" type="button">'
+        "\U0001f4e5 Esporta JSON</button>"
+        "<div><label>Importa da file</label>"
+        '<input id="import-valuation-file" type="file" accept=".json"></div>'
+        '<button id="import-valuation-btn" class="btn btn-import" type="button">'
+        "\U0001f4e4 Importa</button>"
+        "</div></div>"
+        # ── Output ──────────────────────────────────────────────────
         '<div class="output-card">'
         '<div class="output-header"><span>Output</span>'
         '<button id="clear-btn" class="clear-btn" type="button">'

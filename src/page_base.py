@@ -11,8 +11,8 @@ from report_helpers import FAVICON_LINK, render_nav
 
 # ── Version ─────────────────────────────────────────────────────────────────
 VERSION_MAJOR = 0
-VERSION_MINOR = 1
-VERSION_BUILD = 100  # git commit count — updated manually
+VERSION_MINOR = 2
+VERSION_BUILD = 1
 VERSION = f"{VERSION_MAJOR}.{VERSION_MINOR}.{VERSION_BUILD}"
 
 # ── Base CSS (shared by all pages) ──────────────────────────────────────────
