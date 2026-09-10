@@ -80,7 +80,7 @@ Il progetto usa versioning **MAJOR.MINOR.BUILD** (semver-lite), gestito in `src/
 
 ```
 VERSION_MAJOR = 0
-VERSION_MINOR = 2
+VERSION_MINOR = 4
 VERSION_BUILD = 1
 ```
 
@@ -94,6 +94,7 @@ VERSION_BUILD = 1
 
 ### Regole operative
 
+- **Ogni commit** deve avere la versione aggiornata (BUILD +1 per fix, MINOR+1 BUILD=1 per feature)
 - **Prima di ogni commit con nuova feature**: aggiornare `VERSION_MINOR` e azzerare `VERSION_BUILD` a 1
 - **Prima di ogni commit di bugfix**: incrementare `VERSION_BUILD`
 - **Prima di breaking change**: incrementare `VERSION_MAJOR`, azzerare MINOR e BUILD

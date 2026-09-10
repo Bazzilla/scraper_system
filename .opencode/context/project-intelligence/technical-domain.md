@@ -97,6 +97,15 @@ deploy/systemd/scraper-scheduler.timer → service (--once) [daily]
 - **Nota yfinance**: i moduli basati su libreria (yfinance) non richiedono UA browser manuale — la libreria lo gestisce; il rate limiting resta comunque rilevante per evitare blocchi IP
 - **Manual override**: nessun dato manuale viene mai confuso con dati scrapati (origin esplicito); validazione schema prima dell'uso
 
+## Versioning
+- Schema **MAJOR.MINOR.BUILD** (semver-lite) in `src/page_base.py`
+- **Ogni commit** deve avere la versione aggiornata
+- **Feature** → MINOR +1, BUILD → 1 (es. 0.3.2 → 0.4.1)
+- **Bugfix** → BUILD +1 (es. 0.4.1 → 0.4.2)
+- **Breaking change** → MAJOR +1, MINOR → 0, BUILD → 1 (es. 0.4.2 → 1.0.1)
+- Versione visibile in ogni pagina HTML sopra la nav bar
+- Prefisso `SC - ` in ogni `<title>`
+
 ## 📂 Codebase References
 **Fetch Utils**: `src/fetch_utils.py` — fallback generico (`fetch_first_success` + `try_parsers`); usato da FGI (catena 3 sorgenti) e AAII (2 parser); il vincitore è registrato nel campo `source` e mostrato nelle card del report HTML
 **Indicator Registry**: `src/indicator_registry.py` + `indicator_registry.yaml` — matrice indicatori; `build_availability()` mappa output_key→stato runtime; `usable_for()` applica fail-closed sui proxy
