@@ -312,7 +312,7 @@ class TestOrchestrator(unittest.TestCase):
         # della strategia, anche missing; false per vix_spot (non strategico)
         self.assertFalse(matrix["vix_spot"]["coverage"])
         self.assertTrue(matrix["pct_sma"]["coverage"])
-        self.assertTrue(matrix["nyse_nh_nl"]["coverage"])
+        self.assertTrue(matrix["nh_nl"]["coverage"])
         self.assertTrue(matrix["vix_term_structure"]["coverage"])
         # Availability: solo i moduli che nel run hanno prodotto "fresh".
         # Il mock fgi è fresh → available; aaii non ha modulo → unavailable.
@@ -323,7 +323,7 @@ class TestOrchestrator(unittest.TestCase):
         self.assertTrue(matrix["fgi"]["usable_in_strategy_score"])
         self.assertFalse(matrix["aaii"]["usable_in_strategy_score"])
         # I gap dichiarati restano missing (implementation_status) e mai usabili
-        self.assertEqual(matrix["nyse_nh_nl"]["implementation_status"], "implemented")
+        self.assertEqual(matrix["nh_nl"]["implementation_status"], "manual_supported")
         self.assertEqual(matrix["vix_term_structure"]["implementation_status"], "manual_supported")
 
     def test_run_applies_manual_override_when_scraper_fails(self):

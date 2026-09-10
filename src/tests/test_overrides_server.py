@@ -149,7 +149,7 @@ class TestOverridesHandler(unittest.TestCase):
     def test_supported_keys_whitelist(self):
         self.assertEqual(
             SUPPORTED_KEYS,
-            frozenset({"aaii", "fgi", "naaim", "vix_term_structure", "pct_sma"}),
+            frozenset({"aaii", "fgi", "naaim", "vix_term_structure", "pct_sma", "nh_nl"}),
         )
 
     def _start_server(self) -> tuple[ThreadingHTTPServer, threading.Thread, int]:

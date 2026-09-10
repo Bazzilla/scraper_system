@@ -77,7 +77,7 @@ class TestSummarize(unittest.TestCase):
                             "semantic_coherent": True},
                     "vix_spot": {"coverage": False, "implementation_status": "proxy",
                                  "semantic_coherent": False},
-                    "nyse_nh_nl": {"coverage": True, "implementation_status": "missing"},
+                    "nh_nl": {"coverage": True, "implementation_status": "missing"},
                     "naaim": {"coverage": True, "implementation_status": "manual_supported",
                               "semantic_coherent": True},
                 }
@@ -88,25 +88,25 @@ class TestSummarize(unittest.TestCase):
         result = summarize(self.registry, [])
         self.assertIn("fgi", result["summary"]["implemented"])
         self.assertIn("vix_spot", result["summary"]["proxy"])
-        self.assertIn("nyse_nh_nl", result["summary"]["missing"])
+        self.assertIn("nh_nl", result["summary"]["missing"])
         self.assertIn("naaim", result["summary"]["manual_supported"])
         self.assertTrue(result["fgi"]["usable_in_strategy_score"])
         self.assertFalse(result["vix_spot"]["usable_in_strategy_score"])
-        self.assertFalse(result["nyse_nh_nl"]["usable_in_strategy_score"])
+        self.assertFalse(result["nh_nl"]["usable_in_strategy_score"])
 
     def test_coverage_missing_strategy_indicator_stays_true(self):
         # Un indicatore strategico missing mantiene coverage=true
         result = summarize(self.registry, [])
-        self.assertTrue(result["nyse_nh_nl"]["coverage"])
-        self.assertEqual(result["nyse_nh_nl"]["implementation_status"], "missing")
-        self.assertFalse(result["nyse_nh_nl"]["usable_in_strategy_score"])
+        self.assertTrue(result["nh_nl"]["coverage"])
+        self.assertEqual(result["nh_nl"]["implementation_status"], "missing")
+        self.assertFalse(result["nh_nl"]["usable_in_strategy_score"])
 
     def test_manual_supported_usable_when_available(self):
         # NAAIM (manual_supported) disponibile → usable true
         result = summarize(
             self.registry,
             [],
-            {"fgi": True, "vix_spot": True, "nyse_nh_nl": False, "naaim": True},
+            {"fgi": True, "vix_spot": True, "nh_nl": False, "naaim": True},
         )
         self.assertTrue(result["naaim"]["coverage"])
         self.assertTrue(result["naaim"]["availability"])
@@ -117,7 +117,7 @@ class TestSummarize(unittest.TestCase):
         result = summarize(
             self.registry,
             [],
-            {"fgi": True, "vix_spot": True, "nyse_nh_nl": False, "naaim": False},
+            {"fgi": True, "vix_spot": True, "nh_nl": False, "naaim": False},
         )
         self.assertTrue(result["naaim"]["coverage"])
         self.assertFalse(result["naaim"]["availability"])
@@ -138,7 +138,7 @@ class TestSummarize(unittest.TestCase):
         result = summarize(
             self.registry,
             [],
-            {"fgi": True, "vix_spot": True, "nyse_nh_nl": False, "naaim": True},
+            {"fgi": True, "vix_spot": True, "nh_nl": False, "naaim": True},
         )
         self.assertTrue(result["fgi"]["coverage"])
         self.assertTrue(result["fgi"]["availability"])
@@ -152,7 +152,7 @@ class TestSummarize(unittest.TestCase):
         result = summarize(
             self.registry,
             [],
-            {"fgi": False, "vix_spot": False, "nyse_nh_nl": False, "naaim": False},
+            {"fgi": False, "vix_spot": False, "nh_nl": False, "naaim": False},
         )
         self.assertTrue(result["fgi"]["coverage"])
         self.assertFalse(result["fgi"]["availability"])
@@ -164,13 +164,13 @@ class TestSummarize(unittest.TestCase):
                 "indicators": {
                     "fgi": {"coverage": True, "implementation_status": "implemented",
                             "output_key": "fgi"},
-                    "nyse_nh_nl": {"coverage": True, "implementation_status": "missing"},
+                    "nh_nl": {"coverage": True, "implementation_status": "missing"},
                 }
             }
         )
         availability = build_availability(registry, {"fgi": "fresh"})
         self.assertTrue(availability["fgi"])
-        self.assertFalse(availability["nyse_nh_nl"])
+        self.assertFalse(availability["nh_nl"])
 
         availability2 = build_availability(registry, {"fgi": "error"})
         self.assertFalse(availability2["fgi"])
@@ -180,27 +180,27 @@ class TestSummarize(unittest.TestCase):
         # coverage=true (anche se missing); vix_spot (non strategico) false.
         summary = load_and_summarize()
         for key in ("fgi", "aaii", "naaim", "vix_term_structure", "pcr",
-                    "nyse_nh_nl", "pct_sma", "indicators", "volume_profile",
+                    "nh_nl", "pct_sma", "indicators", "volume_profile",
                     "insider"):
             self.assertTrue(summary[key]["coverage"], f"{key} deve avere coverage=true")
         self.assertFalse(summary["vix_spot"]["coverage"])
 
         # implementation_status corretti
-        for key in ("fgi", "aaii", "pcr", "indicators", "insider", "nyse_nh_nl"):
+        for key in ("fgi", "aaii", "pcr", "indicators", "insider"):
             self.assertEqual(summary[key]["implementation_status"], STATUS_IMPLEMENTED)
         self.assertEqual(summary["vix_spot"]["implementation_status"], STATUS_PROXY)
         for key in ("volume_profile",):
             self.assertEqual(summary[key]["implementation_status"], STATUS_MISSING)
-        for key in ("naaim", "vix_term_structure", "pct_sma"):
+        for key in ("naaim", "vix_term_structure", "pct_sma", "nh_nl"):
             self.assertEqual(summary[key]["implementation_status"], STATUS_MANUAL_SUPPORTED)
 
         # usable: missing mai; proxy non accettati no; vix_spot mai (coverage false);
         # manual_supported (naaim/vix_ts/pct_sma) con availability default (tutti
-        # disponibili nel test) → usabili; nyse_nh_nl implemented → usabile
+        # disponibili nel test) → usabili; nh_nl implemented → usabile
         for key in ("volume_profile",):
             self.assertFalse(summary[key]["usable_in_strategy_score"])
         self.assertFalse(summary["vix_spot"]["usable_in_strategy_score"])
-        for key in ("naaim", "vix_term_structure", "pct_sma", "nyse_nh_nl"):
+        for key in ("naaim", "vix_term_structure", "pct_sma", "nh_nl"):
             self.assertTrue(summary[key]["usable_in_strategy_score"])
 
 

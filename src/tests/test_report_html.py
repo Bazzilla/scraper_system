@@ -67,7 +67,7 @@ def _sample_data() -> dict:
                     "availability": True, "usable_in_strategy_score": True,
                     "semantic_coherent": True, "source": "scraped",
                     "primary_source": "CNN API", "notes": ""},
-            "nyse_nh_nl": {"name": "NYSE New Highs/New Lows", "strategy_ref": "F3/#12",
+            "nh_nl": {"name": "NYSE New Highs/New Lows", "strategy_ref": "F3/#12",
                            "implementation_status": "implemented", "coverage": True,
                            "availability": True, "usable_in_strategy_score": True,
                            "semantic_coherent": True, "source": "scraped",
@@ -731,7 +731,7 @@ class TestRenderSections(unittest.TestCase):
     def test_indicator_matrix_renders_status_badges(self):
         matrix = {
             "_meta": {"proxy_accepted": []},
-            "summary": {"implemented": ["fgi"], "proxy": ["vix_spot"], "missing": ["nyse_nh_nl"]},
+            "summary": {"implemented": ["fgi"], "proxy": ["vix_spot"], "missing": ["nh_nl"]},
             "fgi": {"name": "Fear & Greed Index", "strategy_ref": "F1", "implementation_status": "implemented",
                     "semantic_coherent": True, "coverage": True, "availability": True,
                     "usable_in_strategy_score": True, "source": "scraped",
@@ -740,7 +740,7 @@ class TestRenderSections(unittest.TestCase):
                          "semantic_coherent": False, "coverage": False, "availability": True,
                          "usable_in_strategy_score": False, "source": "scraped",
                          "primary_source": "CBOE", "notes": "proxy"},
-            "nyse_nh_nl": {"name": "NYSE NH-NL", "strategy_ref": "F3/#12", "implementation_status": "missing",
+            "nh_nl": {"name": "NYSE NH-NL", "strategy_ref": "F3/#12", "implementation_status": "missing",
                            "semantic_coherent": False, "coverage": True, "availability": False,
                            "usable_in_strategy_score": False, "source": "missing",
                            "primary_source": None, "notes": "gap"},

@@ -7,7 +7,7 @@ import unittest
 from indicator_fields import INDICATOR_FIELDS, SUPPORTED_KEYS
 from indicator_registry import load_and_summarize
 
-EXPECTED_KEYS = {"aaii", "fgi", "naaim", "vix_term_structure", "pct_sma"}
+EXPECTED_KEYS = {"aaii", "fgi", "naaim", "vix_term_structure", "pct_sma", "nh_nl"}
 
 DESCRIPTOR_KEYS = {"label", "badge", "frequency", "fields", "required"}
 

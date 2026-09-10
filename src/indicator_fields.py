@@ -89,6 +89,22 @@ INDICATOR_FIELDS: dict[str, dict[str, Any]] = {
             },
         ],
     },
+    "nh_nl": {
+        "label": "NYSE New Highs / Lows (52w)",
+        "badge": "manual",
+        "frequency": "daily",
+        "fields": {
+            "highs_52w": {"label": "52-Week Highs", "type": "number", "step": "1"},
+            "lows_52w": {"label": "52-Week Lows", "type": "number", "step": "1"},
+        },
+        "required": ["highs_52w", "lows_52w"],
+        "reference_links": [
+            {
+                "label": "Barchart 52-Week Highs/Lows",
+                "url": "https://www.barchart.com/stocks/highs-lows/summary",
+            },
+        ],
+    },
 }
 
 SUPPORTED_KEYS = frozenset(INDICATOR_FIELDS)
