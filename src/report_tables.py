@@ -110,7 +110,7 @@ def render_ticker_table(
 
         rows.append(
             f"<tr{_age_attrs(ind.get('fetched_at'), ind.get('stale_after_hours'))}>"
-            f'<td data-value="{_dv(symbol)}"><span class="ticker">{html_mod.escape(symbol)}</span>'
+            f'<td data-value="{_dv(symbol)}"><span class="ticker"><a href="https://finance.yahoo.com/quote/{html_mod.escape(symbol)}/" target="_blank" rel="noopener">{html_mod.escape(symbol)}</a></span>'
             f'<br><span class="name">{html_mod.escape(entry.get("name", ""))}</span>'
             f"{_ticker_meta_line(meta.get(symbol))}</td>"
             f"<td data-value=\"{_dv(ind.get('last_close'))}\">{_sema(ind.get('last_close'), 'close')}</td>"

@@ -104,6 +104,8 @@ table.ticker-table td { font-size: 0.85rem; }
         gap: 8px; width: 100%; }
 .sema-val { white-space: nowrap; }
 .ticker { font-weight: 700; }
+.ticker a { color: inherit; text-decoration: none; }
+.ticker a:hover { color: var(--neutral); text-decoration: underline; }
 .name { color: var(--muted); font-size: 0.8rem; }
 .ticker-meta { display: block; color: var(--muted); font-size: 0.72rem;
         line-height: 1.4; margin-top: 2px; }
@@ -604,7 +606,7 @@ def render_portfolio_summary(data: dict[str, Any]) -> str:
         avg = p["avg_price"]
         last = p.get("last_price")
         rows += (
-            f'<tr><td data-value="{html_mod.escape(p["ticker"])}"><strong>{html_mod.escape(p["ticker"])}</strong></td>'
+            f'<tr><td data-value="{html_mod.escape(p["ticker"])}"><strong><a href="https://finance.yahoo.com/quote/{html_mod.escape(p["ticker"])}/" target="_blank" rel="noopener">{html_mod.escape(p["ticker"])}</a></strong></td>'
             f'<td data-value="{qty}">{qty}</td>'
             f'<td data-value="{avg:.2f}">${avg:.2f}</td>'
             f'<td data-value="{last if last is not None else ""}">{last_price_str}</td>'
