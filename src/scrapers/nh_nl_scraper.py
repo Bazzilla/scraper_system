@@ -69,7 +69,9 @@ def parse_highs_lows(html: str) -> dict[str, Any]:
             continue
         period = re.sub(r"<[^>]+>", "", tds[0]).strip()
         # NYSE is the 2nd data column (OVERALL is 1st; Period is the label td).
-        m = re.search(r"<a[^>]*>\s*(\d+)\s*</a>", tds[2])
+        # Accept both <a>NUMBER</a> (linked) and plain NUMBER (unlinked).
+        cell_text = re.sub(r"<[^>]+>", "", tds[2]).strip()
+        m = re.match(r"(\d+)", cell_text)
         if not m:
             continue
         values[period] = int(m.group(1))
