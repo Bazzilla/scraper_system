@@ -210,6 +210,11 @@ def build_manual_result(
     elif key == "pct_sma":
         result["pct_sma50"] = override["pct_sma50"]
         result["pct_sma200"] = override["pct_sma200"]
+    elif key == "nh_nl":
+        # Stessi nomi dello scraper nh_nl (nyse_highs_52w / nyse_lows_52w)
+        # così il report li legge senza modifiche.
+        result["nyse_highs_52w"] = override["highs_52w"]
+        result["nyse_lows_52w"] = override["lows_52w"]
     if override.get("note"):
         result["note"] = override["note"]
     result["checked_at"] = now.isoformat()

@@ -12,7 +12,7 @@ from report_helpers import FAVICON_LINK, render_nav
 # ── Version ─────────────────────────────────────────────────────────────────
 VERSION_MAJOR = 0
 VERSION_MINOR = 4
-VERSION_BUILD = 1
+VERSION_BUILD = 2
 VERSION = f"{VERSION_MAJOR}.{VERSION_MINOR}.{VERSION_BUILD}"
 
 # ── Base CSS (shared by all pages) ──────────────────────────────────────────
