@@ -248,7 +248,7 @@ _PAGE_SCRIPT = """\
       var reasons = (ev.reasons || []).map(function (r) { return '• ' + r; }).join('<br>');
       return '<div style="margin-bottom:12px;padding:10px;border:1px solid var(--border);border-radius:8px;">'
         + '<div style="display:flex;align-items:center;gap:10px;">'
-        + '<strong>' + ev.ticker + '</strong> '
+        + '<span class="ticker"><a href="https://finance.yahoo.com/quote/' + encodeURIComponent(ev.ticker) + '/" target="_blank" rel="noopener">' + ev.ticker + '</a></span> '
         + '<span class="sell-badge ' + badgeClass + '">' + ev.sell_signal + '</span>'
         + '<span style="font-size:0.75rem;color:var(--muted);">confidenza: ' + ev.confidence + '</span>'
         + '</div>'
@@ -317,7 +317,7 @@ _PAGE_SCRIPT = """\
       var gain = p.unrealized_pnl_usd;
       var pct = p.unrealized_pnl_pct;
       return '<tr>'
-        + '<td data-value="' + p.ticker + '"><strong>' + p.ticker + '</strong></td>'
+        + '<td data-value="' + p.ticker + '"><span class="ticker"><a href="https://finance.yahoo.com/quote/' + encodeURIComponent(p.ticker) + '/" target="_blank" rel="noopener">' + p.ticker + '</a></span></td>'
         + '<td data-value="' + (p.quantity || 0) + '">' + fmt(p.quantity) + '</td>'
         + '<td data-value="' + (p.average_entry_price_usd || 0) + '">$' + fmt(p.average_entry_price_usd) + '</td>'
         + '<td data-value="' + (p.market_price_usd != null ? p.market_price_usd : '') + '">' + (p.market_price_usd != null ? '$' + fmt(p.market_price_usd) : '\u2014') + '</td>'
@@ -342,7 +342,7 @@ _PAGE_SCRIPT = """\
       var actionClass = t.action === 'BUY' ? 'pnl-pos' : 'pnl-neg';
       return '<tr>'
         + '<td>' + fmtDate(t.trade_date) + '</td>'
-        + '<td><strong>' + t.ticker + '</strong></td>'
+        + '<td><span class="ticker"><a href="https://finance.yahoo.com/quote/' + encodeURIComponent(t.ticker) + '/" target="_blank" rel="noopener">' + t.ticker + '</a></span></td>'
         + '<td class="' + actionClass + '">' + t.action + '</td>'
         + '<td>' + fmt(t.quantity) + '</td>'
         + '<td>$' + fmt(t.price_usd) + '</td>'

@@ -12,7 +12,7 @@ from report_helpers import FAVICON_LINK, render_nav
 # ── Version ─────────────────────────────────────────────────────────────────
 VERSION_MAJOR = 0
 VERSION_MINOR = 4
-VERSION_BUILD = 2
+VERSION_BUILD = 3
 VERSION = f"{VERSION_MAJOR}.{VERSION_MINOR}.{VERSION_BUILD}"
 
 # ── Base CSS (shared by all pages) ──────────────────────────────────────────
@@ -95,6 +95,10 @@ footer { margin-top: 32px; color: var(--muted); font-size: 0.85rem;
 .system-title { font-size: 0.75rem; color: var(--muted); margin-bottom: 4px;
         letter-spacing: 0.05em; text-transform: uppercase; }
 .system-version { font-weight: 400; margin-left: 6px; opacity: 0.7; }
+/* Ticker link style — shared across all pages (report, portfolio, etc.) */
+.ticker { font-weight: 700; }
+.ticker a { color: inherit; text-decoration: none; }
+.ticker a:hover { color: var(--neutral); text-decoration: underline; }
 /* Shared sell signal badges */
 .sell-signal { display: inline-block; padding: 2px 8px; border-radius: 6px;
         font-size: 0.75rem; font-weight: 600; }
