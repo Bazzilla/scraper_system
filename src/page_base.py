@@ -5,14 +5,15 @@ All page generators import from here instead of duplicating boilerplate.
 
 from __future__ import annotations
 
+import html as html_mod
 from typing import Any
 
 from report_helpers import FAVICON_LINK, render_nav
 
 # ── Version ─────────────────────────────────────────────────────────────────
 VERSION_MAJOR = 0
-VERSION_MINOR = 4
-VERSION_BUILD = 3
+VERSION_MINOR = 5
+VERSION_BUILD = 1
 VERSION = f"{VERSION_MAJOR}.{VERSION_MINOR}.{VERSION_BUILD}"
 
 # ── Base CSS (shared by all pages) ──────────────────────────────────────────
@@ -99,6 +100,34 @@ footer { margin-top: 32px; color: var(--muted); font-size: 0.85rem;
 .ticker { font-weight: 700; }
 .ticker a { color: inherit; text-decoration: none; }
 .ticker a:hover { color: var(--neutral); text-decoration: underline; }
+/* Ticker meta icons (note / price of interest) + edit affordance */
+.ti-icon { background: none; border: none; padding: 0 1px; font-size: 0.85em;
+        cursor: pointer; vertical-align: middle; line-height: 1; }
+.ti-edit { opacity: 0.4; }
+.ti-edit:hover { opacity: 1; }
+/* Ticker meta modal (shared) */
+.tm-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 1000; padding: 16px; }
+.tm-overlay[hidden] { display: none; }
+.tm-dialog { background: var(--card); border: 1px solid var(--border);
+        border-radius: 12px; padding: 20px; width: min(440px, 100%);
+        max-height: 90vh; overflow-y: auto; }
+.tm-dialog h3 { margin: 0 0 4px; font-size: 1.05rem; }
+.tm-meta { color: var(--muted); font-size: 0.85rem; margin-bottom: 12px; }
+.tm-meta strong { color: var(--text); }
+.tm-field { display: flex; flex-direction: column; gap: 4px;
+        margin-bottom: 12px; font-size: 0.85rem; color: var(--muted); }
+.tm-field input, .tm-field textarea { background: var(--bg); color: var(--text);
+        border: 1px solid var(--border); border-radius: 6px; padding: 8px;
+        font-size: 0.9rem; font-family: inherit; }
+.tm-field textarea { resize: vertical; min-height: 72px; }
+.tm-hint { font-size: 0.75rem; color: var(--muted); text-align: right; }
+.tm-actions { display: flex; gap: 8px; justify-content: flex-end;
+        flex-wrap: wrap; margin-top: 4px; }
+.tm-msg { margin-top: 10px; font-size: 0.85rem; min-height: 1.2em; }
+.tm-msg.ok { color: var(--green); }
+.tm-msg.err { color: var(--red); }
 /* Shared sell signal badges */
 .sell-signal { display: inline-block; padding: 2px 8px; border-radius: 6px;
         font-size: 0.75rem; font-weight: 600; }
@@ -201,6 +230,121 @@ _SHARED_SCRIPT = """\
       });
     }
   };
+
+  /* ── Ticker meta modal (note + price of interest) ─────────────────── */
+  function ensureTickerModal() {
+    if (document.getElementById("ticker-modal")) return;
+    var wrap = document.createElement("div");
+    wrap.id = "ticker-modal";
+    wrap.className = "tm-overlay";
+    wrap.hidden = true;
+    wrap.innerHTML =
+      '<div class="tm-dialog" role="dialog" aria-modal="true" ' +
+      'aria-labelledby="tm-title">' +
+      '<h3 id="tm-title"></h3>' +
+      '<div class="tm-meta" id="tm-meta"></div>' +
+      '<label class="tm-field">Prezzo di interesse (USD)' +
+      '<input id="tm-poi" type="number" step="0.01" min="0" ' +
+      'placeholder="es. 178.50"></label>' +
+      '<label class="tm-field">Nota' +
+      '<textarea id="tm-note" maxlength="1000" rows="4" ' +
+      'placeholder="Accumulo sotto 180, ETF flows ok…"></textarea>' +
+      '<span class="tm-hint"><span id="tm-count">0</span>/1000</span></label>' +
+      '<div class="tm-actions">' +
+      '<button type="button" class="subtle" id="tm-clear">Svuota nota</button>' +
+      '<button type="button" class="subtle" id="tm-cancel">Annulla</button>' +
+      '<button type="button" class="primary" id="tm-save">Salva</button>' +
+      '</div><div class="tm-msg" id="tm-msg" role="status"></div></div>';
+    document.body.appendChild(wrap);
+
+    var note = document.getElementById("tm-note");
+    var count = document.getElementById("tm-count");
+    note.addEventListener("input", function () { count.textContent = note.value.length; });
+
+    function close() { wrap.hidden = true; }
+    document.getElementById("tm-cancel").addEventListener("click", close);
+    wrap.addEventListener("click", function (e) { if (e.target === wrap) close(); });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && !wrap.hidden) close();
+    });
+    document.getElementById("tm-clear").addEventListener("click", function () {
+      note.value = "";
+      count.textContent = "0";
+    });
+    document.getElementById("tm-save").addEventListener("click", function () {
+      var symbol = wrap.dataset.symbol;
+      var poiRaw = document.getElementById("tm-poi").value.trim();
+      var payload = {
+        symbol: symbol,
+        notes: note.value,
+        price_of_interest: poiRaw === "" ? null : Number(poiRaw)
+      };
+      var msg = document.getElementById("tm-msg");
+      msg.className = "tm-msg";
+      msg.textContent = "Salvataggio…";
+      window.__helpers.api("POST", "/api/ticker-meta", payload).then(function (r) {
+        if (r.data && r.data.ok) {
+          msg.className = "tm-msg ok";
+          msg.textContent = "Salvato — report rigenerato…";
+          setTimeout(function () { location.reload(); }, 600);
+        } else {
+          msg.className = "tm-msg err";
+          msg.textContent = (r.data && r.data.message) || "Errore nel salvataggio";
+        }
+      }).catch(function () {
+        msg.className = "tm-msg err";
+        msg.textContent = "Errore di connessione";
+      });
+    });
+  }
+
+  function openTickerModal(symbol) {
+    ensureTickerModal();
+    var wrap = document.getElementById("ticker-modal");
+    wrap.dataset.symbol = symbol;
+    document.getElementById("tm-title").textContent = symbol;
+    document.getElementById("tm-meta").innerHTML = "Caricamento…";
+    document.getElementById("tm-poi").value = "";
+    document.getElementById("tm-note").value = "";
+    document.getElementById("tm-count").textContent = "0";
+    var msg = document.getElementById("tm-msg");
+    msg.className = "tm-msg";
+    msg.textContent = "";
+    wrap.hidden = false;
+    window.__helpers.api("GET", "/api/ticker-meta?symbol=" +
+      encodeURIComponent(symbol)).then(function (r) {
+      var d = (r.data && r.data.ok) ? r.data : null;
+      if (!d) {
+        document.getElementById("tm-meta").innerHTML =
+          ((r.data && r.data.message) || "Ticker non trovato in config.yaml");
+        return;
+      }
+      document.getElementById("tm-meta").innerHTML =
+        "<strong>" + (d.name || d.symbol) + "</strong>" +
+        (d.last_close != null
+          ? " · prezzo attuale <strong>$" +
+            Number(d.last_close).toFixed(2) + "</strong>"
+          : " · prezzo attuale —");
+      if (d.price_of_interest != null) {
+        document.getElementById("tm-poi").value = d.price_of_interest;
+      }
+      if (d.notes) {
+        document.getElementById("tm-note").value = d.notes;
+        document.getElementById("tm-count").textContent = String(d.notes.length);
+      }
+    }).catch(function () {
+      document.getElementById("tm-meta").textContent = "Errore di connessione";
+    });
+  }
+  window.openTickerModal = openTickerModal;
+
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-ticker-edit]");
+    if (btn) {
+      e.preventDefault();
+      openTickerModal(btn.getAttribute("data-ticker-edit"));
+    }
+  });
 })();
 </script>"""
 
@@ -244,6 +388,48 @@ def wrap_page(
         f"{_SHARED_SCRIPT}"
         f"{scripts}"
         "</body>\n</html>"
+    )
+
+
+def render_ticker(symbol: str, meta: dict[str, Any] | None = None) -> str:
+    """Render a ticker cell: Yahoo link + note/price icons + edit button.
+
+    The edit button (and the presence icons) open the shared ticker-meta
+    modal (see _SHARED_SCRIPT) via the ``data-ticker-edit`` attribute.
+
+    Args:
+        symbol: Ticker symbol (e.g. "NVDA").
+        meta: Optional ticker metadata from config.yaml (``notes``,
+            ``price_of_interest``). None → only the edit button is shown.
+    """
+    esc = html_mod.escape
+    s = esc(symbol)
+    meta = meta or {}
+    icons = ""
+    note = meta.get("notes")
+    if note:
+        icons += (
+            f'<button type="button" class="ti-icon ti-note" '
+            f'data-ticker-edit="{s}" title="{esc(str(note))}" '
+            f'aria-label="Nota presente">📝</button>'
+        )
+    poi = meta.get("price_of_interest")
+    if poi is not None:
+        icons += (
+            f'<button type="button" class="ti-icon ti-price" '
+            f'data-ticker-edit="{s}" '
+            f'title="Prezzo di interesse: ${esc(str(poi))}" '
+            f'aria-label="Prezzo di interesse presente">🎯</button>'
+        )
+    icons += (
+        f'<button type="button" class="ti-icon ti-edit" '
+        f'data-ticker-edit="{s}" title="Modifica nota/prezzo" '
+        f'aria-label="Modifica nota e prezzo di interesse">✏️</button>'
+    )
+    return (
+        f'<span class="ticker">'
+        f'<a href="https://finance.yahoo.com/quote/{s}/" '
+        f'target="_blank" rel="noopener">{s}</a>{icons}</span>'
     )
 
 

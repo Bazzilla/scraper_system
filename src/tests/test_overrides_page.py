@@ -70,7 +70,10 @@ class TestRenderOverridesPage(unittest.TestCase):
         self.assertIn('class="field"', html)
         # Input decimali come text+inputmode (per accettare '.' e ',')
         self.assertIn('inputmode="decimal"', html)
-        self.assertNotIn('type="number"', html)
+        # Nessun type=number nelle card override (la modale ticker condivisa
+        # nello script usa type=number per il prezzo di interesse — esclusa).
+        form_body = html.split('class="override-form"', 1)[1].split("<script>", 1)[0]
+        self.assertNotIn('type="number"', form_body)
         # Il campo Nota va sempre a capo e occupa tutta la larghezza
         self.assertIn(".field.wide { flex: 1 1 100%; }", html)
         # Footer: WRITE prima della data → date allineate a destra del tasto

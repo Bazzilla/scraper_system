@@ -252,3 +252,50 @@ def import_tickers(
         "conflicts": conflicts,
         "saved": saved,
     }
+
+
+def set_ticker_meta(
+    config_path: str,
+    symbol: str,
+    *,
+    notes: str | None,
+    price_of_interest: float | None,
+    now: datetime | None = None,
+) -> Path:
+    """Update ``notes`` / ``price_of_interest`` for one ticker.
+
+    ``None`` (or empty ``notes``) clears the field. Raises ``ValueError``
+    if the symbol is not present in any category.
+
+    Returns the backup path created by ``save_tickers``.
+    """
+    symbol = symbol.strip().upper()
+    if not symbol:
+        raise ValueError("Ticker symbol is required")
+
+    tickers = load_tickers(config_path)
+    found = False
+    for entries in tickers.values():
+        if not isinstance(entries, list):
+            continue
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            if str(entry.get("symbol", "")).upper() != symbol:
+                continue
+            found = True
+            if not notes:
+                entry.pop("notes", None)
+            else:
+                entry["notes"] = notes
+            if price_of_interest is None:
+                entry.pop("price_of_interest", None)
+            else:
+                entry["price_of_interest"] = price_of_interest
+            break
+        if found:
+            break
+
+    if not found:
+        raise ValueError(f"Ticker {symbol!r} not found in config.yaml")
+    return save_tickers(config_path, tickers, now=now)

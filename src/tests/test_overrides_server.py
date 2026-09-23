@@ -209,3 +209,109 @@ class TestOverridesHandler(unittest.TestCase):
         finally:
             server.shutdown()
             server.server_close()
+
+    def test_ticker_meta_get_and_post(self):
+        server, thread, port = self._start_server()
+        try:
+            # GET un ticker presente in config.yaml reale
+            response = urllib.request.urlopen(
+                urllib.request.Request(
+                    f"http://127.0.0.1:{port}/api/ticker-meta?symbol=AMAT",
+                    headers={"Authorization": _auth_header()},
+                ),
+                timeout=5,
+            )
+            payload = json.loads(response.read().decode("utf-8"))
+            self.assertTrue(payload["ok"])
+            self.assertEqual(payload["symbol"], "AMAT")
+            self.assertIn("notes", payload)
+            self.assertIn("price_of_interest", payload)
+            self.assertIn("last_close", payload)
+
+            # GET symbol mancante → 400
+            with self.assertRaises(urllib.error.HTTPError) as ctx:
+                urllib.request.urlopen(
+                    urllib.request.Request(
+                        f"http://127.0.0.1:{port}/api/ticker-meta",
+                        headers={"Authorization": _auth_header()},
+                    ),
+                    timeout=5,
+                )
+            self.assertEqual(ctx.exception.status, 400)
+        finally:
+            server.shutdown()
+            server.server_close()
+
+    def test_ticker_meta_post_validates_notes_length(self):
+        server, thread, port = self._start_server()
+        try:
+            body = json.dumps({
+                "symbol": "AMAT",
+                "notes": "x" * 1001,
+                "price_of_interest": None,
+            }).encode("utf-8")
+            request = urllib.request.Request(
+                f"http://127.0.0.1:{port}/api/ticker-meta",
+                data=body,
+                headers={
+                    "Authorization": _auth_header(),
+                    "Content-Type": "application/json",
+                },
+                method="POST",
+            )
+            with self.assertRaises(urllib.error.HTTPError) as ctx:
+                urllib.request.urlopen(request, timeout=5)
+            self.assertEqual(ctx.exception.status, 400)
+            payload = json.loads(ctx.exception.read().decode("utf-8"))
+            self.assertIn("1000", payload["message"])
+        finally:
+            server.shutdown()
+            server.server_close()
+
+    def test_ticker_meta_post_rejects_bad_price(self):
+        server, thread, port = self._start_server()
+        try:
+            body = json.dumps({
+                "symbol": "AMAT",
+                "notes": "",
+                "price_of_interest": -1,
+            }).encode("utf-8")
+            request = urllib.request.Request(
+                f"http://127.0.0.1:{port}/api/ticker-meta",
+                data=body,
+                headers={
+                    "Authorization": _auth_header(),
+                    "Content-Type": "application/json",
+                },
+                method="POST",
+            )
+            with self.assertRaises(urllib.error.HTTPError) as ctx:
+                urllib.request.urlopen(request, timeout=5)
+            self.assertEqual(ctx.exception.status, 400)
+        finally:
+            server.shutdown()
+            server.server_close()
+
+    def test_ticker_meta_post_unknown_symbol_404(self):
+        server, thread, port = self._start_server()
+        try:
+            body = json.dumps({
+                "symbol": "NOSUCHTICKER",
+                "notes": "x",
+                "price_of_interest": None,
+            }).encode("utf-8")
+            request = urllib.request.Request(
+                f"http://127.0.0.1:{port}/api/ticker-meta",
+                data=body,
+                headers={
+                    "Authorization": _auth_header(),
+                    "Content-Type": "application/json",
+                },
+                method="POST",
+            )
+            with self.assertRaises(urllib.error.HTTPError) as ctx:
+                urllib.request.urlopen(request, timeout=5)
+            self.assertEqual(ctx.exception.status, 404)
+        finally:
+            server.shutdown()
+            server.server_close()

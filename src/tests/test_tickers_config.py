@@ -145,6 +145,36 @@ class TestTickersValidation(unittest.TestCase):
                 {"semiconductors": [{"symbol": "AMAT", "name": "A",
                                      "notes": 42}]}))
 
+    def test_price_of_interest_valid_number(self):
+        config = _config_with_tickers(
+            {"semiconductors": [{"symbol": "AMAT", "name": "A",
+                                 "price_of_interest": 178.5}]}
+        )
+        entry = validate_config(config)["tickers"]["semiconductors"][0]
+        self.assertEqual(entry["price_of_interest"], 178.5)
+
+    def test_price_of_interest_rejects_non_positive(self):
+        with self.assertRaises(ValueError):
+            validate_config(_config_with_tickers(
+                {"semiconductors": [{"symbol": "AMAT", "name": "A",
+                                     "price_of_interest": 0}]}))
+        with self.assertRaises(ValueError):
+            validate_config(_config_with_tickers(
+                {"semiconductors": [{"symbol": "AMAT", "name": "A",
+                                     "price_of_interest": -5}]}))
+
+    def test_price_of_interest_rejects_bool(self):
+        with self.assertRaises(ValueError):
+            validate_config(_config_with_tickers(
+                {"semiconductors": [{"symbol": "AMAT", "name": "A",
+                                     "price_of_interest": True}]}))
+
+    def test_price_of_interest_rejects_string(self):
+        with self.assertRaises(ValueError):
+            validate_config(_config_with_tickers(
+                {"semiconductors": [{"symbol": "AMAT", "name": "A",
+                                     "price_of_interest": "180"}]}))
+
     def test_normalize_tickers_legacy_list(self):
         from config_loader import normalize_tickers
 

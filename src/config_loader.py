@@ -17,6 +17,7 @@ VALID_SCHEDULES = ("daily", "weekly")
 # Strategic ticker classification (display-only, never used as a BUY signal).
 QUALITY_TIERS = ("core", "secondary", "opportunistic")
 VALIDITY_LEVELS = ("high", "medium", "low")
+NOTES_MAX_LEN = 1000
 STRATEGY_ROLES = (
     "compounder",
     "cyclical_leader",
@@ -185,8 +186,29 @@ def _validate_tickers_metadata(tickers: dict[str, Any]) -> None:
                     f"expected one of {STRATEGY_ROLES}"
                 )
             notes = entry.get("notes")
-            if notes is not None and not isinstance(notes, str):
-                raise ValueError(f"Ticker 'notes' for symbol {symbol!r} must be a string")
+            if notes is not None:
+                if not isinstance(notes, str):
+                    raise ValueError(
+                        f"Ticker 'notes' for symbol {symbol!r} must be a string"
+                    )
+                if len(notes) > NOTES_MAX_LEN:
+                    raise ValueError(
+                        f"Ticker 'notes' for symbol {symbol!r} exceeds "
+                        f"{NOTES_MAX_LEN} characters ({len(notes)})"
+                    )
+            poi = entry.get("price_of_interest")
+            if poi is not None:
+                # bool is a subclass of int — explicitly rejected.
+                if isinstance(poi, bool) or not isinstance(poi, (int, float)):
+                    raise ValueError(
+                        f"Ticker 'price_of_interest' for symbol {symbol!r} "
+                        "must be a number"
+                    )
+                if poi <= 0:
+                    raise ValueError(
+                        f"Ticker 'price_of_interest' for symbol {symbol!r} "
+                        "must be > 0"
+                    )
 
 
 def _validate_tickers(tickers: Any) -> None:

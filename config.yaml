@@ -169,6 +169,11 @@ scrapers:
       stale_after_hours: 24
 
 tickers:
+  # Classificazione strategica (display-only nel report, MAI segnale BUY):
+  # - quality_tier: core | secondary | opportunistic
+  # - strategy_role: ruolo strategico (compounder, defense_prime, ...)
+  # - buy_the_dip_validity: high | medium | low (coerenza con la strategia BTD)
+  # - notes: motivazione leggibile nel report (opzionale)
   semiconductors:
     - symbol: NVDA
       name: NVIDIA
@@ -218,6 +223,8 @@ tickers:
       name: Microchip Technology
     - symbol: TER
       name: Teradyne
+    - symbol: SMCI
+      name: Super Micro Computer
   defense:
     - symbol: LMT
       name: Lockheed Martin
@@ -304,3 +311,11 @@ tickers:
   pharma:
     - symbol: GEHC
       name: GE HealthCare Technologies Inc.
+    - symbol: DHR
+      name: Danaher Corporation
+  finance:
+    - symbol: ARCC
+      name: Ares Capital Corporation
+  build:
+    - symbol: AMRZ
+      name: Amrize Ltd

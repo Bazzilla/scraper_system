@@ -10,6 +10,9 @@ Serves:
     GET  /api/tickers     → JSON of the current tickers section of config.yaml
     POST /api/tickers/save → validate + backup + rewrite the tickers section,
                              then rebuild output + report
+    GET  /api/ticker-meta?symbol=X → notes / price_of_interest / last_close
+    POST /api/ticker-meta → update notes + price_of_interest for one ticker,
+                             backup config + rebuild report
     GET  /scraper-run.html → scraper-run launch page (mode selector + live output)
     GET  /api/scraper-run?mode=... → SSE stream of ``run.py`` output
                                      (full | report_only | override_only)
@@ -47,7 +50,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-from config_loader import load_config
+from config_loader import NOTES_MAX_LEN, load_config
 from consolidator import consolidate
 from indicator_fields import SUPPORTED_KEYS
 from manual_overrides import (
@@ -64,7 +67,13 @@ from tickers_page import render_tickers_page
 from scraper_run_page import render_scraper_run_page
 from data_exchange_page import render_data_exchange_page
 from info_page import render_info_page
-from tickers_store import load_tickers, save_tickers, export_tickers, import_tickers
+from tickers_store import (
+    load_tickers,
+    save_tickers,
+    export_tickers,
+    import_tickers,
+    set_ticker_meta,
+)
 from portfolio_db import (
     TransactionError,
     add_transaction,
@@ -249,6 +258,9 @@ class OverridesHandler(BaseHTTPRequestHandler):
         if self.path == "/api/tickers":
             self._send_json(200, {"ok": True, "tickers": load_tickers(DEFAULT_CONFIG)})
             return
+        if self.path.startswith("/api/ticker-meta"):
+            self._handle_ticker_meta_get()
+            return
         if self.path == "/api/tickers/export":
             self._handle_tickers_export()
             return
@@ -321,6 +333,9 @@ class OverridesHandler(BaseHTTPRequestHandler):
             return
         if self.path == "/api/tickers/save":
             self._handle_tickers_save()
+            return
+        if self.path == "/api/ticker-meta":
+            self._handle_ticker_meta_post()
             return
         if self.path == "/api/transactions":
             self._handle_post_transaction()
@@ -433,6 +448,130 @@ class OverridesHandler(BaseHTTPRequestHandler):
         self._send_json(200, {
             "ok": True,
             "message": f"Ticker salvati e report rigenerato (backup: {backup_path.name})",
+            "backup": str(backup_path),
+        })
+
+    def _find_ticker_entry(self, symbol: str) -> dict[str, Any] | None:
+        """Locate a ticker entry by (case-insensitive) symbol in config.yaml."""
+        try:
+            tickers = load_tickers(DEFAULT_CONFIG)
+        except Exception:  # noqa: BLE001
+            return None
+        for entries in tickers.values():
+            if not isinstance(entries, list):
+                continue
+            for entry in entries:
+                if not isinstance(entry, dict):
+                    continue
+                if str(entry.get("symbol", "")).upper() == symbol:
+                    return entry
+        return None
+
+    def _load_last_close(self, symbol: str) -> float | None:
+        """Current price for the modal: ohlcv first, then indicators."""
+        output_path = PROJECT_ROOT / "output" / "output.json"
+        if not output_path.exists():
+            return None
+        try:
+            with output_path.open("r", encoding="utf-8") as fh:
+                data = json.load(fh)
+        except (json.JSONDecodeError, OSError):
+            return None
+        for section_key in ("ohlcv", "indicators"):
+            section = data.get(section_key, {})
+            if not isinstance(section, dict):
+                continue
+            for category in section.values():
+                if not isinstance(category, dict):
+                    continue
+                entry = category.get(symbol)
+                if isinstance(entry, dict) and entry.get("last_close") is not None:
+                    try:
+                        return float(entry["last_close"])
+                    except (TypeError, ValueError):
+                        continue
+        return None
+
+    def _handle_ticker_meta_get(self) -> None:
+        """GET /api/ticker-meta?symbol=X → notes, price_of_interest, last_close."""
+        query = parse_qs(urlparse(self.path).query)
+        symbol = (query.get("symbol", [""])[0] or "").strip().upper()
+        if not symbol:
+            self._send_json(400, {"ok": False, "message": "parametro 'symbol' mancante"})
+            return
+        entry = self._find_ticker_entry(symbol)
+        if entry is None:
+            self._send_json(404, {"ok": False, "message": f"Ticker {symbol} non trovato"})
+            return
+        notes = entry.get("notes")
+        poi = entry.get("price_of_interest")
+        self._send_json(200, {
+            "ok": True,
+            "symbol": symbol,
+            "name": entry.get("name", symbol),
+            "notes": notes if isinstance(notes, str) else "",
+            "price_of_interest": poi,
+            "last_close": self._load_last_close(symbol),
+        })
+
+    def _handle_ticker_meta_post(self) -> None:
+        """POST /api/ticker-meta — save notes/price for one ticker, rebuild report."""
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            payload = json.loads(self.rfile.read(length).decode("utf-8"))
+        except (ValueError, json.JSONDecodeError):
+            self._send_json(400, {"ok": False, "message": "JSON malformato"})
+            return
+        if not isinstance(payload, dict):
+            self._send_json(400, {"ok": False, "message": "body deve essere un oggetto"})
+            return
+
+        symbol = str(payload.get("symbol") or "").strip().upper()
+        if not symbol:
+            self._send_json(400, {"ok": False, "message": "parametro 'symbol' mancante"})
+            return
+
+        notes = payload.get("notes")
+        if notes is None:
+            notes = ""
+        if not isinstance(notes, str):
+            self._send_json(400, {"ok": False, "message": "'notes' deve essere una stringa"})
+            return
+        if len(notes) > NOTES_MAX_LEN:
+            self._send_json(400, {
+                "ok": False,
+                "message": f"'notes' massimo {NOTES_MAX_LEN} caratteri",
+            })
+            return
+
+        poi = payload.get("price_of_interest")
+        if poi is not None:
+            if isinstance(poi, bool) or not isinstance(poi, (int, float)) or poi <= 0:
+                self._send_json(400, {
+                    "ok": False,
+                    "message": "'price_of_interest' deve essere un numero > 0",
+                })
+                return
+
+        try:
+            backup_path = set_ticker_meta(
+                DEFAULT_CONFIG,
+                symbol,
+                notes=notes or None,
+                price_of_interest=poi,
+            )
+            rebuild_report(DEFAULT_CONFIG)
+        except ValueError as error:
+            self._send_json(404 if "not found" in str(error).lower() else 400,
+                            {"ok": False, "message": str(error)})
+            return
+        except Exception as error:  # noqa: BLE001
+            self._send_json(500, {"ok": False, "message": f"errore: {error}"})
+            return
+        self._send_json(200, {
+            "ok": True,
+            "message": "Salvato e report rigenerato",
+            "symbol": symbol,
             "backup": str(backup_path),
         })
 

@@ -18,6 +18,7 @@ from tickers_store import (
     import_tickers,
     load_tickers,
     save_tickers,
+    set_ticker_meta,
 )
 
 CONFIG_TEXT = (
@@ -289,6 +290,48 @@ class TestImportTickers(unittest.TestCase):
             self.assertEqual(report["imported"][0]["symbol"], "AAPL")
             tickers = load_tickers(str(path))
             self.assertEqual(tickers["tech"][0]["symbol"], "AAPL")
+
+
+class TestSetTickerMeta(unittest.TestCase):
+    def test_set_notes_and_price(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _write_config(tmp)
+            set_ticker_meta(str(path), "AMAT", notes="accumulo", price_of_interest=180.5)
+            entry = load_tickers(str(path))["semiconductors"][0]
+            self.assertEqual(entry["notes"], "accumulo")
+            self.assertEqual(entry["price_of_interest"], 180.5)
+            # other fields preserved
+            self.assertEqual(entry["quality_tier"], "core")
+
+    def test_clear_notes_and_price(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _write_config(tmp)
+            set_ticker_meta(str(path), "AMAT", notes="x", price_of_interest=10)
+            set_ticker_meta(str(path), "AMAT", notes=None, price_of_interest=None)
+            entry = load_tickers(str(path))["semiconductors"][0]
+            self.assertNotIn("notes", entry)
+            self.assertNotIn("price_of_interest", entry)
+
+    def test_symbol_case_insensitive(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _write_config(tmp)
+            set_ticker_meta(str(path), "amat", notes="ok", price_of_interest=None)
+            entry = load_tickers(str(path))["semiconductors"][0]
+            self.assertEqual(entry["notes"], "ok")
+
+    def test_unknown_symbol_raises(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _write_config(tmp)
+            with self.assertRaises(ValueError):
+                set_ticker_meta(str(path), "NOPE", notes="x", price_of_interest=None)
+
+    def test_empty_notes_clears(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _write_config(tmp)
+            set_ticker_meta(str(path), "AMAT", notes="x", price_of_interest=None)
+            set_ticker_meta(str(path), "AMAT", notes="", price_of_interest=None)
+            entry = load_tickers(str(path))["semiconductors"][0]
+            self.assertNotIn("notes", entry)
 
 
 if __name__ == "__main__":

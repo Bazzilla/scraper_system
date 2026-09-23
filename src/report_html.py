@@ -28,7 +28,13 @@ from typing import Any
 import yaml
 
 from config_loader import normalize_tickers
-from page_base import _BASE_CSS, _SHARED_SCRIPT, render_header, wrap_page
+from page_base import (
+    _BASE_CSS,
+    _SHARED_SCRIPT,
+    render_header,
+    render_ticker,
+    wrap_page,
+)
 
 # Re-export from submodules so existing imports (tests, overrides_page,
 # overrides_server) keep working unchanged.
@@ -533,11 +539,16 @@ def _report_pos_dict(pos) -> dict[str, Any]:
     }
 
 
-def render_portfolio_summary(data: dict[str, Any]) -> str:
+def render_portfolio_summary(
+    data: dict[str, Any],
+    tickers_meta: dict[str, dict[str, Any]] | None = None,
+) -> str:
     """Render a lightweight portfolio summary section for the main report.
 
     Shows a compact table with open positions and SELL signals.
     Links to the full portfolio page for details.
+    ``tickers_meta`` is symbol → config.yaml entry (notes / price_of_interest)
+    used only for presence icons on the ticker cell.
     """
     try:
         import sqlite3
@@ -588,6 +599,7 @@ def render_portfolio_summary(data: dict[str, Any]) -> str:
         rules=rules,
     )
     eval_map = {ev.ticker: ev for ev in evaluations}
+    meta_map = tickers_meta or {}
 
     rows = ""
     for p in positions:
@@ -602,7 +614,7 @@ def render_portfolio_summary(data: dict[str, Any]) -> str:
         avg = p["avg_price"]
         last = p.get("last_price")
         rows += (
-            f'<tr><td data-value="{html_mod.escape(p["ticker"])}"><span class="ticker"><a href="https://finance.yahoo.com/quote/{html_mod.escape(p["ticker"])}/" target="_blank" rel="noopener">{html_mod.escape(p["ticker"])}</a></span></td>'
+            f'<tr><td data-value="{html_mod.escape(p["ticker"])}">{render_ticker(p["ticker"], meta_map.get(p["ticker"]))}</td>'
             f'<td data-value="{qty}">{qty}</td>'
             f'<td data-value="{avg:.2f}">${avg:.2f}</td>'
             f'<td data-value="{last if last is not None else ""}">{last_price_str}</td>'
@@ -645,13 +657,22 @@ def build_page(data: dict[str, Any], tickers_config: dict[str, Any] | None = Non
         f"Generato: {format_iso_dt(data.get('generated_at'))}",
         extra_badge=f'<span class="badge {overall}">{overall}</span>',
     )
+    # Build symbol → meta map for presence icons (notes / price_of_interest).
+    tickers_meta: dict[str, dict[str, Any]] = {}
+    for entries in (tickers_config or {}).values():
+        if not isinstance(entries, list):
+            continue
+        for entry in entries:
+            if isinstance(entry, dict) and entry.get("symbol"):
+                tickers_meta[entry["symbol"]] = entry
+
     content = (
         '<div class="sections-toolbar">'
         '<button id="sections-toggle" type="button">\U0001f5c2\ufe0f Chiudi tutte</button>'
         "</div>"
         f"{_collapsible('Indicatori di mercato', render_market_cards(data))}"
         f"{_ticker_sections(data, tickers_config)}"
-        f"{render_portfolio_summary(data)}"
+        f"{render_portfolio_summary(data, tickers_meta=tickers_meta)}"
         f"{render_indicator_matrix(data.get('strategy_indicators', {}))}"
         f"{render_stale_summary(stale)}"
         f"{render_legend()}"

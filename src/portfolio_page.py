@@ -207,10 +207,56 @@ _PAGE_SCRIPT = """\
   }
 
   /* ── Load data ──────────────────────────────────────────────────── */
+  var tickersMeta = {};
+
+  function loadTickersMeta() {
+    return fetch('/api/tickers').then(function (r) {
+      return r.json().then(function (d) { return d; });
+    }).then(function (d) {
+      var map = {};
+      var byCat = (d && d.tickers) || {};
+      Object.keys(byCat).forEach(function (cat) {
+        (byCat[cat] || []).forEach(function (e) {
+          if (e && e.symbol) map[e.symbol.toUpperCase()] = e;
+        });
+      });
+      tickersMeta = map;
+    }).catch(function () { tickersMeta = {}; });
+  }
+
+  function escAttr(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  /* Yahoo link + note/price presence icons + edit (opens shared modal). */
+  function tickerHtml(symbol) {
+    var s = escAttr(symbol);
+    var m = tickersMeta[s] || {};
+    var icons = '';
+    if (m.notes) {
+      icons += '<button type="button" class="ti-icon ti-note" data-ticker-edit="' + s +
+        '" title="' + escAttr(m.notes) + '" aria-label="Nota presente">📝</button>';
+    }
+    if (m.price_of_interest != null) {
+      icons += '<button type="button" class="ti-icon ti-price" data-ticker-edit="' + s +
+        '" title="Prezzo di interesse: $' + escAttr(m.price_of_interest) +
+        '" aria-label="Prezzo di interesse presente">🎯</button>';
+    }
+    icons += '<button type="button" class="ti-icon ti-edit" data-ticker-edit="' + s +
+      '" title="Modifica nota/prezzo" aria-label="Modifica nota e prezzo di interesse">✏️</button>';
+    return '<span class="ticker"><a href="https://finance.yahoo.com/quote/' +
+      encodeURIComponent(symbol) + '/" target="_blank" rel="noopener">' + s +
+      '</a>' + icons + '</span>';
+  }
+
   function loadAll() {
-    loadPositions();
-    loadTransactions();
-    loadSellSignals();
+    loadTickersMeta().then(function () {
+      loadPositions();
+      loadTransactions();
+      loadSellSignals();
+    });
   }
 
   function loadPositions() {
@@ -248,7 +294,7 @@ _PAGE_SCRIPT = """\
       var reasons = (ev.reasons || []).map(function (r) { return '• ' + r; }).join('<br>');
       return '<div style="margin-bottom:12px;padding:10px;border:1px solid var(--border);border-radius:8px;">'
         + '<div style="display:flex;align-items:center;gap:10px;">'
-        + '<span class="ticker"><a href="https://finance.yahoo.com/quote/' + encodeURIComponent(ev.ticker) + '/" target="_blank" rel="noopener">' + ev.ticker + '</a></span> '
+        + tickerHtml(ev.ticker) + ' '
         + '<span class="sell-badge ' + badgeClass + '">' + ev.sell_signal + '</span>'
         + '<span style="font-size:0.75rem;color:var(--muted);">confidenza: ' + ev.confidence + '</span>'
         + '</div>'
@@ -317,7 +363,7 @@ _PAGE_SCRIPT = """\
       var gain = p.unrealized_pnl_usd;
       var pct = p.unrealized_pnl_pct;
       return '<tr>'
-        + '<td data-value="' + p.ticker + '"><span class="ticker"><a href="https://finance.yahoo.com/quote/' + encodeURIComponent(p.ticker) + '/" target="_blank" rel="noopener">' + p.ticker + '</a></span></td>'
+        + '<td data-value="' + p.ticker + '">' + tickerHtml(p.ticker) + '</td>'
         + '<td data-value="' + (p.quantity || 0) + '">' + fmt(p.quantity) + '</td>'
         + '<td data-value="' + (p.average_entry_price_usd || 0) + '">$' + fmt(p.average_entry_price_usd) + '</td>'
         + '<td data-value="' + (p.market_price_usd != null ? p.market_price_usd : '') + '">' + (p.market_price_usd != null ? '$' + fmt(p.market_price_usd) : '\u2014') + '</td>'
@@ -342,7 +388,7 @@ _PAGE_SCRIPT = """\
       var actionClass = t.action === 'BUY' ? 'pnl-pos' : 'pnl-neg';
       return '<tr>'
         + '<td>' + fmtDate(t.trade_date) + '</td>'
-        + '<td><span class="ticker"><a href="https://finance.yahoo.com/quote/' + encodeURIComponent(t.ticker) + '/" target="_blank" rel="noopener">' + t.ticker + '</a></span></td>'
+        + '<td>' + tickerHtml(t.ticker) + '</td>'
         + '<td class="' + actionClass + '">' + t.action + '</td>'
         + '<td>' + fmt(t.quantity) + '</td>'
         + '<td>$' + fmt(t.price_usd) + '</td>'

@@ -18,6 +18,7 @@ from report_helpers import (
     market_regime,
 )
 from valuation_store import bucket_label
+from page_base import render_ticker
 
 
 _TIER_ORDER = {"core": 0, "secondary": 1, "opportunistic": 2}
@@ -110,7 +111,7 @@ def render_ticker_table(
 
         rows.append(
             f"<tr{_age_attrs(ind.get('fetched_at'), ind.get('stale_after_hours'))}>"
-            f'<td data-value="{_dv(symbol)}"><span class="ticker"><a href="https://finance.yahoo.com/quote/{html_mod.escape(symbol)}/" target="_blank" rel="noopener">{html_mod.escape(symbol)}</a></span>'
+            f'<td data-value="{_dv(symbol)}">{render_ticker(symbol, meta.get(symbol))}'
             f'<br><span class="name">{html_mod.escape(entry.get("name", ""))}</span>'
             f"{_ticker_meta_line(meta.get(symbol))}</td>"
             f"<td data-value=\"{_dv(ind.get('last_close'))}\">{_sema(ind.get('last_close'), 'close')}</td>"

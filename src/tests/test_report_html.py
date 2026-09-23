@@ -1092,6 +1092,36 @@ class TestRenderSections(unittest.TestCase):
         self.assertNotIn("<script>", html)
         self.assertIn("&lt;script&gt;", html)
 
+    def test_ticker_has_edit_button(self):
+        data = _sample_data()
+        entries = data["indicators"]["semiconductors"]
+        html = render_ticker_table("semiconductors", entries)
+        self.assertIn('data-ticker-edit="AMAT"', html)
+        self.assertIn("✏️", html)
+        self.assertNotIn("ti-note", html)  # no note → no note icon
+
+    def test_ticker_note_and_price_icons_when_meta_present(self):
+        data = _sample_data()
+        entries = data["indicators"]["semiconductors"]
+        meta = {"AMAT": {"symbol": "AMAT", "name": "Applied Materials",
+                         "notes": "accumulo sotto 180",
+                         "price_of_interest": 178.5}}
+        html = render_ticker_table("semiconductors", entries, tickers_meta=meta)
+        self.assertIn("ti-note", html)
+        self.assertIn("ti-price", html)
+        self.assertIn("📝", html)
+        self.assertIn("🎯", html)
+        self.assertIn("$178.5", html)
+
+    def test_build_page_passes_meta_to_portfolio_summary(self):
+        from report_html import render_portfolio_summary
+
+        meta = {"AMAT": {"symbol": "AMAT", "notes": "nota", "price_of_interest": 1}}
+        # render_portfolio_summary senza transazioni restituisce "" (no crash)
+        # con meta non None non deve sollevare
+        html = render_portfolio_summary(_sample_data(), tickers_meta=meta)
+        self.assertIsInstance(html, str)
+
     def test_ticker_meta_ordering_core_first(self):
         data = _sample_data()
         entries = data["indicators"]["semiconductors"]

@@ -54,6 +54,13 @@ class TestPortfolioPage(unittest.TestCase):
         self.assertIn('/api/transactions', html)
         self.assertIn('/api/portfolio/evaluate', html)
 
+    def test_page_loads_ticker_meta_and_renders_icons(self):
+        html = render_portfolio_page()
+        self.assertIn('/api/tickers', html)
+        self.assertIn('tickerHtml', html)
+        self.assertIn('data-ticker-edit', html)
+        self.assertIn('loadTickersMeta', html)
+
     def test_page_has_sell_signals_section(self):
         html = render_portfolio_page()
         self.assertIn('id="sell-body"', html)
