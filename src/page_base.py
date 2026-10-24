@@ -13,7 +13,7 @@ from report_helpers import FAVICON_LINK, render_nav
 # ── Version ─────────────────────────────────────────────────────────────────
 VERSION_MAJOR = 0
 VERSION_MINOR = 6
-VERSION_BUILD = 1
+VERSION_BUILD = 2
 VERSION = f"{VERSION_MAJOR}.{VERSION_MINOR}.{VERSION_BUILD}"
 
 # ── Base CSS (shared by all pages) ──────────────────────────────────────────
@@ -28,10 +28,10 @@ _BASE_CSS = """\
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
         sans-serif; background: var(--bg); color: var(--text); line-height: 1.5;
-        padding: 24px; }
+        padding: 0 24px 24px; }
 .container { max-width: var(--container-max); margin: 0 auto; }
 header { display: flex; flex-direction: column; align-items: flex-start;
-        gap: 8px; margin-bottom: 24px;
+        gap: 8px; margin-bottom: 24px; padding-top: 24px;
         position: sticky; top: 0; z-index: 500;
         background: var(--bg); }
 h1 { font-size: 1.5rem; }
