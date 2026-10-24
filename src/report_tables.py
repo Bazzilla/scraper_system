@@ -6,12 +6,19 @@ import html as html_mod
 from typing import Any
 
 from report_helpers import (
+    GATE_CLOSED,
+    GATE_MISSING_OR_STALE,
+    GATE_OPEN,
+    GATE_STRONG_OPEN,
+    GATE_WATCH_ONLY,
     _age_attrs,
     _collapsible,
     _sema,
     _signal_badge,
     attrattiva_score,
     _status_badge,
+    buy_signal_reasons,
+    buy_the_dip_gate,
     compute_signal,
     fmt,
     format_iso_dt,
@@ -38,6 +45,66 @@ def _merge_valuation(merged: dict[str, Any], val_entries: dict[str, Any]) -> Non
         for key, value in entry.items():
             if key not in _VALUATION_META_KEYS:
                 merged[symbol][key] = value
+
+
+def _merge_category_entries(
+    ind_entries: Any,
+    ohlcv_entries: Any,
+    val_entries: Any,
+) -> dict[str, Any]:
+    """Merge one category's ohlcv (close) + indicators + valuation rows.
+
+    ``last_close`` comes from ohlcv, technical indicators from indicators,
+    valuation fields (upside, multiples) are display-only overlays. Only
+    dict values represent tickers (excludes module-level "status" keys).
+    """
+    ind = ind_entries if isinstance(ind_entries, dict) else {}
+    ohlcv = ohlcv_entries if isinstance(ohlcv_entries, dict) else {}
+    val = val_entries if isinstance(val_entries, dict) else {}
+    symbols = {
+        symbol
+        for symbol in set(ind) | set(ohlcv)
+        if isinstance(ind.get(symbol), dict) or isinstance(ohlcv.get(symbol), dict)
+    }
+    merged: dict[str, Any] = {}
+    for symbol in symbols:
+        base = dict(ohlcv.get(symbol, {})) if isinstance(ohlcv.get(symbol), dict) else {}
+        ind_entry = ind.get(symbol, {})
+        if isinstance(ind_entry, dict):
+            base.update(ind_entry)
+        merged[symbol] = base
+    _merge_valuation(merged, val)
+    return merged
+
+
+def collect_merged_tickers(data: dict[str, Any]) -> dict[str, Any]:
+    """All tickers merged across categories: symbol → entry.
+
+    Each entry carries the source category under ``_category`` for display
+    in cross-section summaries (e.g. the buy-signals Markdown).
+    """
+    indicators = data.get("indicators", {})
+    ohlcv = data.get("ohlcv", {})
+    valuation = data.get("valuation", {})
+
+    def _categories(mapping: dict[str, Any]) -> set[str]:
+        # Solo le chiavi il cui valore è un dict rappresentano categorie.
+        return {k for k, v in mapping.items() if isinstance(v, dict)}
+
+    result: dict[str, Any] = {}
+    for category in sorted(
+        _categories(indicators) | _categories(ohlcv) | _categories(valuation)
+    ):
+        merged = _merge_category_entries(
+            indicators.get(category),
+            ohlcv.get(category),
+            valuation.get(category),
+        )
+        for symbol, entry in merged.items():
+            entry = dict(entry)
+            entry["_category"] = category
+            result[symbol] = entry
+    return result
 
 
 def _bucket_title(ind: dict[str, Any]) -> str:
@@ -280,29 +347,15 @@ def _ticker_sections(data: dict[str, Any], tickers_config: dict[str, Any] | None
         _categories(indicators) | _categories(ohlcv) | _categories(valuation)
     )
     for category in all_categories:
-        ind_entries = indicators.get(category, {})
-        ohlcv_entries = ohlcv.get(category, {})
-        val_entries = valuation.get(category, {})
-        # merge: last_close da ohlcv, indicatori da indicators.
-        # Solo le voci che sono dict rappresentano ticker (esclude "status").
-        # NB: .get() senza default — se "status" esiste in una sola mappa,
-        # per l'altra restituisce None (non {}) ed evita falsi ticker.
-        symbols = {
-            symbol
-            for symbol in set(ind_entries) | set(ohlcv_entries)
-            if isinstance(ind_entries.get(symbol), dict)
-            or isinstance(ohlcv_entries.get(symbol), dict)
-        }
-        merged: dict[str, Any] = {}
-        for symbol in symbols:
-            base = dict(ohlcv_entries.get(symbol, {})) if isinstance(ohlcv_entries.get(symbol), dict) else {}
-            ind = ind_entries.get(symbol, {})
-            if isinstance(ind, dict):
-                base.update(ind)
-            merged[symbol] = base
-        # Valuation (display-only): solo i campi di valutazione, senza
-        # toccare fetched_at/status della riga (badge età = indicatori).
-        _merge_valuation(merged, val_entries)
+        # merge: last_close da ohlcv, indicatori da indicators, valuation
+        # display-only. NB: .get() senza default — se "status" esiste in una
+        # sola mappa, per l'altra restituisce None (non {}) ed evita falsi
+        # ticker (gestito da _merge_category_entries).
+        merged = _merge_category_entries(
+            indicators.get(category),
+            ohlcv.get(category),
+            valuation.get(category),
+        )
         if not merged:
             continue
         display = category.upper()
@@ -314,3 +367,115 @@ def _ticker_sections(data: dict[str, Any], tickers_config: dict[str, Any] | None
             ),
         ))
     return "".join(sections)
+
+
+def build_buy_signals_markdown(data: dict[str, Any]) -> str:
+    """Markdown summary of VALUTA INGRESSO tickers (copy-to-clipboard).
+
+    Returns ``""`` when no ticker currently has the buy signal. Values and
+    motivations mirror the signal pipeline (``compute_signal`` + buy-the-dip
+    FGI gate): this is a copy of the report state, not a new decision layer.
+    """
+    fgi = data.get("fgi", {})
+    fgi_score = fgi.get("score") if fgi.get("status") == "fresh" else None
+    regime = market_regime(fgi.get("score"))
+
+    buys = [
+        (symbol, entry)
+        for symbol, entry in collect_merged_tickers(data).items()
+        if compute_signal(entry, regime, fgi_score=fgi_score) == "buy"
+    ]
+    if not buys:
+        return ""
+
+    # Ordine: Attrattiva decrescente (le più papabili prima), poi simbolo.
+    buys.sort(
+        key=lambda pair: (
+            -attrattiva_score(pair[1], fgi_score=fgi_score, regime=regime),
+            pair[0],
+        )
+    )
+
+    gate = buy_the_dip_gate(fgi_score)
+    gate_labels = {
+        GATE_STRONG_OPEN: "aperto (paura estrema)",
+        GATE_OPEN: "aperto (paura sufficiente)",
+        GATE_WATCH_ONLY: "solo osservazione",
+        GATE_CLOSED: "chiuso",
+        GATE_MISSING_OR_STALE: "mancante/stale (fail-closed)",
+    }
+    fgi_str = f"{fgi_score:.0f}" if fgi_score is not None else "—"
+
+    def _cell(text: Any) -> str:
+        """Markdown table cell: escape pipes, collapse newlines."""
+        return str(text).replace("|", "\\|").replace("\n", " ")
+
+    def _num(value: Any, spec: str = ".2f") -> str:
+        return "—" if value is None else format(value, spec)
+
+    def _pct(value: Any) -> str:
+        return "—" if value is None else f"{value:.1f}%"
+
+    def _vs(price: Any, sma: Any) -> str:
+        if price is None or sma is None:
+            return "—"
+        return "sopra" if price >= sma else "sotto"
+
+    lines = [
+        f"## 🎯 Segnali VALUTA INGRESSO — {len(buys)} ticker",
+        "",
+        f"Contesto: FGI {fgi_str} (gate {gate_labels.get(gate, gate)}) · "
+        f"regime {regime} · generato {format_iso_dt(data.get('generated_at'))}",
+        "",
+        "| Ticker | Settore | Close | RSI | MFI | vs SMA50 | vs SMA200 "
+        "| Drawdown | Upside FV | Attrattiva |",
+        "|---|---|---:|---:|---:|:-:|:-:|---:|---:|---:|",
+    ]
+    for symbol, entry in buys:
+        score = attrattiva_score(entry, fgi_score=fgi_score, regime=regime)
+        lines.append(
+            f"| **{symbol}** | {_cell(str(entry.get('_category', '')).upper())} "
+            f"| {_num(entry.get('last_close'))} "
+            f"| {_num(entry.get('rsi_14'), '.1f')} "
+            f"| {_num(entry.get('mfi_14'), '.1f')} "
+            f"| {_vs(entry.get('last_close'), entry.get('sma_50'))} "
+            f"| {_vs(entry.get('last_close'), entry.get('sma_200'))} "
+            f"| {_pct(entry.get('drawdown_52w'))} "
+            f"| {_pct(entry.get('upside_pct'))} "
+            f"| **{score}** |"
+        )
+
+    lines += ["", "### Perché VALUTA INGRESSO", ""]
+    for symbol, entry in buys:
+        score = attrattiva_score(entry, fgi_score=fgi_score, regime=regime)
+        name = entry.get("name") or symbol
+        category = str(entry.get("_category", "")).upper()
+        lines.append(f"- **{symbol}** ({name}, {category}) — Attrattiva {score}")
+        for reason in buy_signal_reasons(entry, fgi_score):
+            lines.append(f"  - {reason}")
+
+    lines += [
+        "",
+        "*Setup da valutare con le conferme della strategia — non un consiglio "
+        "di acquisto automatico (gate FGI + conferme obbligatorie).*",
+    ]
+    return "\n".join(lines)
+
+
+def render_buy_signals_section(data: dict[str, Any]) -> str:
+    """Collapsible section with the copyable Markdown buy-signals summary."""
+    md = build_buy_signals_markdown(data)
+    if not md:
+        body = (
+            '<p class="md-empty">Nessun ticker con segnale '
+            "<strong>VALUTA INGRESSO</strong> al momento: gate FGI non aperto "
+            "e/o condizioni tecniche non soddisfatte.</p>"
+        )
+    else:
+        body = (
+            '<div class="md-toolbar">'
+            '<button type="button" class="subtle" id="copy-buy-signals">'
+            "📋 Copia Markdown</button></div>"
+            f'<pre class="md-box" id="buy-signals-md">{html_mod.escape(md)}</pre>'
+        )
+    return _collapsible("🎯 Sintesi VALUTA INGRESSO (Markdown)", body)

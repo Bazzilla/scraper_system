@@ -50,6 +50,7 @@ from report_helpers import (  # noqa: F401
     _signal_badge,
     _status_badge,
     attrattiva_score,
+    buy_signal_reasons,
     buy_the_dip_gate,
     compute_signal,
     final_action,
@@ -58,6 +59,7 @@ from report_helpers import (  # noqa: F401
     market_regime,
     render_nav,
     semaphore_class,
+    technical_contributions,
     technical_signal,
 )
 from report_helpers import FAVICON_LINK  # noqa: F401
@@ -65,6 +67,9 @@ from report_cards import render_market_cards  # noqa: F401
 from report_legend import render_legend  # noqa: F401
 from report_tables import (  # noqa: F401
     _ticker_sections,
+    build_buy_signals_markdown,
+    collect_merged_tickers,
+    render_buy_signals_section,
     render_indicator_matrix,
     render_stale_summary,
     render_ticker_table,
@@ -189,6 +194,14 @@ table.ticker-table th.sorted { color: var(--neutral); }
         border-radius: 6px; }
 .portfolio-summary .pnl-pos { color: var(--green); font-weight: 600; }
 .portfolio-summary .pnl-neg { color: var(--red); font-weight: 600; }
+/* Sintesi VALUTA INGRESSO: box Markdown copiabile */
+.md-box { background: var(--bg); border: 1px solid var(--border);
+        border-radius: 8px; padding: 12px; font-size: 0.78rem;
+        line-height: 1.45; font-family: ui-monospace, SFMono-Regular, Menlo,
+        Consolas, monospace; white-space: pre-wrap; word-break: break-word;
+        max-height: 480px; overflow-y: auto; }
+.md-toolbar { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+.md-empty { color: var(--muted); font-size: 0.9rem; }
 """
 
 """Report-specific script — age badges for data-fetched-at elements."""
@@ -237,6 +250,36 @@ _REPORT_SCRIPT = """\
     if (meta) { meta.appendChild(age); }
     else { var lc = el.querySelector("td:last-child"); if (lc) lc.appendChild(age); }
   }
+
+  // --- Copia Markdown sintesi VALUTA INGRESSO -----------------------------
+  // navigator.clipboard richiede un contesto sicuro (https/localhost): su
+  // accesso LAN via http non è disponibile → fallback execCommand.
+  document.addEventListener("click", function (ev) {
+    var btn = ev.target.closest ? ev.target.closest("#copy-buy-signals") : null;
+    if (!btn) return;
+    var box = document.getElementById("buy-signals-md");
+    if (!box) return;
+    var text = box.textContent;
+    function done() {
+      btn.textContent = "✅ Copiato!";
+      setTimeout(function () { btn.textContent = "📋 Copia Markdown"; }, 2000);
+    }
+    function fallback() {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); done(); } catch (e) { /* no-op */ }
+      document.body.removeChild(ta);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } else {
+      fallback();
+    }
+  });
 })();
 </script>
 """
@@ -671,6 +714,7 @@ def build_page(data: dict[str, Any], tickers_config: dict[str, Any] | None = Non
         '<button id="sections-toggle" type="button">\U0001f5c2\ufe0f Chiudi tutte</button>'
         "</div>"
         f"{_collapsible('Indicatori di mercato', render_market_cards(data))}"
+        f"{render_buy_signals_section(data)}"
         f"{_ticker_sections(data, tickers_config)}"
         f"{render_portfolio_summary(data, tickers_meta=tickers_meta)}"
         f"{render_indicator_matrix(data.get('strategy_indicators', {}))}"

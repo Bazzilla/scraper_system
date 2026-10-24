@@ -10,7 +10,9 @@ from pathlib import Path
 from report_html import (
     _age_attrs,
     attrattiva_score,
+    build_buy_signals_markdown,
     build_page,
+    buy_signal_reasons,
     buy_the_dip_gate,
     compute_signal,
     final_action,
@@ -18,12 +20,14 @@ from report_html import (
     format_iso_dt,
     market_regime,
     render,
+    render_buy_signals_section,
     render_indicator_matrix,
     render_legend,
     render_market_cards,
     render_stale_summary,
     render_ticker_table,
     semaphore_class,
+    technical_contributions,
     technical_signal,
 )
 
@@ -933,6 +937,98 @@ class TestRenderSections(unittest.TestCase):
         page = build_page(_sample_data())
         self.assertIn("Segnali di ingresso", page)
         self.assertIn("Segnali di uscita", page)
+
+
+class TestBuySignalsMarkdown(unittest.TestCase):
+    """Sintesi Markdown copiabile dei segnali VALUTA INGRESSO."""
+
+    def _buy_data(self) -> dict:
+        """Sample data con un caso buy reale (FGI 22 fresh, score tecnico +3)."""
+        data = _sample_data()
+        data["fgi"] = {**data["fgi"], "score": 22.0, "zone": "fear"}
+        data["ohlcv"]["semiconductors"]["AMAT"]["last_close"] = 330.0
+        data["indicators"]["semiconductors"]["AMAT"].update({
+            "rsi_14": 25.0, "mfi_14": 15.0,
+            "sma_50": 320.0, "sma_200": 280.0,
+            "drawdown_52w": -20.0,
+        })
+        return data
+
+    def test_buy_case_markdown_content(self):
+        md = build_buy_signals_markdown(self._buy_data())
+        self.assertIn("Segnali VALUTA INGRESSO — 1 ticker", md)
+        # Riga tabella: valori chiave
+        self.assertIn("| **AMAT** | SEMICONDUCTORS | 330.00 | 25.0 | 15.0 |", md)
+        self.assertIn("sopra", md)  # vs SMA50/SMA200
+        # Contesto: gate + regime
+        self.assertIn("FGI 22 (gate aperto (paura sufficiente))", md)
+        self.assertIn("regime fear", md)
+        # Motivazioni: contributi tecnici + gate
+        self.assertIn("### Perché VALUTA INGRESSO", md)
+        self.assertIn("RSI 25.0 < 30 (ipervenduto)", md)
+        self.assertIn("MFI 15.0 < 20", md)
+        self.assertIn("gate buy-the-dip aperto: FGI 22 ≤ 25", md)
+        self.assertIn("Attrattiva", md)
+        self.assertIn("non un consiglio", md)
+
+    def test_no_buys_returns_empty(self):
+        # Sample: FGI 62.65 (greed) → gate chiuso, nessun buy.
+        self.assertEqual(build_buy_signals_markdown(_sample_data()), "")
+
+    def test_stale_fgi_fail_closed(self):
+        data = self._buy_data()
+        data["fgi"]["status"] = "stale"
+        self.assertEqual(build_buy_signals_markdown(data), "")
+
+    def test_greed_regime_blocks_buy(self):
+        # FGI basso ma regime greed non esiste (≤45=fear): forziamo un
+        # bullish con gate aperto in regime neutral — basta FGI 25.
+        data = self._buy_data()
+        data["fgi"]["score"] = 25.0
+        md = build_buy_signals_markdown(data)
+        self.assertIn("gate aperto (paura sufficiente)", md)
+
+    def test_section_renders_copy_button(self):
+        html = render_buy_signals_section(self._buy_data())
+        self.assertIn("Sintesi VALUTA INGRESSO", html)
+        self.assertIn('id="copy-buy-signals"', html)
+        self.assertIn('id="buy-signals-md"', html)
+        self.assertIn("Copia Markdown", html)
+
+    def test_section_empty_state(self):
+        html = render_buy_signals_section(_sample_data())
+        self.assertIn("Nessun ticker con segnale", html)
+        self.assertNotIn('id="buy-signals-md"', html)
+        self.assertNotIn('id="copy-buy-signals"', html)
+
+    def test_build_page_places_section_after_market_cards(self):
+        html = build_page(self._buy_data())
+        # Cerca solo nel body: il commento CSS contiene "Sintesi VALUTA INGRESSO".
+        body = html.split("</style>", 1)[1]
+        idx_market = body.find("Indicatori di mercato")
+        idx_buy = body.find("Sintesi VALUTA INGRESSO")
+        idx_tickers = body.find("SEMICONDUCTORS (")
+        self.assertTrue(0 < idx_market < idx_buy < idx_tickers)
+        # JS di copia presente nella pagina
+        self.assertIn("#copy-buy-signals", html)
+
+    def test_technical_contributions_consistency(self):
+        # Il refactoring deve preservare la classificazione: la somma dei
+        # contributi corrisponde alle soglie di technical_signal.
+        entry = {
+            "rsi_14": 25.0, "mfi_14": 15.0, "last_close": 330.0,
+            "sma_50": 320.0, "sma_200": 280.0, "drawdown_52w": -20.0,
+        }
+        total = sum(p for p, _ in technical_contributions(entry))
+        self.assertGreaterEqual(total, 2)
+        self.assertEqual(technical_signal(entry), "bullish")
+        reasons = buy_signal_reasons(entry, 22.0)
+        self.assertTrue(any("RSI" in r for r in reasons))
+        self.assertTrue(any("gate buy-the-dip aperto" in r for r in reasons))
+
+    def test_contributions_empty_entry(self):
+        self.assertEqual(technical_contributions({}), [])
+        self.assertEqual(technical_signal({}), "neutral")
 
     def test_legend_contains_operational_guide(self):
         html = render_legend()

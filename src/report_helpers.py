@@ -109,6 +109,55 @@ def buy_the_dip_gate(fgi_score: float | str | None, stale: bool = False) -> str:
     return GATE_STRONG_OPEN
 
 
+def technical_contributions(entry: dict[str, Any]) -> list[tuple[int, str]]:
+    """Per-indicator contributions to the technical score: ``(points, reason)``.
+
+    Single source of truth for the thresholds used by ``technical_signal``
+    (the score is the sum of these points). Reasons are human-readable
+    (Italian) and feed the buy-signals Markdown summary in the report.
+    Missing indicators contribute nothing (fail-closed, never rewarded).
+    """
+    contributions: list[tuple[int, str]] = []
+
+    rsi = entry.get("rsi_14")
+    if rsi is not None:
+        if rsi < 30:
+            contributions.append((1, f"RSI {rsi:.1f} < 30 (ipervenduto)"))
+        elif rsi > 70:
+            contributions.append((-1, f"RSI {rsi:.1f} > 70 (ipercomprato)"))
+
+    mfi = entry.get("mfi_14")
+    if mfi is not None:
+        if mfi < 20:
+            contributions.append((1, f"MFI {mfi:.1f} < 20 (flusso monetario in uscita)"))
+        elif mfi > 80:
+            contributions.append((-1, f"MFI {mfi:.1f} > 80 (ipercomprato)"))
+
+    price = entry.get("last_close")
+    sma50 = entry.get("sma_50")
+    if price is not None and sma50 is not None:
+        if price >= sma50:
+            contributions.append((1, f"prezzo ${price:.2f} sopra SMA50 (${sma50:.2f})"))
+        else:
+            contributions.append((-1, f"prezzo ${price:.2f} sotto SMA50 (${sma50:.2f})"))
+
+    sma200 = entry.get("sma_200")
+    if price is not None and sma200 is not None:
+        if price >= sma200:
+            contributions.append((1, f"prezzo ${price:.2f} sopra SMA200 (${sma200:.2f})"))
+        else:
+            contributions.append((-1, f"prezzo ${price:.2f} sotto SMA200 (${sma200:.2f})"))
+
+    drawdown = entry.get("drawdown_52w")
+    if drawdown is not None:
+        if drawdown >= -5:
+            contributions.append((1, f"drawdown {drawdown:.1f}% contenuto (vicino ai massimi 52w)"))
+        elif drawdown < -15:
+            contributions.append((-1, f"drawdown {drawdown:.1f}% profondo"))
+
+    return contributions
+
+
 def technical_signal(entry: dict[str, Any]) -> str:
     """Technical evaluation of a ticker from its LOCAL indicators only.
 
@@ -121,44 +170,38 @@ def technical_signal(entry: dict[str, Any]) -> str:
 
     This is the SCREENING INPUT for a potential entry, not the final action.
     The final decision is made by ``final_action`` after the market gate.
+
+    The per-indicator thresholds live in ``technical_contributions`` (the
+    score is simply the sum of its points).
     """
-    score = 0
-
-    rsi = entry.get("rsi_14")
-    if rsi is not None:
-        if rsi < 30:
-            score += 1
-        elif rsi > 70:
-            score -= 1
-
-    mfi = entry.get("mfi_14")
-    if mfi is not None:
-        if mfi < 20:
-            score += 1
-        elif mfi > 80:
-            score -= 1
-
-    price = entry.get("last_close")
-    sma50 = entry.get("sma_50")
-    if price is not None and sma50 is not None:
-        score += 1 if price >= sma50 else -1
-
-    sma200 = entry.get("sma_200")
-    if price is not None and sma200 is not None:
-        score += 1 if price >= sma200 else -1
-
-    drawdown = entry.get("drawdown_52w")
-    if drawdown is not None:
-        if drawdown >= -5:
-            score += 1
-        elif drawdown < -15:
-            score -= 1
-
+    score = sum(points for points, _ in technical_contributions(entry))
     if score >= 2:
         return "bullish"
     if score <= -2:
         return "weak"
     return "neutral"
+
+
+def buy_signal_reasons(
+    entry: dict[str, Any],
+    fgi_score: float | None = None,
+) -> list[str]:
+    """Human-readable reasons for a VALUTA INGRESSO (buy) signal.
+
+    Returns the positive technical contributions (from
+    ``technical_contributions``) plus the market-gate line. Only meaningful
+    when ``compute_signal(...) == "buy"`` — callers filter first. The gate
+    line is always present: a buy requires an open buy-the-dip gate.
+    """
+    reasons = [msg for points, msg in technical_contributions(entry) if points > 0]
+    gate = buy_the_dip_gate(fgi_score)
+    if gate == GATE_STRONG_OPEN:
+        reasons.append(f"gate buy-the-dip aperto: FGI {fgi_score:.0f} ≤ 20 (paura estrema)")
+    elif gate == GATE_OPEN:
+        reasons.append(f"gate buy-the-dip aperto: FGI {fgi_score:.0f} ≤ 25 (paura sufficiente)")
+    else:  # Defensive: buy requires an open gate — surface the actual state.
+        reasons.append(f"gate buy-the-dip: {gate} (FGI {fgi_score})")
+    return reasons
 
 
 def final_action(technical: str, gate: str) -> str:
