@@ -913,6 +913,27 @@ class TestRenderSections(unittest.TestCase):
         self.assertIn("overbought", html)
         self.assertIn("critical", html)
 
+    def test_legend_contains_entry_and_exit_signals(self):
+        html = render_legend()
+        # Sezione ingresso: i 3 badge della tabella ticker
+        self.assertIn("Segnali di ingresso", html)
+        self.assertIn('class="signal buy">🟢 VALUTA INGRESSO', html)
+        self.assertIn('class="signal watchlist">🟠 OSSERVA', html)
+        self.assertIn('class="signal hold">⚪ ATTENDI', html)
+        self.assertIn("gate buy-the-dip aperto", html)
+        self.assertIn("Regola 0", html)
+        # Sezione uscita: i 5 stati per le posizioni aperte
+        self.assertIn("Segnali di uscita", html)
+        self.assertIn('sell-signal sell-NESSUNA">NESSUNA POSIZIONE', html)
+        self.assertIn('sell-signal sell-MANTIENI">MANTIENI', html)
+        self.assertIn('sell-signal sell-PRENDI">PRENDI PROFITTO PARZIALE', html)
+        self.assertIn('sell-signal sell-RIDUCI">RIDUCI ESPOSIZIONE', html)
+        self.assertIn('sell-signal sell-ATTENZIONE">ATTENZIONE', html)
+        # La sezione compare anche nella pagina completa
+        page = build_page(_sample_data())
+        self.assertIn("Segnali di ingresso", page)
+        self.assertIn("Segnali di uscita", page)
+
     def test_legend_contains_operational_guide(self):
         html = render_legend()
         self.assertIn("Guida operativa", html)
@@ -1185,10 +1206,13 @@ class TestRenderSections(unittest.TestCase):
         }
         html = build_page(data, tickers_config)
         self.assertIn("class='ticker-meta'", html)  # metadata mostrati...
-        # ...ma mai come segnale: nessun badge "signal buy" (VALUTA INGRESSO).
-        # NB: "VALUTA INGRESSO" compare nella legenda, quindi verifichiamo il badge.
-        self.assertNotIn('class="signal buy"', html)
-        self.assertIn('class="signal hold"', html)
+        # ...ma mai come segnale: nessun badge "signal buy" (VALUTA INGRESSO)
+        # nelle tabelle ticker. La legenda (in fondo) mostra i badge di
+        # esempio per spiegare i valori, quindi verifichiamo solo il corpo
+        # della pagina (le sezioni precedono la legenda).
+        body = html.split("Legenda indicatori")[0]
+        self.assertNotIn('class="signal buy"', body)
+        self.assertIn('class="signal hold"', body)
 
 
 class TestAgeAttrs(unittest.TestCase):

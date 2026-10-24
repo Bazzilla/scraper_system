@@ -297,6 +297,125 @@ _LEGEND_SEMAPHORES = [
     },
 ]
 
+_LEGEND_ENTRY_SIGNALS = [
+    {
+        "name": '<span class="signal buy">🟢 VALUTA INGRESSO</span>',
+        "range": "ingresso",
+        "short": (
+            "Setup tecnico positivo E gate buy-the-dip aperto: candidato da "
+            "valutare per un ingresso."
+        ),
+        "detail": (
+            "Il titolo supera la soglia tecnica (punteggio ≥ +2 su RSI, MFI, "
+            "SMA50, SMA200 e drawdown: convergenza di ipervenduto e forza) E il "
+            "clima di mercato lo permette: FGI ≤ 25 (paura sufficiente, gate "
+            "aperto) e regime non-greed. È il segnale più forte della tabella, ma "
+            "resta un <strong>setup da valutare</strong> con le conferme della "
+            "strategia — non un ordine di acquisto automatico."
+        ),
+    },
+    {
+        "name": '<span class="signal watchlist">🟠 OSSERVA</span>',
+        "range": "ingresso",
+        "short": (
+            "Profilo buy-the-dip in debolezza profonda, oppure setup bloccato "
+            "dal gate in sola osservazione."
+        ),
+        "detail": (
+            "Due casi, entrambi senza ingresso immediato:<br>"
+            "<strong>(a) Debolezza profonda</strong> (punteggio ≤ −2: prezzo sotto "
+            "le medie e/o drawdown ampio): è il profilo buy-the-dip — titolo in "
+            "calo da monitorare, ma non entrare senza conferme (causa del calo, "
+            "MFI, volumi).<br>"
+            "<strong>(b) Setup bullish bloccato dal gate</strong>: il titolo è "
+            "tecnicamente pronto ma il mercato non offre abbastanza paura — FGI "
+            "tra 25 e 40 = solo osservazione. Se il gate scende sotto 25, può "
+            "salire a VALUTA INGRESSO."
+        ),
+    },
+    {
+        "name": '<span class="signal hold">⚪ ATTENDI</span>',
+        "range": "ingresso",
+        "short": (
+            "Nessuna condizione operativa: segnali misti, gate chiuso o mercato "
+            "in avidità."
+        ),
+        "detail": (
+            "Valore di default. Copre tre situazioni:<br>"
+            "<strong>Segnali misti</strong> (punteggio tra −1 e +1): nessuna "
+            "convergenza.<br>"
+            "<strong>Gate chiuso</strong>: setup bullish ma FGI &gt; 40 (avidità) "
+            "oppure FGI mancante/stale — fail-closed, mai un ingresso senza dato "
+            "fresco.<br>"
+            "<strong>Mercato in greed</strong> (Regola 0): anche un setup forte "
+            "con FGI basso diventa ATTENDI — non si insegue un mercato caldo."
+        ),
+    },
+]
+
+_LEGEND_EXIT_SIGNALS = [
+    {
+        "name": '<span class="sell-signal sell-NESSUNA">NESSUNA POSIZIONE</span>',
+        "range": "uscita",
+        "short": "Il ticker non è in portafoglio: nessuna valutazione di uscita.",
+        "detail": (
+            "Lo strategia di uscita viene calcolata solo per i ticker con "
+            "posizione aperta. Se il titolo è solo nella watchlist del report, "
+            "non compare alcun segnale di uscita."
+        ),
+    },
+    {
+        "name": '<span class="sell-signal sell-MANTIENI">MANTIENI</span>',
+        "range": "uscita",
+        "short": "Posizione sana: gain sotto le soglie di take-profit e trend integro.",
+        "detail": (
+            "Nessuna regola di uscita attiva: il gain non realizzato è positivo "
+            "ma ancora sotto la prima soglia di take-profit (15%), e le "
+            "condizioni tecniche restano sane (prezzo sopra le medie, RSI/MFI in "
+            "range normale). Nessuna azione necessaria."
+        ),
+    },
+    {
+        "name": '<span class="sell-signal sell-PRENDI">PRENDI PROFITTO PARZIALE</span>',
+        "range": "uscita",
+        "short": "Gain maturo (≥15% o ≥25%): valutare realizzo di circa 25-33% della posizione.",
+        "detail": (
+            "Prima soglia di take-profit (TP1): gain non realizzato ≥ 15% → "
+            "mettere in sicurezza parte del guadagno. Soglia rafforzata (TP2): "
+            "gain ≥ 25% → presa di profitto più decisa, con fiducia alta se "
+            "l'upside residuo dai target analyst è ≤ 5% (poco spazio di "
+            "risalita). Non è una vendita totale: si valuta un realizzo "
+            "parziale."
+        ),
+    },
+    {
+        "name": '<span class="sell-signal sell-RIDUCI">RIDUCI ESPOSIZIONE</span>',
+        "range": "uscita",
+        "short": "Gain ≥30% + segnali di surriscaldamento: valutare riduzione del 40-50%.",
+        "detail": (
+            "Take-profit avanzato (TP3): gain non realizzato ≥ 30% e almeno 2 "
+            "condizioni di surriscaldamento attive insieme (FGI ≥ 60, RSI ≥ 70, "
+            "MFI ≥ 80, prezzo molto sopra le medie, upside residuo esaurito). Il "
+            "rischio di ritracciamento è elevato: si valuta di ridurre quasi "
+            "metà della posizione."
+        ),
+    },
+    {
+        "name": '<span class="sell-signal sell-ATTENZIONE">ATTENZIONE</span>',
+        "range": "uscita",
+        "short": "Posizione in perdita con condizioni tecniche negative: monitorare da vicino.",
+        "detail": (
+            "Il gain non realizzato è ≤ 0 e almeno 2 segnali negativi sono "
+            "attivi insieme (prezzo sotto SMA50 e/o SMA200, RSI &lt; 45, MFI "
+            "&lt; 40, obv in calo). Il deterioramento potrebbe essere temporaneo "
+            "o strutturale: monitorare da vicino. <strong>Non genera "
+            "automaticamente un'uscita</strong> — la decisione resta umana, con "
+            "il trigger di uscita esplicito della strategia (take-profit, "
+            "fondamentali, time-stop)."
+        ),
+    },
+]
+
 _GUIDE = (
     "<div class='guide'>"
     "<h3>Guida operativa — quando comprare o vendere</h3>"
@@ -350,6 +469,8 @@ def render_legend() -> str:
     market = "".join(_legend_item(item) for item in _LEGEND_MARKET)
     stock = "".join(_legend_item(item) for item in _LEGEND_STOCK)
     sema = "".join(_legend_item(item) for item in _LEGEND_SEMAPHORES)
+    entry = "".join(_legend_item(item) for item in _LEGEND_ENTRY_SIGNALS)
+    exit_ = "".join(_legend_item(item) for item in _LEGEND_EXIT_SIGNALS)
     return _collapsible(
         "Legenda indicatori",
         (
@@ -359,6 +480,8 @@ def render_legend() -> str:
             f"<div><h3>Indicatori azionari</h3>{stock}</div>"
             "</div>"
             f"<h3>Semafori</h3>{sema}"
+            f"<h3>Segnali di ingresso (tabella ticker)</h3>{entry}"
+            f"<h3>Segnali di uscita (posizioni aperte)</h3>{exit_}"
             f"{_GUIDE}"
             "</div>"
         ),
