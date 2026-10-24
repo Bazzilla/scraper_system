@@ -12,7 +12,7 @@ from report_helpers import FAVICON_LINK, render_nav
 
 # ── Version ─────────────────────────────────────────────────────────────────
 VERSION_MAJOR = 0
-VERSION_MINOR = 5
+VERSION_MINOR = 6
 VERSION_BUILD = 1
 VERSION = f"{VERSION_MAJOR}.{VERSION_MINOR}.{VERSION_BUILD}"
 
@@ -31,7 +31,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
         padding: 24px; }
 .container { max-width: var(--container-max); margin: 0 auto; }
 header { display: flex; flex-direction: column; align-items: flex-start;
-        gap: 8px; margin-bottom: 24px; }
+        gap: 8px; margin-bottom: 24px;
+        position: sticky; top: 0; z-index: 500;
+        background: var(--bg); }
 h1 { font-size: 1.5rem; }
 h2 { margin: 28px 0 12px; font-size: 1.15rem; }
 .sub { color: var(--muted); font-size: 0.9rem; }
