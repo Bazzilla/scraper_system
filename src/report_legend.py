@@ -10,6 +10,7 @@ from report_helpers import _collapsible
 _LEGEND_MARKET = [
     {
         "name": "Fear &amp; Greed (FGI)",
+        "dummy": "Un termometro della paura: 0 = tutti terrorizzati, 100 = tutti euforici. Quando tutti hanno paura i prezzi sono in sconto e storicamente è il momento migliore per comprare; quando tutti sono felici i prezzi sono gonfiati. Qui conta ≤ 25: sotto questa soglia il sistema ti permette di valutare acquisti.",
         "range": "0-100",
         "short": "Sentiment del mercato: meno di 25 = paura estrema, oltre 75 = avidità estrema.",
         "detail": (
@@ -25,6 +26,7 @@ _LEGEND_MARKET = [
     },
     {
         "name": "VIX",
+        "dummy": "Il livello di ansia del mercato: trema forte (oltre 30) = panico e possibili affari ma anche rischio; calmo (sotto 15) = tutto liscio e pochi sconti. Non è un segnale da solo: è il termostato dell'umore di borsa.",
         "range": "indice",
         "short": "Volatilità implicita: oltre 30 tensione elevata, sotto 15 mercato calmo.",
         "detail": (
@@ -46,6 +48,7 @@ _LEGEND_MARKET = [
     },
     {
         "name": "AAII Sentiment",
+        "dummy": "Un sondaggio tra piccoli risparmiatori: sei ottimista o pessimista? Se quasi tutti dicono pessimista, storicamente è stato un buon momento per comprare (i prezzi sono bassi perché tutti vendono); se tutti sono ottimisti, i massimi sono vicini.",
         "range": "%",
         "short": "Percentuale di investitori retail bullish, neutral e bearish.",
         "detail": (
@@ -61,6 +64,7 @@ _LEGEND_MARKET = [
     },
     {
         "name": "Put/Call Ratio (PCR)",
+        "dummy": "Quante protezioni comprano gli operatori: tante protezioni (put) = paura diffusa e potenziali affari; poche = tutti si aspettano salite e pochi sconti. È il quanto il mercato si difende.",
         "range": "ratio",
         "short": "Put venduti vs call: oltre 0.80 = paura, sotto 0.70 = avidità.",
         "detail": (
@@ -76,6 +80,7 @@ _LEGEND_MARKET = [
     },
     {
         "name": "NYSE New Highs/Lows (52w)",
+        "dummy": "Un conteggio semplice: quanti titoli hanno toccato il massimo degli ultimi 52 settimane e quanti il minimo. Se i minimi vincono, il mercato è caduto abbastanza da offrire occasioni; se vincono i massimi, è tutto carico.",
         "range": "conteggio",
         "short": "Titoli NYSE a nuovi massimi vs nuovi minimi di 52 settimane.",
         "detail": (
@@ -93,6 +98,7 @@ _LEGEND_MARKET = [
     },
     {
         "name": "Breadth di mercato (% sopra SMA)",
+        "dummy": "La salute complessiva del mercato: su 100 titoli, quanti stanno sopra la loro media a 50 giorni? Se pochi (meno di 20) sono sopra, quasi tutto è in calo e la zona è storicamente buona per comprare; se la maggioranza è sopra, il mercato è già in forma e gli sconti scarseggiano.",
         "range": "%",
         "short": "Quota di titoli del MERCATO USA sopra SMA50/SMA200 (inserita manualmente).",
         "detail": (
@@ -110,6 +116,7 @@ _LEGEND_MARKET = [
     },
     {
         "name": "Insider (bonus opportunità)",
+        "dummy": "Se i dirigenti comprano azioni della loro azienda con soldi veri, di solito sanno qualcosa: è un voto di fiducia concreto. Più acquisti rafforzano il caso compra su quel titolo; se nessuno compra, né pro né contro.",
         "range": "punti",
         "short": "Acquisti insider dei dirigenti come bonus alla matrice Opportunità.",
         "detail": (
@@ -129,6 +136,7 @@ _LEGEND_MARKET = [
 _LEGEND_STOCK = [
     {
         "name": "RSI",
+        "dummy": "Il quanto è sceso troppo del titolo: sotto 30 ha scaricato tanto e potrebbe rimbalzare (interessante per un acquisto); sopra 70 ha corso troppo e potrebbe fare un passo indietro. È il misuratore della stanchezza.",
         "range": "0-100",
         "short": "Momentum: oltre 70 ipercomprato, sotto 30 ipervenduto.",
         "detail": (
@@ -144,6 +152,7 @@ _LEGEND_STOCK = [
     },
     {
         "name": "MFI",
+        "dummy": "Come l'RSI ma pesa i soldi (i volumi scambiati): sotto 20 i venditori hanno scaricato troppo e potrebbe esserci un rimbalzo; sopra 80 gli acquisti esagerano e può arrivare una frenata. Conferma o smentisce l'RSI.",
         "range": "0-100",
         "short": "Flusso monetario: oltre 80 ipercomprato, sotto 20 ipervenduto.",
         "detail": (
@@ -158,6 +167,7 @@ _LEGEND_STOCK = [
     },
     {
         "name": "OBV",
+        "dummy": "La corrente dietro il prezzo: se i prezzi scendono ma i soldi non escono (OBV che regge), i venditori sono pochi e deboli e il segnale è buono; se i soldi escono mentre i prezzi salgono, qualcuno sta scappando.",
         "range": "cumulativo",
         "short": "Conferma del trend attraverso il volume.",
         "detail": (
@@ -172,6 +182,7 @@ _LEGEND_STOCK = [
     },
     {
         "name": "SMA50 / SMA200",
+        "dummy": "La tendenza in parole povere: prezzo sopra le medie (50 giorni = medio termine, 200 = lungo termine) = il titolo sta salendo e si tiene; sotto le medie = discesa e si osserva solo. È il metro per capire se è in forma.",
         "range": "prezzo",
         "short": "Media mobile: trend di medio (50) e lungo (200) termine.",
         "detail": (
@@ -186,6 +197,7 @@ _LEGEND_STOCK = [
     },
     {
         "name": "Drawdown",
+        "dummy": "Di quanto il titolo è sceso dal massimo dell'ultimo anno. A -10% costa il 10% in meno rispetto a pochi mesi fa: se è sano, può essere uno sconto da valutare (buy-the-dip). Oltre -15% il calo è pesante: capisci prima perché.",
         "range": "%",
         "short": "Distanza dal massimo delle 52 settimane: ok, attenzione, critico.",
         "detail": (
@@ -202,6 +214,7 @@ _LEGEND_STOCK = [
     },
     {
         "name": "Upside FV (fair value)",
+        "dummy": "Gli analisti stimano un prezzo giusto: se il prezzo attuale è molto sotto (+20% o più) c'è margine di risalita; se è sopra (-10% o meno) è caro nonostante il calo. È una stima d'opinione, non una verità.",
         "range": "%",
         "short": "Distanza del prezzo dal target mediano degli analisti (informativo).",
         "detail": (
@@ -220,6 +233,7 @@ _LEGEND_STOCK = [
     },
     {
         "name": "Attrattiva",
+        "dummy": "Il quanto è allettante tradotto in numero da 10 a 99: più è alto, più il titolo combina condizioni da compratore. Ordinando la colonna i più allettanti salgono in cima: è la versione numerica del segnale.",
         "range": "10 - 99",
         "short": "Punteggio sintetico buy-the-dip, allineato al Segnale: ordinabile.",
         "detail": (
@@ -245,6 +259,7 @@ _LEGEND_STOCK = [
     },
     {
         "name": "Setup (setup_type) / buy_candidate",
+        "dummy": "Il tipo di situazione in cui si trova il titolo: Pullback = era in salita e ha appena fatto uno sconto (il momento classico per comprare); Continuazione = sta salendo vicino ai massimi e lo sconto è poca roba; Difensivo = titolo stabile da reddito che non fa per il dip; trattino = mancano dati.",
         "range": "Pullback / Continuazione / Difensivo / —",
         "short": (
             "Classificazione ortogonale del TIPO di setup tecnico, con flag "
@@ -278,6 +293,7 @@ _LEGEND_STOCK = [
     },
     {
         "name": "Segnale",
+        "dummy": "Il verdetto in tre parole: 🟢 VALUTA INGRESSO = condizioni favorevoli E mercato in paura e quindi candidato da approfondire; 🟠 OSSERVA = c'è del buono ma non basta ancora; ⚪ ATTENDI = niente di buono ora. Non è un ordine di acquisto: è un promemoria da verificare.",
         "range": "VALUTA INGRESSO / OSSERVA / ATTENDI",
         "short": "Sintesi degli indicatori del ticker + clima di mercato.",
         "detail": (
@@ -312,6 +328,7 @@ _LEGEND_STOCK = [
 _LEGEND_SEMAPHORES = [
     {
         "name": "Semafori",
+        "dummy": "Sono semafori: verde = condizione favorevole, giallo = attenzione, rosso = eccesso o critico, blu = neutro. Leggi sempre il numero accanto al colore: il colore serve solo a farti scorgere subito la zona.",
         "range": "",
         "short": "Colori che riassumono lo stato di ogni indicatore.",
         "detail": (
@@ -333,6 +350,7 @@ _LEGEND_SEMAPHORES = [
 _LEGEND_ENTRY_SIGNALS = [
     {
         "name": '<span class="signal buy">🟢 VALUTA INGRESSO</span>',
+        "dummy": "Il titolo ha le condizioni e il mercato è in paura: vale la pena approfondire se comprare. Attenzione: è un guardalo con interesse, non compra subito.",
         "range": "ingresso",
         "short": (
             "Setup tecnico positivo E gate buy-the-dip aperto: candidato da "
@@ -349,6 +367,7 @@ _LEGEND_ENTRY_SIGNALS = [
     },
     {
         "name": '<span class="signal watchlist">🟠 OSSERVA</span>',
+        "dummy": "C'è qualcosa di interessante (sconto o contesto in miglioramento) ma non basta ancora: tienilo d'occhio e aspetta conferme prima di entrare.",
         "range": "ingresso",
         "short": (
             "Profilo buy-the-dip in debolezza profonda, oppure setup bloccato "
@@ -368,6 +387,7 @@ _LEGEND_ENTRY_SIGNALS = [
     },
     {
         "name": '<span class="signal hold">⚪ ATTENDI</span>',
+        "dummy": "Niente di buono in questo momento: aspetta e non forzare l'acquisto. I soldi non hanno fretta.",
         "range": "ingresso",
         "short": (
             "Nessuna condizione operativa: segnali misti, gate chiuso o mercato "
@@ -389,6 +409,7 @@ _LEGEND_ENTRY_SIGNALS = [
 _LEGEND_EXIT_SIGNALS = [
     {
         "name": '<span class="sell-signal sell-NESSUNA">NESSUNA POSIZIONE</span>',
+        "dummy": "Il titolo non è nel tuo portafoglio: nessuna decisione di vendita da prendere.",
         "range": "uscita",
         "short": "Il ticker non è in portafoglio: nessuna valutazione di uscita.",
         "detail": (
@@ -399,6 +420,7 @@ _LEGEND_EXIT_SIGNALS = [
     },
     {
         "name": '<span class="sell-signal sell-MANTIENI">MANTIENI</span>',
+        "dummy": "La posizione va bene: è in profitto ma senza eccessi, tieni e non fare nulla.",
         "range": "uscita",
         "short": "Posizione sana: gain sotto le soglie di take-profit e trend integro.",
         "detail": (
@@ -410,6 +432,7 @@ _LEGEND_EXIT_SIGNALS = [
     },
     {
         "name": '<span class="sell-signal sell-PRENDI">PRENDI PROFITTO PARZIALE</span>',
+        "dummy": "Hai guadagnato abbastanza (15-25% o più): valuta di vendere una parte per mettere in sicurezza il guadagno, senza uscire del tutto.",
         "range": "uscita",
         "short": "Gain maturo (≥15% o ≥25%): valutare realizzo di circa 25-33% della posizione.",
         "detail": (
@@ -423,6 +446,7 @@ _LEGEND_EXIT_SIGNALS = [
     },
     {
         "name": '<span class="sell-signal sell-RIDUCI">RIDUCI ESPOSIZIONE</span>',
+        "dummy": "Il guadagno è grosso (30% o più) e il mercato sembra surriscaldato: valuta di vendere quasi metà per proteggerti da un possibile ribasso.",
         "range": "uscita",
         "short": "Gain ≥30% + segnali di surriscaldamento: valutare riduzione del 40-50%.",
         "detail": (
@@ -435,6 +459,7 @@ _LEGEND_EXIT_SIGNALS = [
     },
     {
         "name": '<span class="sell-signal sell-ATTENZIONE">ATTENZIONE</span>',
+        "dummy": "La posizione è in perdita e i segnali tecnici sono pessimi: osserva da vicino. Non è un ordine di vendita, ma è il momento di decidere con calma cosa fare.",
         "range": "uscita",
         "short": "Posizione in perdita con condizioni tecniche negative: monitorare da vicino.",
         "detail": (
@@ -488,10 +513,17 @@ def _legend_item(item: dict[str, str]) -> str:
             "(compra / osserva / vendi):</strong> "
             f"{item['strategy']}</p>"
         )
+    dummy_html = ""
+    if item.get("dummy"):
+        dummy_html = (
+            "<p class='legend-dummy'>🧸 <strong>Spiegazione semplice:</strong> "
+            f"{item['dummy']}</p>"
+        )
     return (
         "<details class='legend-card'>"
         f"<summary>{item['name']} <span class='legend-range'>({item['range']})</span></summary>"
         f"<div class='legend-detail'><p>{item['short']}</p>"
+        f"{dummy_html}"
         f"<p>{item['detail']}</p>{strategy_html}</div>"
         "</details>"
     )

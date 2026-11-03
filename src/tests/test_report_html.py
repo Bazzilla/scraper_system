@@ -1212,6 +1212,55 @@ class TestSetupColumnAndAnnotations(unittest.TestCase):
         self.assertIn("In pratica", html)
         self.assertIn("<strong>comprare</strong>", html)
 
+    def test_legend_has_dummy_explanation_on_every_card(self):
+        """Ogni card della legenda ha una spiegazione 'for dummies'."""
+        from report_legend import (
+            _LEGEND_ENTRY_SIGNALS,
+            _LEGEND_EXIT_SIGNALS,
+            _LEGEND_MARKET,
+            _LEGEND_SEMAPHORES,
+            _LEGEND_STOCK,
+        )
+        items = (
+            _LEGEND_MARKET + _LEGEND_STOCK + _LEGEND_SEMAPHORES
+            + _LEGEND_ENTRY_SIGNALS + _LEGEND_EXIT_SIGNALS
+        )
+        # 7 mercato + 9 azionari + 1 semafori + 3 ingresso + 5 uscita
+        self.assertEqual(len(items), 25)
+        missing = [it["name"] for it in items if not it.get("dummy")]
+        self.assertEqual(missing, [], f"card senza dummy: {missing}")
+        html = render_legend()
+        self.assertEqual(html.count("legend-dummy"), 25)
+        self.assertEqual(html.count("Spiegazione semplice:"), 25)
+
+    def test_legend_dummy_texts_for_buy_indicators(self):
+        """Le spiegazioni semplici coprono gli indicatori d'acquisto chiave."""
+        html = render_legend()
+        self.assertIn("termometro della paura", html)      # FGI
+        self.assertIn("misuratore della stanchezza", html)  # RSI
+        self.assertIn("quanto è allettante", html)          # Attrattiva
+        self.assertIn("verdetto in tre parole", html)       # Segnale
+        self.assertIn("momento classico per comprare", html)  # Setup
+
+    def test_legend_dummy_rendered_before_technical_detail(self):
+        """Il dummy è dopo lo short e prima del detail tecnico (FGI)."""
+        html = render_legend()
+        i_short = html.find("Sentiment del mercato: meno di 25")
+        i_dummy = html.find("legend-dummy", i_short)
+        i_detail = html.find(
+            "Il Fear &amp; Greed Index", i_dummy,
+        )
+        if i_detail == -1:
+            # Fallback: il primo <p> del detail dopo il dummy
+            i_detail = html.find("</p>", html.find("legend-dummy", i_short))
+        self.assertTrue(0 < i_short < i_dummy < i_detail)
+
+    def test_legend_dummy_css_present(self):
+        """La classe .legend-dummy è definita nel CSS del report."""
+        from report_html import _REPORT_CSS
+        self.assertIn(".legend-card .legend-dummy", _REPORT_CSS)
+        self.assertIn("border-left: 3px solid var(--accent)", _REPORT_CSS)
+
     def test_ticker_sections_ignores_category_status_key(self):
         # La categoria ha una chiave "status" (stringa) che NON è un ticker
         data = _sample_data()

@@ -210,6 +210,9 @@ table.ticker-table th.sorted { color: var(--neutral); }
         background: rgba(88, 166, 255, 0.08);
         border-left: 3px solid var(--neutral); padding: 6px 10px;
         border-radius: 6px; }
+.legend-card .legend-dummy { margin-top: 6px; padding: 6px 10px;
+        background: var(--bg); border-left: 3px solid var(--accent);
+        border-radius: 4px; font-size: 0.85rem; }
 .portfolio-summary .pnl-pos { color: var(--green); font-weight: 600; }
 .portfolio-summary .pnl-neg { color: var(--red); font-weight: 600; }
 /* Sintesi VALUTA INGRESSO: box Markdown copiabile */
