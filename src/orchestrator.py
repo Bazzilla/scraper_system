@@ -18,6 +18,7 @@ from typing import Any
 from audit import init_db, record_execution
 from config_loader import load_config
 from consolidator import consolidate
+from setup_classifier import annotate_output
 from indicator_registry import (
     build_availability,
     load_registry,
@@ -135,6 +136,10 @@ def run(
 
     output = consolidate(results)
     output["strategy_indicators"] = _build_strategy_indicators(config, base_dir, results)
+    # Classificazione setup per ticker (setup_type / buy_candidate /
+    # value_flag): scritta in output.json come artifact; il report la
+    # ricalcola con le stesse funzioni pure (soglie fresche da config).
+    annotate_output(output, config)
     with open(output_path, "w", encoding="utf-8") as fh:
         json.dump(output, fh, indent=2)
 
@@ -194,6 +199,7 @@ def run_single_scraper(
     output["strategy_indicators"] = _build_strategy_indicators(
         config, base_dir, results,
     )
+    annotate_output(output, config)
 
     with open(output_path, "w", encoding="utf-8") as fh:
         json.dump(output, fh, indent=2)

@@ -1030,6 +1030,77 @@ class TestBuySignalsMarkdown(unittest.TestCase):
         self.assertEqual(technical_contributions({}), [])
         self.assertEqual(technical_signal({}), "neutral")
 
+
+class TestSetupColumnAndAnnotations(unittest.TestCase):
+    """Colonna Setup nella tabella e annotazioni nel Markdown/legenda."""
+
+    def _trend_entry(self) -> dict:
+        return {
+            "last_close": 100.0, "sma_50": 95.0, "sma_200": 90.0,
+            "rsi_14": 55.0, "mfi_14": 55.0, "drawdown_52w": -2.0,
+            "status": "fresh", "fetched_at": "2026-08-12T14:30:06+00:00",
+            "stale_after_hours": 24,
+        }
+
+    def _trend_data(self) -> dict:
+        data = _sample_data()
+        data["ohlcv"]["semiconductors"]["AMAT"]["last_close"] = 100.0
+        data["indicators"]["semiconductors"]["AMAT"].update({
+            "rsi_14": 55.0, "mfi_14": 55.0,
+            "sma_50": 95.0, "sma_200": 90.0, "drawdown_52w": -2.0,
+        })
+        return data
+
+    def test_table_has_setup_column_with_readable_label(self):
+        html = render_ticker_table("semiconductors", {"AMAT": self._trend_entry()})
+        self.assertIn(
+            '<th data-type="text" title="Classificazione del tipo di setup '
+            'tecnico (ortogonale al segnale: non entra in Attrattiva)">Setup</th>',
+            html,
+        )
+        self.assertIn('title="TREND_CONTINUATION">Continuazione</td>', html)
+
+    def test_table_setup_column_order_after_attrattiva(self):
+        html = render_ticker_table("semiconductors", {"AMAT": self._trend_entry()})
+        i_attr = html.find(">Attrattiva</th>")
+        i_setup = html.find(">Setup</th>")
+        i_signal = html.find(">Segnale</th>")
+        self.assertTrue(0 < i_attr < i_setup < i_signal)
+
+    def test_table_setup_defensive_from_config(self):
+        th = {"defensive_symbols": ["AMAT"]}
+        html = render_ticker_table(
+            "semiconductors", {"AMAT": self._trend_entry()}, setup_cfg=th
+        )
+        self.assertIn('title="INCOME_DEFENSIVE">Difensivo</td>', html)
+
+    def test_build_page_passes_strategy_setup(self):
+        html = build_page(
+            self._trend_data(), strategy_setup={"defensive_symbols": ["AMAT"]}
+        )
+        self.assertIn(">Difensivo</td>", html)
+
+    def test_markdown_lists_setup_buy_candidate_value_flag(self):
+        data = TestBuySignalsMarkdown()._buy_data()
+        md = build_buy_signals_markdown(data)
+        self.assertIn("| Setup | Attrattiva |", md)
+        self.assertIn("setup_type: PULLBACK_IN_TREND", md)
+        self.assertIn("buy_candidate: ✅ sì", md)
+        self.assertIn("value_flag:", md)
+        self.assertIn("motivi buy_candidate:", md)
+        self.assertIn("gate FGI aperto: FGI 22 ≤ 25", md)
+        # value_flag è una nota display-only
+        self.assertIn("nota display-only, non operativa", md)
+
+    def test_legend_explains_setup_type_and_flags(self):
+        html = render_legend()
+        self.assertIn("setup_type", html)
+        self.assertIn("buy_candidate", html)
+        self.assertIn("value_flag", html)
+        self.assertIn("PULLBACK_IN_TREND", html)
+        self.assertIn("INCOME_DEFENSIVE", html)
+        self.assertIn("strategy.setup_type", html)
+
     def test_legend_contains_operational_guide(self):
         html = render_legend()
         self.assertIn("Guida operativa", html)

@@ -35,6 +35,21 @@ strategy:
   # Attivi: aaii e fgi — l'immissione manuale dalla pagina ha la precedenza
   # sullo scraping (priorità: manual > scraping per questi indicatori).
   force_manual_overrides: ["aaii", "fgi"]
+  # Classificazione setup per ticker (setup_type) + flag buy_candidate.
+  # Ortogonalità: setup_type descrive IL TIPO di setup tecnico, non è un
+  # segnale e non entra in attrattiva né nel gate FGI (technical_setup ≠
+  # final_action ≠ market_gate). valuation/upside_pct resta display-only.
+  # Soglie allinate ai valori già codificati nella strategia:
+  #   drawdown ≥ -5  = vicino ai massimi 52w (technical_signal / semaforo "ok")
+  #   RSI < 30       = ipervenduto (technical_signal)
+  #   MFI < 20       = flusso in uscita (technical_signal)
+  setup_type:
+    drawdown_pullback_pct: -5   # drawdown < soglia → PULLBACK_IN_TREND
+    rsi_oversold: 30            # RSI < soglia → setup "scarico" (pullback)
+    mfi_oversold: 20            # MFI < soglia → setup "scarico" (pullback)
+    # Simboli difensivi/dividendo → INCOME_DEFENSIVE (mai buy_candidate).
+    # Modificabile liberamente: utilities, BDC, midstream, defense primes...
+    defensive_symbols: [NEE, SO, DUK, AEP, ARCC, KMI, EPD, ET]
 
 scrapers:
   fgi:
@@ -293,6 +308,8 @@ tickers:
       name: Enterprise Products Partners
     - symbol: ET
       name: Energy Transfer
+      notes: Acquistata dalla senatrice Ashley Moody (una bombardiera) ad inizio aprile per 18.5$
+      price_of_interest: 18.5
   tech:
     - symbol: GOOGL
       name: Alphabet Inc.
@@ -316,6 +333,8 @@ tickers:
   finance:
     - symbol: ARCC
       name: Ares Capital Corporation
+      notes: Sempre Ashley Moody presa ad aprile per 18$
+      price_of_interest: 18
   build:
     - symbol: AMRZ
       name: Amrize Ltd

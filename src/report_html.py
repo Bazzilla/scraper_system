@@ -74,6 +74,24 @@ from report_tables import (  # noqa: F401
     render_stale_summary,
     render_ticker_table,
 )
+from setup_classifier import (  # noqa: F401
+    BUY_CANDIDATE_SETUPS,
+    DEFAULT_SETUP_THRESHOLDS,
+    SETUP_CONTINUATION,
+    SETUP_DEFENSIVE,
+    SETUP_LABELS,
+    SETUP_PULLBACK,
+    SETUP_TYPES,
+    SETUP_UNKNOWN,
+    annotate_output,
+    buy_candidate_reasons,
+    compute_buy_candidate,
+    compute_setup_type,
+    compute_value_flag,
+    is_defensive,
+    load_setup_thresholds,
+    ticker_is_fresh,
+)
 
 DEFAULT_HTML_PATH = "output/report.html"
 
@@ -685,11 +703,18 @@ def render_portfolio_summary(
     )
 
 
-def build_page(data: dict[str, Any], tickers_config: dict[str, Any] | None = None) -> str:
+def build_page(
+    data: dict[str, Any],
+    tickers_config: dict[str, Any] | None = None,
+    strategy_setup: dict[str, Any] | None = None,
+) -> str:
     """Assemble the complete HTML document.
 
     ``tickers_config`` (optional) is the normalized ``tickers`` section from
     config.yaml; used only for display metadata and tier ordering.
+    ``strategy_setup`` (optional) is the ``strategy.setup_type`` thresholds
+    dict for the setup_type column / buy-candidate annotations (defaults
+    apply when omitted).
     """
     stale = data.get("stale_summary", {})
     overall = "fresh" if stale.get("stale", 0) == 0 else "stale"
@@ -714,8 +739,8 @@ def build_page(data: dict[str, Any], tickers_config: dict[str, Any] | None = Non
         '<button id="sections-toggle" type="button">\U0001f5c2\ufe0f Chiudi tutte</button>'
         "</div>"
         f"{_collapsible('Indicatori di mercato', render_market_cards(data))}"
-        f"{render_buy_signals_section(data)}"
-        f"{_ticker_sections(data, tickers_config)}"
+        f"{render_buy_signals_section(data, setup_cfg=strategy_setup)}"
+        f"{_ticker_sections(data, tickers_config, setup_cfg=strategy_setup)}"
         f"{render_portfolio_summary(data, tickers_meta=tickers_meta)}"
         f"{render_indicator_matrix(data.get('strategy_indicators', {}))}"
         f"{render_stale_summary(stale)}"
@@ -759,8 +784,15 @@ def render(config_path: str, output_path: str | None = None) -> str:
     # per il rendering dei metadata strategici nel report (display-only).
     tickers_config = normalize_tickers(config["tickers"]) if "tickers" in config else None
 
+    # Soglie setup_type (strategy.setup_type) per colonna Setup e annotazioni
+    # buy_candidate / value_flag nel Markdown. Default allineati alla strategia.
+    strategy_setup = load_setup_thresholds(config)
+
     html_path = output_path or str(base_dir / DEFAULT_HTML_PATH)
     path = Path(html_path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(build_page(data, tickers_config), encoding="utf-8")
+    path.write_text(
+        build_page(data, tickers_config, strategy_setup=strategy_setup),
+        encoding="utf-8",
+    )
     return str(path)

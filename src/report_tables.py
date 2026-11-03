@@ -26,6 +26,16 @@ from report_helpers import (
 )
 from valuation_store import bucket_label
 from page_base import render_ticker
+from setup_classifier import (
+    buy_candidate_reasons,
+    compute_buy_candidate,
+    compute_setup_type,
+    compute_value_flag,
+    is_defensive,
+    load_setup_thresholds,
+    ticker_is_fresh,
+    SETUP_LABELS,
+)
 
 
 _TIER_ORDER = {"core": 0, "secondary": 1, "opportunistic": 2}
@@ -151,6 +161,7 @@ def render_ticker_table(
     regime: str = "neutral",
     fgi_score: float | None = None,
     tickers_meta: dict[str, dict[str, Any]] | None = None,
+    setup_cfg: dict[str, Any] | None = None,
 ) -> str:
     """Render one sector's ticker table with indicator semaphores.
 
@@ -160,17 +171,25 @@ def render_ticker_table(
     operational gate). Rows are sorted by quality_tier (core first), then
     alphabetically; without metadata the order is purely alphabetical.
 
+    ``setup_cfg`` (thresholds from config.yaml ``strategy.setup_type``)
+    drives the ``setup_type`` column — an ORTHOGONAL classification, not a
+    score: it never touches attrattiva nor the signal.
+
     Ogni cella porta ``data-value`` machine-readable e ogni colonna
     ``data-type`` (text|num|date): il JS lato client li usa per
     ordinamento ciclico e filtri (vedi report_html._SCRIPT).
     """
     rows: list[str] = []
     meta = tickers_meta or {}
+    th = load_setup_thresholds(None) if setup_cfg is None else setup_cfg
     for symbol in sorted(entries, key=lambda s: _tier_sort_key(s, meta.get(s))):
         entry = entries[symbol]
         ind = entry
         signal = compute_signal(ind, regime, fgi_score=fgi_score)
         score = attrattiva_score(ind, fgi_score=fgi_score, regime=regime)
+        setup = compute_setup_type(
+            ind, th, defensive=is_defensive(symbol, th)
+        )
 
         def _dv(value: Any) -> str:
             """Machine-readable cell value ('' quando assente)."""
@@ -192,6 +211,7 @@ def render_ticker_table(
             f"{_bucket_title(ind)}>{_sema(ind.get('upside_pct'), 'upside')}</td>"
             f'<td data-value="{score}" title="Attrattiva buy-the-dip (0-100): '
             f'punteggio sintetico ordinabile">{score}</td>'
+            f'<td data-value="{setup}" title="{setup}">{SETUP_LABELS.get(setup, setup)}</td>'
             f'<td data-value="{signal}">{_signal_badge(signal)}</td>'
             f'<td data-value="{_dv(ind.get("fetched_at"))}">{format_iso_dt(ind.get("fetched_at"))}</td>'
             "</tr>"
@@ -209,6 +229,8 @@ def render_ticker_table(
         '<th data-type="num" title="Upside vs target mediano analisti (fair value, informativo)">Upside FV</th>'
         '<th data-type="num" title="Attrattiva buy-the-dip (0-100): punteggio sintetico '
         'ordinabile — dal più al meno papabile">Attrattiva</th>'
+        '<th data-type="text" title="Classificazione del tipo di setup tecnico '
+        '(ortogonale al segnale: non entra in Attrattiva)">Setup</th>'
         '<th data-type="text">Segnale</th>'
         '<th data-type="date">Aggiornato</th>'
         "</tr></thead>"
@@ -309,12 +331,19 @@ def render_stale_summary(summary: dict[str, Any]) -> str:
     )
 
 
-def _ticker_sections(data: dict[str, Any], tickers_config: dict[str, Any] | None = None) -> str:
+def _ticker_sections(
+    data: dict[str, Any],
+    tickers_config: dict[str, Any] | None = None,
+    setup_cfg: dict[str, Any] | None = None,
+) -> str:
     """Render per-category ticker tables merging ohlcv (close) + indicators.
 
     ``tickers_config`` is the normalized ``tickers`` section from config.yaml
     (category → list of {symbol, name, quality_tier, ...}). It is used ONLY
     for display metadata and tier ordering — never as a signal.
+
+    ``setup_cfg`` carries the ``strategy.setup_type`` thresholds used for
+    the ``setup_type`` column (see setup_classifier).
     """
     indicators = data.get("indicators", {})
     ohlcv = data.get("ohlcv", {})
@@ -363,22 +392,31 @@ def _ticker_sections(data: dict[str, Any], tickers_config: dict[str, Any] | None
             f"{html_mod.escape(display)} ({len(merged)})",
             render_ticker_table(
                 category, merged, regime=regime, fgi_score=fgi_score,
-                tickers_meta=tickers_meta,
+                tickers_meta=tickers_meta, setup_cfg=setup_cfg,
             ),
         ))
     return "".join(sections)
 
 
-def build_buy_signals_markdown(data: dict[str, Any]) -> str:
+def build_buy_signals_markdown(
+    data: dict[str, Any],
+    setup_cfg: dict[str, Any] | None = None,
+) -> str:
     """Markdown summary of VALUTA INGRESSO tickers (copy-to-clipboard).
 
     Returns ``""`` when no ticker currently has the buy signal. Values and
     motivations mirror the signal pipeline (``compute_signal`` + buy-the-dip
     FGI gate): this is a copy of the report state, not a new decision layer.
+
+    ``setup_cfg`` (``strategy.setup_type`` thresholds) adds the orthogonal
+    annotations per ticker: ``setup_type``, ``buy_candidate`` (with the
+    motivations of the flag) and ``value_flag`` (display-only note).
     """
     fgi = data.get("fgi", {})
-    fgi_score = fgi.get("score") if fgi.get("status") == "fresh" else None
+    fgi_fresh = fgi.get("status") == "fresh"
+    fgi_score = fgi.get("score") if fgi_fresh else None
     regime = market_regime(fgi.get("score"))
+    th = load_setup_thresholds(None) if setup_cfg is None else setup_cfg
 
     buys = [
         (symbol, entry)
@@ -428,11 +466,14 @@ def build_buy_signals_markdown(data: dict[str, Any]) -> str:
         f"regime {regime} · generato {format_iso_dt(data.get('generated_at'))}",
         "",
         "| Ticker | Settore | Close | RSI | MFI | vs SMA50 | vs SMA200 "
-        "| Drawdown | Upside FV | Attrattiva |",
-        "|---|---|---:|---:|---:|:-:|:-:|---:|---:|---:|",
+        "| Drawdown | Upside FV | Setup | Attrattiva |",
+        "|---|---|---:|---:|---:|:-:|:-:|---:|---:|---|---:|",
     ]
     for symbol, entry in buys:
         score = attrattiva_score(entry, fgi_score=fgi_score, regime=regime)
+        setup = compute_setup_type(
+            entry, th, defensive=is_defensive(symbol, th)
+        )
         lines.append(
             f"| **{symbol}** | {_cell(str(entry.get('_category', '')).upper())} "
             f"| {_num(entry.get('last_close'))} "
@@ -442,6 +483,7 @@ def build_buy_signals_markdown(data: dict[str, Any]) -> str:
             f"| {_vs(entry.get('last_close'), entry.get('sma_200'))} "
             f"| {_pct(entry.get('drawdown_52w'))} "
             f"| {_pct(entry.get('upside_pct'))} "
+            f"| {setup} "
             f"| **{score}** |"
         )
 
@@ -450,7 +492,24 @@ def build_buy_signals_markdown(data: dict[str, Any]) -> str:
         score = attrattiva_score(entry, fgi_score=fgi_score, regime=regime)
         name = entry.get("name") or symbol
         category = str(entry.get("_category", "")).upper()
+        setup = compute_setup_type(
+            entry, th, defensive=is_defensive(symbol, th)
+        )
+        fresh = ticker_is_fresh(entry)
+        buy_cand = compute_buy_candidate(
+            setup, fgi_score=fgi_score, fgi_fresh=fgi_fresh, ticker_fresh=fresh
+        )
+        value_flag = compute_value_flag(entry)
         lines.append(f"- **{symbol}** ({name}, {category}) — Attrattiva {score}")
+        lines.append(
+            f"  - setup_type: {setup} · buy_candidate: "
+            f"{'✅ sì' if buy_cand else '❌ no'} · value_flag: {value_flag} "
+            "(nota display-only, non operativa)"
+        )
+        motivi = buy_candidate_reasons(
+            setup, fgi_score=fgi_score, fgi_fresh=fgi_fresh, ticker_fresh=fresh
+        )
+        lines.append(f"  - motivi buy_candidate: {'; '.join(motivi)}")
         for reason in buy_signal_reasons(entry, fgi_score):
             lines.append(f"  - {reason}")
 
@@ -462,9 +521,12 @@ def build_buy_signals_markdown(data: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def render_buy_signals_section(data: dict[str, Any]) -> str:
+def render_buy_signals_section(
+    data: dict[str, Any],
+    setup_cfg: dict[str, Any] | None = None,
+) -> str:
     """Collapsible section with the copyable Markdown buy-signals summary."""
-    md = build_buy_signals_markdown(data)
+    md = build_buy_signals_markdown(data, setup_cfg=setup_cfg)
     if not md:
         body = (
             '<p class="md-empty">Nessun ticker con segnale '

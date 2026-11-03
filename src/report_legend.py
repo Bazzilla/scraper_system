@@ -244,6 +244,39 @@ _LEGEND_STOCK = [
         ),
     },
     {
+        "name": "Setup (setup_type) / buy_candidate",
+        "range": "Pullback / Continuazione / Difensivo / —",
+        "short": (
+            "Classificazione ortogonale del TIPO di setup tecnico, con flag "
+            "di ingresso e nota valuation."
+        ),
+        "detail": (
+            "Il <strong>setup_type</strong> descrive il tipo di setup — non è "
+            "un segnale, non entra in Attrattiva e non tocca il gate FGI "
+            "(setup ≠ segnale ≠ gate). Quattro valori:<br>"
+            "<strong>PULLBACK_IN_TREND</strong>: prezzo sopra SMA50 e SMA200 "
+            "con rientro significativo dai massimi 52w (drawdown sotto la "
+            "soglia, default &lt; -5%) oppure RSI/MFI scarichi (default "
+            "RSI &lt; 30, MFI &lt; 20 — soglie allineate a technical_signal e "
+            "configurabili in config.yaml → strategy.setup_type).<br>"
+            "<strong>TREND_CONTINUATION</strong>: prezzo sopra entrambe le "
+            "medie e vicino ai massimi 52w (drawdown contenuto).<br>"
+            "<strong>INCOME_DEFENSIVE</strong>: titolo difensivo/dividendo "
+            "marcato in config (strategy.setup_type → defensive_symbols): "
+            "etichetta statica, vale anche sopra le medie; mai "
+            "buy_candidate.<br>"
+            "<strong>UNKNOWN</strong>: dati mancanti o prezzo sotto le medie "
+            "(fail-closed).<br>"
+            "<strong>buy_candidate</strong> = gate FGI aperto (FGI ≤ 25) AND "
+            "setup ∈ {PULLBACK_IN_TREND, TREND_CONTINUATION} AND dati ticker "
+            "freschi. UNKNOWN → false anche con gate aperto; FGI "
+            "mancante/stale → false (fail-closed).<br>"
+            "<strong>value_flag</strong>: nota informativa da valuation "
+            "('upside > 0' / 'upside ≤ 0' / 'n/d') — display-only, NON "
+            "entra in setup_type, buy_candidate né Attrattiva."
+        ),
+    },
+    {
         "name": "Segnale",
         "range": "VALUTA INGRESSO / OSSERVA / ATTENDI",
         "short": "Sintesi degli indicatori del ticker + clima di mercato.",
