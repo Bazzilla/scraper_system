@@ -13,7 +13,7 @@ from report_helpers import FAVICON_LINK, render_nav
 # ── Version ─────────────────────────────────────────────────────────────────
 VERSION_MAJOR = 0
 VERSION_MINOR = 10
-VERSION_BUILD = 1
+VERSION_BUILD = 2
 VERSION = f"{VERSION_MAJOR}.{VERSION_MINOR}.{VERSION_BUILD}"
 
 # ── Base CSS (shared by all pages) ──────────────────────────────────────────
@@ -163,6 +163,27 @@ _SHARED_SCRIPT = """\
       btn.textContent = next === "dark" ? "\\u2600\\ufe0f Light" : "\\ud83c\\udf19 Dark";
     });
   }
+
+  /* Click any h1 to scroll to top — smooth ease-out, 500 ms */
+  (function () {
+    var DURATION = 500;
+    function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+    document.querySelectorAll("h1").forEach(function (el) {
+      el.addEventListener("click", function () {
+        var start = window.scrollY || document.documentElement.scrollTop;
+        if (start === 0) return;
+        var startTime = performance.now();
+        function step(now) {
+          var elapsed = now - startTime;
+          var progress = Math.min(elapsed / DURATION, 1);
+          window.scrollTo(0, start * (1 - easeOutCubic(progress)));
+          if (progress < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+      });
+      el.style.cursor = "pointer";
+    });
+  })();
 
   /* Collapsible sections toggle */
   var sections = document.querySelectorAll("details.section");
